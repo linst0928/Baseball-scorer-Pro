@@ -1,0 +1,75 @@
+1061-      locations,
+1062-    };
+1063-    const event = {
+1064-      id: `ab-${Date.now()}`,
+1065-      inning: activeGame.inning,
+1066-      half: activeGame.half,
+1067-      batterId: currentBatter.id,
+1068-      pitcherId: currentPitcher.id,
+1069-      result,
+1070-      notation: formatRecordColumnNotation(result, fieldingPosition, finalRecordColumn),
+1071-      pitches,
+1072-      outsBefore: activeGame.outs,
+1073-      runsScored: runnerResult.runs,
+1074-      zone: locations.at(-1)?.zone,
+1075-      pitchType: locations.at(-1)?.type ?? selectedPitchType,
+1076-      hitZone: undefined,
+1077-      hitPitchType: isBallInPlay ? selectedPitchType : undefined,
+1078-      recordColumn: finalRecordColumn,
+1079:      runnerAdvances: sacrificeResult?.advances.map((advance) => recordColumnDraft.sacrificeFlyNoScoreReason === "runner_out_at_home"
+1080-        ? { ...advance, outNumber: Math.min(activeGame.outs + 2, 3) as 1 | 2 | 3 }
+1081-        : advance),
+1082-      droppedThirdStrike,
+1083-      timestamp: new Date().toISOString(),
+1084-    };
+1085-    updateActiveGame((game) => {
+1086-      const updated = updateGameAfterEvent(game, event, runnerResult.runners, runnerResult.runs);
+1087-      return game.half === "away"
+1088-        ? { ...updated, awayBatterIndex: game.awayBatterIndex + 1 }
+1089-        : { ...updated, homeBatterIndex: game.homeBatterIndex + 1 };
+1090-    });
+1091-    const nextAtBatDraft = createEmptyAtBatDraft();
+1092-    setPitchDraft(nextAtBatDraft.pitchDraft);
+1093-    setSelectedResult(nextAtBatDraft.selectedResult);
+1094-    setRecordColumnDraft(nextAtBatDraft.recordColumnDraft);
+1095-  }, [activeGame, currentBatter, currentPitcher, fieldingPosition, pitchDraft, recordColumnDraft, selectedPitchType, selectedPitchZone, updateActiveGame]);
+1096-
+1097-  const recordSpecialEvent = useCallback((draft: SpecialDraft) => {
+--
+2992-    setContent("");
+2993-  };
+2994-
+2995-  const clearTarget = () => {
+2996-    if (!event || !target || !getRecordCorrectionValue(event.recordCorrection, target)) return;
+2997-    Alert.alert("清除本區補正", "將回復此區的原始紀錄格顯示；不會變動比分、壘包、出局或統計。", [
+2998-      { text: "取消", style: "cancel" },
+2999-      { text: "清除", style: "destructive", onPress: () => { onSave(event.id, target, "", note); setStep("detail"); } },
+3000-    ]);
+3001-  };
+3002-
+3003-  const hasCorrection = Boolean(event?.recordCorrection);
+3004-  const background = { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border };
+3005-  const quietButton = { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border };
+3006-  const titleText = { color: interfacePalette.foreground };
+3007-  const mutedText = { color: interfacePalette.muted };
+3008-  const sectionTitle = step === "detail" ? "個人紀錄" : step === "target" ? "選擇修正區域" : step === "symbol" ? "選擇早稻田符號" : "填寫補正內容";
+3009-
+3010:  return <Modal visible={Boolean(row)} animationType="fade" transparent onRequestClose={back}><View style={styles.modalBackdrop}><View style={[styles.detailModalSheet, styles.recordCorrectionSheet, background]}><View style={styles.modalHeader}><View style={styles.recordCorrectionHeaderCopy}><Text style={[styles.modalTitle, titleText]}>{sectionTitle}</Text><Text style={[styles.modalSubtitle, mutedText]}>{row?.inning}{row?.half === "away" ? "上" : "下"} · {row?.teamName}</Text></View><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="取消個人紀錄修正" style={({ pressed }) => [styles.recordCorrectionHeaderButton, quietButton, pressed && styles.pressed]}><Text style={[styles.recordCorrectionHeaderButtonText, { color: interfacePalette.primary }]}>取消</Text></Pressable></View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.recordCorrectionScrollContent} keyboardShouldPersistTaps="handled">{step === "detail" ? <><Text style={[styles.detailPlayer, titleText]}>{row?.playerLabel}</Text><Text style={[styles.detailNotation, { color: interfacePalette.primary }]}>{row?.notation}</Text><Text style={[styles.detailResult, mutedText]}>{row?.resultLabel} · {row?.detail}</Text><View style={[styles.detailLineList, background]}>{row?.detailLines.map((line) => <Text key={line} style={[styles.detailLine, mutedText]}>· {line}</Text>)}</View>{event?.recordCorrection ? <View style={[styles.recordCorrectionSafetyNote, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border }]}><Text style={[styles.recordCorrectionSafetyTitle, { color: interfacePalette.primary }]}>已有顯示補正</Text><Text style={[styles.recordCorrectionSafetyText, mutedText]}>更新於 {new Date(event.recordCorrection.revisedAt).toLocaleString("zh-TW")}；可重新選區修改或清除並回到原始顯示。</Text></View> : null}{editable ? <><View style={[styles.recordCorrectionSafetyNote, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border }]}><Text style={[styles.recordCorrectionSafetyTitle, { color: interfacePalette.primary }]}>統計中性補正</Text><Text style={[styles.recordCorrectionSafetyText, mutedText]}>此流程只校正早稻田紀錄格的顯示符號；不會改變比分、壘包、出局、逐球或個人打擊／投球統計。</Text></View><View style={styles.recordCorrectionFooter}><Button label="修改個人紀錄" onPress={() => setStep("target")} fluid />{hasCorrection && event ? <Button label="清除全部補正" variant="danger" onPress={() => Alert.alert("清除全部補正", "將回復此打席所有補正區的原始顯示；原始結果與統計不會變動。", [{ text: "取消", style: "cancel" }, { text: "清除全部", style: "destructive", onPress: () => { onClearAll(event.id); setStep("detail"); } }])} fluid /> : null}</View></> : <View style={[styles.recordCorrectionLockNote, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.warning }]}><Text style={[styles.recordCorrectionSafetyTitle, { color: interfacePalette.warning }]}>目前僅供查看</Text><Text style={[styles.recordCorrectionSafetyText, mutedText]}>{row?.kind !== "atbat" ? "只有整體紀錄表中的單一打席格可補正。" : "為避免進行中打者或跑者資料不同步，請在本半局結束或整場比賽結束後再修改。"}</Text></View>}<Button label="完成" onPress={onClose} variant="secondary" fluid /></> : null}{step === "target" ? <><Text style={[styles.recordCorrectionStepHint, mutedText]}>選擇要顯示補正的位置；每次只修改一區，完成後可回來調整其他區域。</Text><View style={styles.recordCorrectionChoiceGrid}>{RECORD_CORRECTION_TARGETS.map((candidate) => <Pressable key={candidate.id} onPress={() => startTarget(candidate.id)} accessibilityRole="button" accessibilityLabel={`選擇${candidate.title}`} style={({ pressed }) => [styles.recordCorrectionChoice, quietButton, pressed && styles.pressed]}><Text style={[styles.recordCorrectionChoiceTitle, titleText]}>{candidate.title}</Text><Text style={[styles.recordCorrectionChoiceHint, mutedText]}>{candidate.hint}</Text>{getRecordCorrectionValue(event?.recordCorrection, candidate.id) ? <Text style={[styles.recordCorrectionCurrentValue, { color: interfacePalette.primary }]}>目前：{getRecordCorrectionValue(event?.recordCorrection, candidate.id)}</Text> : null}</Pressable>)}</View><Button label="上一步" onPress={back} variant="secondary" fluid /></> : null}{step === "symbol" && target ? <><Text style={[styles.recordCorrectionStepHint, mutedText]}>{selectedTarget?.title}：只列出目前 App 已支援且適合該區的符號。</Text><View style={styles.recordCorrectionChoiceGrid}>{availableSymbols.map((item) => <Pressable key={item.id} onPress={() => { setSymbolId(item.id); setContent(""); setStep("content"); }} accessibilityRole="button" accessibilityLabel={`選擇${item.title}`} style={({ pressed }) => [styles.recordCorrectionChoice, quietButton, pressed && styles.pressed]}><Text style={[styles.recordCorrectionSymbolMark, { color: item.tone === "red" ? interfacePalette.error : item.tone === "blue" ? interfacePalette.primary : interfacePalette.foreground }]}>{item.mark}</Text><Text style={[styles.recordCorrectionChoiceTitle, titleText]}>{item.title}</Text><Text style={[styles.recordCorrectionChoiceHint, mutedText]}>{item.placement}</Text></Pressable>)}</View>{getRecordCorrectionValue(event?.recordCorrection, target) ? <Button label="清除本區補正" onPress={clearTarget} variant="danger" fluid /> : null}<Button label="上一步" onPress={back} variant="secondary" fluid /></> : null}{step === "content" && target ? <><Text style={[styles.recordCorrectionStepHint, mutedText]}>已選：{selectedSymbol?.mark ?? "自訂內容"} {selectedSymbol?.title ?? ""}。可補上方向、守備傳接或必要說明。</Text><Text style={[styles.inputLabel, titleText]}>此區顯示內容</Text><TextInput value={content} onChangeText={setContent} placeholder={selectedSymbol ? `例如：${selectedSymbol.example}` : "輸入顯示內容"} placeholderTextColor={interfacePalette.muted} style={[styles.formInput, styles.recordCorrectionInput, { color: interfacePalette.foreground, backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border }]} /><Text style={[styles.inputLabel, titleText]}>補正備註（選填）</Text><TextInput value={note} onChangeText={setNote} placeholder="例如：依紙本紀錄核對" placeholderTextColor={interfacePalette.muted} style={[styles.formInput, styles.recordCorrectionInput, { color: interfacePalette.foreground, backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border }]} /><View style={[styles.recordCorrectionSafetyNote, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border }]}><Text style={[styles.recordCorrectionSafetyText, mutedText]}>確認後僅寫入顯示覆蓋資料，原始 result、runsScored、outsBefore、runnerAdvances 與 pitches 不會被修改。</Text></View><Button label="確認並保存" onPress={confirmSave} fluid /><Button label="上一步" onPress={back} variant="secondary" fluid /></> : null}</ScrollView></View></View></Modal>;
+3011-}
+3012-
+3013-function SymbolHelpModal({ help, onClose }: { help: SymbolHelp | null; onClose: () => void }) {
+3014-  const toneStyle = help?.tone === "red" ? styles.symbolHelpMarkRed : help?.tone === "blue" ? styles.symbolHelpMarkBlue : styles.symbolHelpMarkNavy;
+3015-  return <Modal visible={Boolean(help)} animationType="fade" transparent onRequestClose={onClose}><View style={styles.symbolHelpBackdrop}><View style={styles.symbolHelpSheet}><View style={styles.modalHeader}><View><Text style={styles.modalTitle}>早稻田符號說明</Text><Text style={styles.modalSubtitle}>單點輸入紀錄；長按任一常用符號即可再次查看。</Text></View><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="關閉符號說明"><Text style={styles.modalClose}>關閉</Text></Pressable></View><View style={styles.symbolHelpHero}><View style={[styles.symbolHelpMark, toneStyle]}><Text style={styles.symbolHelpMarkText}>{help?.mark}</Text></View><View style={styles.symbolHelpTitleCopy}><Text style={styles.symbolHelpName}>{help?.name}</Text><Text style={styles.symbolHelpArea}>{help?.area}</Text></View></View><View style={styles.symbolHelpContent}><Text style={styles.symbolHelpLabel}>使用時機</Text><Text style={styles.symbolHelpBody}>{help?.usage}</Text><Text style={styles.symbolHelpLabel}>紀錄範例</Text><Text style={styles.symbolHelpExample}>{help?.example}</Text></View><Button label="了解" onPress={onClose} /></View></View></Modal>;
+3016-}
+3017-
+3018-function SymbolReferenceModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+3019-  const { interfacePalette } = useThemeContext();
+3020-  const toneColor = (tone: "navy" | "red" | "blue") => tone === "red" ? interfacePalette.error : tone === "blue" ? interfacePalette.primary : interfacePalette.foreground;
+3021-  const [query, setQuery] = useState("");
+3022-  const [selectedCategory, setSelectedCategory] = useState<(typeof WASEDA_SYMBOL_CATEGORIES)[number]>("全部");
+3023-  const zoom = useRef(new Animated.Value(1)).current;
+3024-  const pan = useRef(new Animated.ValueXY()).current;
+3025-  const zoomRef = useRef(1);
+3026-  const panRef = useRef({ x: 0, y: 0 });
+3027-  const gestureRef = useRef({ startDistance: 0, startZoom: 1, startPan: { x: 0, y: 0 }, pinching: false });
+3028-  const visibleSymbols = useMemo(() => {

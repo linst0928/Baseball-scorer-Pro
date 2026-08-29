@@ -1,0 +1,298 @@
+          <FieldCard team={selected} selectedPlayerId={selectedPlayerId} onAssign={(value) => { if (value.startsWith("select:")) setSelectedPlayerId(value.slice(7)); else if (selectedPlayerId) onUpdatePlayer(selected.id, selectedPlayerId, { position: value }); }} />
+          <View style={styles.positionGuide}><Text style={styles.positionGuideTitle}>守備位置代號</Text><Text style={styles.positionGuideText}>1投手　2捕手　3一壘　4二壘　5三壘　6游擊　7左外　8中外　9右外</Text></View>
+        </View>
+  );
+}
+
+function StatsView({ game, games, away, home, primaryTeam, primaryTeamGames, primaryPerformance, primarySide, tab, onTab, summary, onSetPrimaryTeam, onOpenExportRange }: { game: Game; games: Game[]; away: Team; home: Team; primaryTeam: Team; primaryTeamGames: Game[]; primaryPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; primarySide: TeamSide | null; tab: StatsTab; onTab: (tab: StatsTab) => void; summary: ReturnType<typeof getGameSummary> | null; onSetPrimaryTeam: (teamId: string) => void; onOpenExportRange: () => void }) {
+  const [playerScope, setPlayerScope] = useState<PlayerStatScope>("registered");
+  const primaryBatting = getBattingStats(game, primaryTeam, playerScope);
+  const [periodPreset, setPeriodPreset] = useState<"all" | "7d" | "30d" | "90d" | "year" | "custom">("all");
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const now = new Date();
+  const presetStart = periodPreset === "7d" ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6) : periodPreset === "30d" ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29) : periodPreset === "90d" ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89) : periodPreset === "year" ? new Date(now.getFullYear(), 0, 1) : undefined;
+  const filteredPrimaryGames = primaryTeamGames.filter((item) => {
+    const itemDate = new Date(`${item.date}T00:00:00`);
+    if (Number.isNaN(itemDate.getTime())) return true;
+    if (periodPreset === "custom") {
+      const start = periodStart ? new Date(`${periodStart}T00:00:00`) : undefined;
+      const end = periodEnd ? new Date(`${periodEnd}T23:59:59`) : undefined;
+      return (!start || itemDate >= start) && (!end || itemDate <= end);
+    }
+    return !presetStart || itemDate >= presetStart;
+  });
+  const seasonPrimaryBatting = getSeasonBattingStats(filteredPrimaryGames, primaryTeam, playerScope);
+  const periodLabels: Record<typeof periodPreset, string> = { all: "全部期間", "7d": "最近 7 天", "30d": "最近 30 天", "90d": "最近 90 天", year: "本年度", custom: "自訂日期" };
+  const opponent = primarySide === "home" ? away : home;
+  const primaryRuns = primarySide === "home" ? summary?.homeRuns ?? 0 : primarySide === "away" ? summary?.awayRuns ?? 0 : 0;
+  const primarySideLabel = primarySide === "home" ? "主場" : primarySide === "away" ? "客場" : "未參與本場";
+  const [pitchFilter, setPitchFilter] = useState<PitchFilter>("all");
+  return (
+    <View style={styles.pageGap}><SectionTitle eyebrow="TEAM GAME DESK" title="單場詳情工作台" action={<Text style={styles.smallMuted}>{game.date}</Text>} /><View style={styles.statsOwnerCard}><View><Text style={styles.statsOwnerEyebrow}>統計預覽主體</Text><Text style={styles.statsOwnerTitle}>{primaryTeam.name}</Text><Text style={styles.statsOwnerMeta}>統計以所屬球隊為主；本場身分：{primarySideLabel}</Text></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsOwnerChoices}>{[away, home].filter((team, index, list) => list.findIndex((item) => item.id === team.id) === index).map((team) => <Pressable key={team.id} onPress={() => onSetPrimaryTeam(team.id)} style={[styles.statsOwnerChoice, team.id === primaryTeam.id && styles.statsOwnerChoiceActive]}><Text style={[styles.statsOwnerChoiceText, team.id === primaryTeam.id && styles.statsOwnerChoiceTextActive]}>{team.name}</Text><Text style={styles.statsOwnerChoiceMeta}>{team.id === game.homeTeamId ? "主場" : "客場"}</Text></Pressable>)}</ScrollView></View><View style={styles.statsScopeCard}><Text style={styles.statsScopeLabel}>統計範圍</Text><View style={styles.statsScopeChoices}><Pressable onPress={() => setPlayerScope("registered")} style={[styles.statsScopeChoice, playerScope === "registered" && styles.statsScopeChoiceActive]}><Text style={[styles.statsScopeChoiceText, playerScope === "registered" && styles.statsScopeChoiceTextActive]}>本場登錄</Text></Pressable><Pressable onPress={() => setPlayerScope("all")} style={[styles.statsScopeChoice, playerScope === "all" && styles.statsScopeChoiceActive]}><Text style={[styles.statsScopeChoiceText, playerScope === "all" && styles.statsScopeChoiceTextActive]}>全 25 人</Text></Pressable></View><Text style={styles.statsScopeHint}>{playerScope === "registered" ? "僅顯示本場已登錄並可上場的球員。" : "顯示固定 25 人名單，含尚未出賽的球員。"}</Text></View><View style={styles.periodCard}><Text style={styles.periodTitle}>週期時間統計</Text><Text style={styles.periodHint}>累計不限場次；選擇期間後只計入該日期範圍內所屬球隊的賽事。</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodChoices}>{([ ["all", "全部"], ["7d", "近 7 天"], ["30d", "近 30 天"], ["90d", "近 90 天"], ["year", "本年度"], ["custom", "自訂" ] ] as Array<[typeof periodPreset, string]>).map(([key, label]) => <Pressable key={key} onPress={() => setPeriodPreset(key)} style={[styles.periodChoice, periodPreset === key && styles.periodChoiceActive]}><Text style={[styles.periodChoiceText, periodPreset === key && styles.periodChoiceTextActive]}>{label}</Text></Pressable>)}</ScrollView>{periodPreset === "custom" ? <View style={styles.periodDateRow}><TextInput value={periodStart} onChangeText={setPeriodStart} placeholder="開始 YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.periodDateInput} /><Text style={styles.periodDateDivider}>至</Text><TextInput value={periodEnd} onChangeText={setPeriodEnd} placeholder="結束 YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.periodDateInput} /></View> : null}<Text style={styles.periodResult}>目前：{periodLabels[periodPreset]}，共 {filteredPrimaryGames.length} 場</Text></View><View style={styles.summaryStrip}><StatChip label={`${primaryTeam.name} 比分`} value={`${primaryRuns} : ${primarySide ? (primarySide === "home" ? summary?.awayRuns ?? 0 : summary?.homeRuns ?? 0) : 0}`} accent={BRAND.navy} /><StatChip label="本場安打" value={primaryBatting.reduce((sum, row) => sum + row.h, 0)} accent={BRAND.green} /><StatChip label="本場四壞" value={primaryBatting.reduce((sum, row) => sum + row.bb, 0)} accent={BRAND.blue} /><StatChip label="本場三振" value={primaryPerformance?.strikeouts ?? 0} accent={BRAND.red} /><StatChip label="賽事失誤" value={summary?.errors ?? 0} accent={BRAND.yellow} /></View><View style={styles.statsTabs}>{([ ["batting", "打擊統計"], ["pitching", "投手統計"], ["preview", "完整預覽"] ] as [StatsTab, string][]).map(([key, label]) => <Pressable key={key} onPress={() => onTab(key)} style={[styles.statsTab, tab === key && styles.statsTabActive]}><Text style={[styles.statsTabText, tab === key && styles.statsTabTextActive]}>{label}</Text></Pressable>)}</View>{tab === "batting" ? <View style={styles.statsSection}><View style={styles.teamStatSummary}><Text style={styles.tableTitle}>球隊整體表現｜早稻田紀錄法</Text><View style={styles.teamStatSummaryRow}><Text style={styles.teamStatSummaryValue}>R {primaryPerformance?.runs ?? 0}</Text><Text style={styles.teamStatSummaryValue}>H {primaryPerformance?.hits ?? 0}</Text><Text style={styles.teamStatSummaryValue}>BB {primaryPerformance?.walks ?? 0}</Text><Text style={styles.teamStatSummaryValue}>SB {primaryPerformance?.stolenBases ?? 0}</Text><Text style={styles.teamStatSummaryValue}>E {primaryPerformance?.errors ?? 0}</Text></View><Text style={styles.seasonHint}>目前統計主隊：{primaryTeam.name}；對手：{opponent.name}。個人逐球紀錄仍依主／客場保留於完整預覽。</Text></View><StatTable title={`單場個人｜${playerScope === "registered" ? "登錄名單" : "全 25 人"}｜${primarySideLabel}｜${primaryTeam.name}`} rows={primaryBatting} /><View style={styles.seasonCard}><Text style={styles.seasonTitle}>週期累計｜{playerScope === "registered" ? "曾登錄球員" : "全 25 人"}｜{primaryTeam.name}（{periodLabels[periodPreset]}，共 {filteredPrimaryGames.length} 場）</Text><Text style={styles.seasonHint}>不限場次，僅累計使用者所屬球隊在所選日期週期內參與的賽事。</Text><StatTable title={`週期累計個人｜${primaryTeam.name}`} rows={seasonPrimaryBatting} /></View></View> : null}{tab === "pitching" ? <View style={styles.statsSection}><PitchingTable game={game} team={primaryTeam} title={`本隊投手｜${primarySideLabel}｜${primaryTeam.name}`} /><PitchingTable game={game} team={opponent} title={`對手投手｜${opponent.name}`} /><HeatmapAnalytics game={game} players={[...away.players, ...home.players]} filter={pitchFilter} onFilter={setPitchFilter} /></View> : null}{tab === "preview" ? <FullPreview game={game} away={away} home={home} onOpenExportRange={onOpenExportRange} /> : null}</View>
+  );
+}
+
+function StatsViewV2({ game, games: _games, away, home, primaryTeam, primaryTeamGames, primarySide, tab, onTab, onSetPrimaryTeam, onOpenExportRange }: { game: Game; games: Game[]; away: Team; home: Team; primaryTeam: Team; primaryTeamGames: Game[]; primarySide: TeamSide | null; tab: StatsTab; onTab: (tab: StatsTab) => void; onSetPrimaryTeam: (teamId: string) => void; onOpenExportRange: () => void }) {
+  const [playerScope, setPlayerScope] = useState<PlayerStatScope>("registered");
+  const [statsMode, setStatsMode] = useState<StatsMode>("game");
+  const [selectedGameId, setSelectedGameId] = useState(game.id);
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
+  const [monthStart, setMonthStart] = useState("");
+  const [monthEnd, setMonthEnd] = useState("");
+  const [selectedCompetitions, setSelectedCompetitions] = useState<string[]>([]);
+  const [pitchFilter, setPitchFilter] = useState<PitchFilter>("all");
+
+  useEffect(() => {
+    if (!primaryTeamGames.some((item) => item.id === selectedGameId)) setSelectedGameId(primaryTeamGames[0]?.id ?? game.id);
+  }, [game.id, primaryTeamGames, selectedGameId]);
+
+  const competitionNames = Array.from(new Set(primaryTeamGames.map((item) => item.competition?.trim()).filter((value): value is string => Boolean(value)))).sort();
+  const selectedGames = filterGamesForStatistics(primaryTeamGames, {
+    mode: statsMode,
+    gameId: selectedGameId,
+    start: statsMode === "date" ? dateStart : statsMode === "month" ? monthStart : undefined,
+    end: statsMode === "date" ? dateEnd : statsMode === "month" ? monthEnd : undefined,
+    competitions: selectedCompetitions,
+  });
+  const aggregateGame: Game = {
+    ...game,
+    events: selectedGames.flatMap((item) => item.events),
+    specialEvents: selectedGames.flatMap((item) => item.specialEvents ?? []),
+    awayRegisteredPlayerIds: primaryTeam.id === game.awayTeamId ? Array.from(new Set(selectedGames.flatMap((item) => item.awayRegisteredPlayerIds ?? []))) : game.awayRegisteredPlayerIds,
+    homeRegisteredPlayerIds: primaryTeam.id === game.homeTeamId ? Array.from(new Set(selectedGames.flatMap((item) => item.homeRegisteredPlayerIds ?? []))) : game.homeRegisteredPlayerIds,
+  };
+  const battingRows = selectedGames.length ? getSeasonBattingStats(selectedGames, primaryTeam, playerScope) : getBattingStats({ ...game, events: [] }, primaryTeam, playerScope);
+  const performance = getTeamPerformanceSummary(selectedGames, primaryTeam);
+  const selectedGame = primaryTeamGames.find((item) => item.id === selectedGameId) ?? game;
+  const showImportedCupSummary = primaryTeam.id === FUXING_TEAM.id && statsMode === "cup" && selectedCompetitions.includes(FUXING_COMPETITION);
+  const modeLabels: Record<StatsMode, string> = { game: "單場統計", date: "日到日統計", month: "月到月統計", cup: "盃賽統計" };
+  const modeHints: Record<StatsMode, string> = {
+    game: "選擇一場比賽，查看該場個人及團隊數據。",
+    date: "輸入開始、結束日期，跨不限場次彙整。",
+    month: "輸入開始、結束月份，依完整月份區間累計。",
+    cup: "可同時選擇一個或多個盃賽／聯賽分類。",
+  };
+  const toggleCompetition = (competition: string) => setSelectedCompetitions((current) => current.includes(competition) ? current.filter((item) => item !== competition) : [...current, competition]);
+
+  return <View style={styles.pageGap}>
+    <SectionTitle eyebrow="STATISTICS WORKBENCH" title="統計預覽" action={<Text style={styles.smallMuted}>{modeLabels[statsMode]}</Text>} />
+    <View style={styles.statsOwnerCard}><View><Text style={styles.statsOwnerEyebrow}>統計預覽主體</Text><Text style={styles.statsOwnerTitle}>{primaryTeam.name}</Text><Text style={styles.statsOwnerMeta}>統計只納入所屬球隊賽事；本場身分：{primarySide === "home" ? "主場" : primarySide === "away" ? "客場" : "未參與"}</Text></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsOwnerChoices}>{[away, home].filter((team, index, list) => list.findIndex((item) => item.id === team.id) === index).map((team) => <Pressable key={team.id} onPress={() => onSetPrimaryTeam(team.id)} style={[styles.statsOwnerChoice, team.id === primaryTeam.id && styles.statsOwnerChoiceActive]}><Text style={[styles.statsOwnerChoiceText, team.id === primaryTeam.id && styles.statsOwnerChoiceTextActive]}>{team.name}</Text><Text style={styles.statsOwnerChoiceMeta}>{team.id === game.homeTeamId ? "主場" : "客場"}</Text></Pressable>)}</ScrollView></View>
+    <View style={styles.statsLandscapeControls}>
+      <View style={styles.statsModePanel}><Text style={styles.statsControlLabel}>統計方式</Text><View style={styles.statsModeGrid}>{([ ["game", "單場"], ["date", "日到日"], ["month", "月到月"], ["cup", "盃賽"] ] as Array<[StatsMode, string]>).map(([key, label]) => <Pressable key={key} onPress={() => setStatsMode(key)} style={[styles.statsModeChoice, statsMode === key && styles.statsModeChoiceActive]}><Text style={[styles.statsModeChoiceText, statsMode === key && styles.statsModeChoiceTextActive]}>{label}</Text></Pressable>)}</View><Text style={styles.statsModeHint}>{modeHints[statsMode]}</Text></View>
+      <View style={styles.statsParameterPanel}><Text style={styles.statsControlLabel}>{modeLabels[statsMode]}條件</Text>{statsMode === "game" ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsCompactChoices}>{primaryTeamGames.map((item) => <Pressable key={item.id} onPress={() => setSelectedGameId(item.id)} style={[styles.statsCompactChoice, item.id === selectedGameId && styles.statsCompactChoiceActive]}><Text numberOfLines={1} style={[styles.statsCompactChoiceText, item.id === selectedGameId && styles.statsCompactChoiceTextActive]}>{item.date.slice(0, 10)} · {item.name}</Text></Pressable>)}</ScrollView> : null}{statsMode === "date" ? <View style={styles.statsInputRow}><TextInput value={dateStart} onChangeText={setDateStart} placeholder="開始 YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.statsRangeInput} /><Text style={styles.statsRangeDivider}>至</Text><TextInput value={dateEnd} onChangeText={setDateEnd} placeholder="結束 YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.statsRangeInput} /></View> : null}{statsMode === "month" ? <View style={styles.statsInputRow}><TextInput value={monthStart} onChangeText={setMonthStart} placeholder="開始 YYYY-MM" placeholderTextColor={BRAND.muted} style={styles.statsRangeInput} /><Text style={styles.statsRangeDivider}>至</Text><TextInput value={monthEnd} onChangeText={setMonthEnd} placeholder="結束 YYYY-MM" placeholderTextColor={BRAND.muted} style={styles.statsRangeInput} /></View> : null}{statsMode === "cup" ? competitionNames.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsCompactChoices}>{competitionNames.map((competition) => <Pressable key={competition} onPress={() => toggleCompetition(competition)} style={[styles.statsCompactChoice, selectedCompetitions.includes(competition) && styles.statsCompactChoiceActive]}><Text style={[styles.statsCompactChoiceText, selectedCompetitions.includes(competition) && styles.statsCompactChoiceTextActive]}>{selectedCompetitions.includes(competition) ? "✓ " : ""}{competition}</Text></Pressable>)}</ScrollView> : <Text style={styles.statsEmptyHint}>尚無盃賽分類；可在新增或編輯賽事時填入。</Text> : null}<Text style={styles.statsResultBadge}>已納入 {selectedGames.length} 場 · {statsMode === "cup" && selectedCompetitions.length === 0 ? "請至少選擇一個盃賽" : modeLabels[statsMode]}</Text></View>
+      <View style={styles.statsScopePanel}><Text style={styles.statsControlLabel}>球員範圍</Text><View style={styles.statsScopeChoices}><Pressable onPress={() => setPlayerScope("registered")} style={[styles.statsScopeChoice, playerScope === "registered" && styles.statsScopeChoiceActive]}><Text style={[styles.statsScopeChoiceText, playerScope === "registered" && styles.statsScopeChoiceTextActive]}>登錄球員</Text></Pressable><Pressable onPress={() => setPlayerScope("all")} style={[styles.statsScopeChoice, playerScope === "all" && styles.statsScopeChoiceActive]}><Text style={[styles.statsScopeChoiceText, playerScope === "all" && styles.statsScopeChoiceTextActive]}>全 25 人</Text></Pressable></View><Text style={styles.statsScopeHint}>{playerScope === "registered" ? "納入選定場次中曾登錄的球員。" : "含尚未出賽的固定名單球員。"}</Text></View>
+    </View>
+    <View style={styles.summaryStrip}><StatChip label="納入場次" value={selectedGames.length} accent={BRAND.navy} /><StatChip label="累計得分" value={performance.runs} accent={BRAND.green} /><StatChip label="累計安打" value={performance.hits} accent={BRAND.blue} /><StatChip label="累計四壞" value={performance.walks} accent={BRAND.red} /><StatChip label="累計三振" value={performance.strikeouts} accent={BRAND.yellow} /></View>
+    {showImportedCupSummary ? <FuxingImportedCupSummary team={primaryTeam} /> : null}
+    <View style={styles.statsTabs}>{([ ["batting", "打擊統計"], ["pitching", "投手統計"], ["preview", "完整預覽"] ] as [StatsTab, string][]).map(([key, label]) => <Pressable key={key} onPress={() => onTab(key)} style={[styles.statsTab, tab === key && styles.statsTabActive]}><Text style={[styles.statsTabText, tab === key && styles.statsTabTextActive]}>{label}</Text></Pressable>)}</View>
+    {tab === "batting" ? <View style={styles.statsSection}><View style={styles.teamStatSummary}><Text style={styles.tableTitle}>{modeLabels[statsMode]}｜{primaryTeam.name}</Text><View style={styles.teamStatSummaryRow}><Text style={styles.teamStatSummaryValue}>R {performance.runs}</Text><Text style={styles.teamStatSummaryValue}>H {performance.hits}</Text><Text style={styles.teamStatSummaryValue}>BB {performance.walks}</Text><Text style={styles.teamStatSummaryValue}>SB {performance.stolenBases}</Text><Text style={styles.teamStatSummaryValue}>E {performance.errors}</Text></View><Text style={styles.seasonHint}>目前已選擇 {selectedGames.length} 場，統計數據會隨條件即時更新。</Text></View><StatTable title={`${modeLabels[statsMode]}個人｜${playerScope === "registered" ? "登錄名單" : "全 25 人"}｜${primaryTeam.name}`} rows={battingRows} /></View> : null}
+    {tab === "pitching" ? <View style={styles.statsSection}><PitchingTable game={aggregateGame} team={primaryTeam} title={`${modeLabels[statsMode]}投手｜${primaryTeam.name}`} /><HeatmapAnalytics game={aggregateGame} players={[...away.players, ...home.players]} filter={pitchFilter} onFilter={setPitchFilter} /></View> : null}
+    {tab === "preview" ? <View style={styles.statsSection}><Text style={styles.statsPreviewHint}>完整預覽固定顯示所選「單場」紀錄表；請切換單場統計後選擇要檢視的比賽。</Text><FullPreview game={selectedGame} away={away} home={home} onOpenExportRange={onOpenExportRange} /></View> : null}
+  </View>;
+}
+
+function FuxingImportedCupSummary({ team }: { team: Team }) {
+  const playerById = new Map(team.players.map((player) => [player.id, player]));
+  return <View style={styles.importedSummaryCard}>
+    <View style={styles.importedSummaryHeader}>
+      <View><Text style={styles.importedSummaryEyebrow}>ATTACHMENT-VERIFIED TOTALS</Text><Text style={styles.importedSummaryTitle}>復興少棒67｜盃賽累計摘要</Text></View>
+      <Text style={styles.importedSummaryBadge}>附件匯入</Text>
+    </View>
+    <Text style={styles.importedSummaryHint}>來源：2026.07_115年社區(團)交流賽_個人成績統計.pdf。此區為原始累計表；四壞與觸身在來源中合併，未反推為逐球或單場打席。</Text>
+    <View style={styles.importedSummaryStrip}>
+      <StatChip label="出賽" value={FUXING_CUP_TEAM_BATTING_SUMMARY.games} accent={BRAND.navy} />
+      <StatChip label="安打" value={FUXING_CUP_TEAM_BATTING_SUMMARY.h} accent={BRAND.green} />
+      <StatChip label="BB／HBP" value={FUXING_CUP_TEAM_BATTING_SUMMARY.reachesByWalkOrHitByPitch} accent={BRAND.blue} />
+      <StatChip label="OPS" value={formatRate(FUXING_CUP_TEAM_BATTING_SUMMARY.ops)} accent={BRAND.red} />
+    </View>
+    <View style={styles.importedSummaryColumns}>
+      <View style={styles.importedSummaryColumn}>
+        <Text style={styles.importedSummaryColumnTitle}>打擊累計</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}><View><View style={styles.importedTableRow}><Text style={[styles.importedTableCell, styles.importedPlayerCell]}>球員</Text><Text style={styles.importedTableCell}>AB</Text><Text style={styles.importedTableCell}>H</Text><Text style={styles.importedTableCell}>BB/HBP</Text><Text style={styles.importedTableCell}>SB</Text><Text style={styles.importedTableCell}>AVG</Text><Text style={styles.importedTableCell}>OPS</Text></View>{FUXING_CUP_BATTING_SUMMARY.map((row) => { const player = playerById.get(row.playerId); return <View key={row.playerId} style={styles.importedTableRow}><Text style={[styles.importedTableCell, styles.importedPlayerCell]}>{player?.number} {player?.name}</Text><Text style={styles.importedTableCell}>{row.ab}</Text><Text style={styles.importedTableCell}>{row.h}</Text><Text style={styles.importedTableCell}>{row.reachesByWalkOrHitByPitch}</Text><Text style={styles.importedTableCell}>{row.sb}</Text><Text style={styles.importedTableCell}>{formatAvg(row.avg)}</Text><Text style={styles.importedTableCell}>{formatRate(row.ops)}</Text></View>; })}</View></ScrollView>
+      </View>
+      <View style={styles.importedSummaryColumn}>
+        <Text style={styles.importedSummaryColumnTitle}>投手累計</Text>
+        {FUXING_CUP_PITCHING_SUMMARY.map((row) => { const player = playerById.get(row.playerId); return <View key={row.playerId} style={styles.importedPitcherRow}><Text style={styles.importedPitcherName}>{player?.number} {player?.name}</Text><View style={styles.importedPitcherStats}><Text style={styles.importedPitcherStat}>IP {row.ip}</Text><Text style={styles.importedPitcherStat}>H {row.h}</Text><Text style={styles.importedPitcherStat}>K {row.so}</Text><Text style={styles.importedPitcherStat}>BB/HBP {row.walksOrHitByPitch}</Text></View></View>; })}
+        <Text style={styles.importedPitcherNote}>來源未可靠區分責失分，故不顯示 ERA。</Text>
+      </View>
+    </View>
+  </View>;
+}
+
+function StatTable({ title, rows }: { title: string; rows: ReturnType<typeof getBattingStats> }) {
+  return <View style={styles.tableCard}><Text style={styles.tableTitle}>{title}</Text><StatGlossary terms={[ ["AB", "打數：不含四壞、觸身與犧牲打的正式打擊機會"], ["H／HR", "安打／全壘打：所有上壘安打與其中的全壘打"], ["BB", "四壞球：投手保送"], ["AVG", "打擊率＝安打 ÷ 打數"], ["SLG", "長打率＝壘打數 ÷ 打數"], ["OBP", "上壘率＝上壘次數 ÷ 上壘機會"], ["OPS", "攻擊指數＝上壘率＋長打率"] ]} /><ScrollView horizontal showsHorizontalScrollIndicator={false}><View><View style={styles.tableRow}><Text style={[styles.tableCell, styles.playerCell]}>球員</Text><Text style={styles.tableCell}>AB</Text><Text style={styles.tableCell}>H</Text><Text style={styles.tableCell}>HR</Text><Text style={styles.tableCell}>BB</Text><Text style={styles.tableCell}>AVG</Text><Text style={styles.tableCell}>SLG</Text><Text style={styles.tableCell}>OBP</Text><Text style={styles.tableCell}>OPS</Text></View>{rows.map((row) => <View key={row.player.id} style={styles.tableRow}><Text style={[styles.tableCell, styles.playerCell, styles.tablePlayer]}>{row.player.number} {row.player.name}</Text><Text style={styles.tableCell}>{row.ab}</Text><Text style={styles.tableCell}>{row.h}</Text><Text style={styles.tableCell}>{row.hr}</Text><Text style={styles.tableCell}>{row.bb}</Text><Text style={styles.tableCell}>{formatAvg(row.avg)}</Text><Text style={styles.tableCell}>{formatRate(row.slg)}</Text><Text style={styles.tableCell}>{formatRate(row.obp)}</Text><Text style={[styles.tableCell, styles.opsCell]}>{formatRate(row.ops)}</Text></View>)}</View></ScrollView></View>;
+}
+    return ids.length ? ids : (team?.players.slice(0, 25).map((player) => player.id) ?? []);
+  };
+  const updateTeamSetup = (side: "away" | "home", registeredPlayerIds: string[], lineup: GameLineup) => {
+    onChange(side === "away" ? { ...form, awayRegisteredPlayerIds: registeredPlayerIds, awayLineup: lineup } : { ...form, homeRegisteredPlayerIds: registeredPlayerIds, homeLineup: lineup });
+  };
+  const lineupFor = (side: "away" | "home", team?: Team) => (side === "away" ? form.awayLineup : form.homeLineup) ?? (team ? createLineupSnapshot(team, registered(side, team)) : { battingOrderIds: [], defensivePositions: {} });
+  const feedback = (kind: "error" | "success") => {
+    if (Platform.OS !== "web") void Haptics.notificationAsync(kind === "error" ? Haptics.NotificationFeedbackType.Error : Haptics.NotificationFeedbackType.Success);
+  };
+  const conflictSignature = [away, home].map((team, index) => team ? getDefensivePositionConflicts(lineupFor(index === 0 ? "away" : "home", team)).map((conflict) => `${conflict.position}:${conflict.playerIds.sort().join(",")}`).join("|") : "").filter(Boolean).join(";");
+  useEffect(() => {
+    if (!visible) { lastConflictSignature.current = ""; setSwapMode(false); setSwapPlayerIds([]); setSelectedDefensiveSwapPositions([]); setLastDefensiveSwap(null); setWizardStep(1); setTeamNameDraft(""); setBattingOrderTarget(null); return; }
+    if (conflictSignature && conflictSignature !== lastConflictSignature.current) feedback("error");
+    lastConflictSignature.current = conflictSignature;
+  }, [visible, conflictSignature]);
+  const setTeam = (side: "away" | "home", team: Team) => {
+    const ids = team.players.slice(0, 25).map((player) => player.id);
+    const lineup = createLineupSnapshot(team, ids);
+    setSwapMode(false); setSwapPlayerIds([]); setLastDefensiveSwap(null);
+    onChange(side === "away" ? { ...form, awayTeamId: team.id, awayRegisteredPlayerIds: ids, awayLineup: lineup } : { ...form, homeTeamId: team.id, homeRegisteredPlayerIds: ids, homeLineup: lineup });
+  };
+  const togglePlayer = (side: "away" | "home", team: Team, playerId: string) => {
+    const current = registered(side, team); const hasPlayer = current.includes(playerId); const next = hasPlayer ? current.filter((id) => id !== playerId) : [...current, playerId]; const previousLineup = lineupFor(side, team); const defensivePositions = { ...previousLineup.defensivePositions };
+    if (hasPlayer) delete defensivePositions[playerId];
+    setSwapPlayerIds((selected) => selected.filter((id) => id !== playerId)); setLastDefensiveSwap(null);
+    updateTeamSetup(side, next, { battingOrderIds: previousLineup.battingOrderIds.filter((id) => id !== playerId), defensivePositions });
+  };
+  const applyCommonLineup = (side: "away" | "home", team: Team) => { setSwapMode(false); setSwapPlayerIds([]); updateTeamSetup(side, registered(side, team), createLineupSnapshot(team, registered(side, team))); };
+  const setDefensivePosition = (side: "away" | "home", team: Team, playerId: string, nextPosition: string | null) => {
+    setLastDefensiveSwap(null);
+    const previousLineup = lineupFor(side, team); const defensivePositions = { ...previousLineup.defensivePositions };
+    const normalized = nextPosition ? FIELD_POSITIONS.find((position) => position.number === nextPosition || position.label === nextPosition)?.number ?? nextPosition : null;
+    if (normalized) defensivePositions[playerId] = normalized; else delete defensivePositions[playerId];
+    const nextLineup = { ...previousLineup, defensivePositions };
+    const battingOrderIds = isEligibleForBattingOrder(nextLineup, playerId)
+      ? previousLineup.battingOrderIds
+      : previousLineup.battingOrderIds.filter((id) => id !== playerId);
+    updateTeamSetup(side, registered(side, team), { ...nextLineup, battingOrderIds });
+  };
+  const applyConflictReassignment = (side: "away" | "home", team: Team, playerId: string, targetPosition: string) => {
+    setDefensivePosition(side, team, playerId, targetPosition);
+    setActiveLineupTarget({ side, playerId });
+    setSwapMode(false);
+    setSwapPlayerIds([]);
+    feedback("success");
+  };
+  const applySuggestedSwap = (side: "away" | "home", team: Team, playerId: string, targetPlayerId: string) => {
+    setLastDefensiveSwap(null);
+    updateTeamSetup(side, registered(side, team), swapDefensivePositions(lineupFor(side, team), playerId, targetPlayerId));
+    setActiveLineupTarget({ side, playerId: targetPlayerId });
+    setSwapMode(false);
+    setSwapPlayerIds([]);
+    feedback("success");
+  };
+  const renderConflictFixSuggestions = (side: "away" | "home", team: Team, lineup: GameLineup, location: "setup" | "confirmation") => {
+    const suggestions = suggestDefensiveConflictFixes(lineup, registered(side, team));
+    if (!suggestions.length) return null;
+    const positionLabel = (positionNumber: string) => {
+      const position = FIELD_POSITIONS.find((candidate) => candidate.number === positionNumber);
+      return position ? `${position.number}${position.label}` : positionNumber;
+    };
+    const playerLabel = (playerId: string) => {
+      const player = team.players.find((candidate) => candidate.id === playerId);
+      return player ? `#${player.number} ${player.name}` : "未指派球員";
+    };
+    return <View style={[styles.conflictFixPanel, location === "confirmation" && styles.conflictFixPanelConfirmation]}><View style={styles.conflictFixHeader}><Text style={styles.conflictFixTitle}>衝突修正建議</Text><Text style={styles.conflictFixSubtitle}>{location === "confirmation" ? "請先套用修正後再建立比賽" : "紅色守位需保留一人，其餘可直接改派"}</Text></View>{suggestions.map((suggestion) => {
+      const movablePlayerIds = suggestion.conflictingPlayerIds.slice(1);
+      const suggestedPlayerId = movablePlayerIds[0];
+      const swapTargets = suggestion.suggestedSwaps.slice(0, 2);
+      return <View key={`${side}-fix-${suggestion.position}`} style={styles.conflictFixGroup}><Text style={styles.conflictFixGroupTitle}>{positionLabel(suggestion.position)} 有 {suggestion.conflictingPlayerIds.length} 名球員重複：{suggestion.conflictingPlayerIds.map(playerLabel).join("、")}</Text>{suggestion.availablePositions.length ? <View style={styles.conflictFixActionRow}>{suggestion.availablePositions.map((targetPosition, index) => {
+        const playerId = movablePlayerIds[index] ?? suggestedPlayerId;
+        if (!playerId) return null;
+        return <Pressable key={`${side}-fix-reassign-${playerId}-${targetPosition}`} onPress={() => applyConflictReassignment(side, team, playerId, targetPosition)} style={({ pressed }) => [styles.conflictFixAction, pressed && styles.pressed]}><Text style={styles.conflictFixActionText}>套用：{playerLabel(playerId)} → {positionLabel(targetPosition)}</Text></Pressable>;
+      })}</View> : <Text style={styles.conflictFixNoVacancy}>目前沒有空缺守位；請以互換方式重新配置。</Text>}{suggestedPlayerId && swapTargets.length ? <View style={styles.conflictFixSwapRow}><Text style={styles.conflictFixSwapHint}>或直接互換 {playerLabel(suggestedPlayerId)}：</Text>{swapTargets.map((target) => <Pressable key={`${side}-fix-swap-${suggestedPlayerId}-${target.targetPlayerId}`} onPress={() => applySuggestedSwap(side, team, suggestedPlayerId, target.targetPlayerId)} style={({ pressed }) => [styles.conflictFixSwapAction, pressed && styles.pressed]}><Text style={styles.conflictFixSwapActionText}>⇄ {playerLabel(target.targetPlayerId)}（{positionLabel(target.targetPosition)}）</Text></Pressable>)}</View> : null}</View>;
+    })}</View>;
+  };
+  const copyLatestGameLineup = (side: "away" | "home", team: Team) => {
+    const source = games.find((game) => game.awayTeamId === team.id || game.homeTeamId === team.id);
+    if (!source) { Alert.alert("尚無可複製配置", `${team.name} 尚未建立過含先發配置的場次。`); return; }
+    const isAway = source.awayTeamId === team.id; const sourceRegistered = isAway ? source.awayRegisteredPlayerIds : source.homeRegisteredPlayerIds; const sourceLineup = isAway ? source.awayLineup : source.homeLineup;
+    const validIds = (sourceRegistered?.length ? sourceRegistered : team.players.slice(0, 25).map((player) => player.id)).filter((playerId) => team.players.some((player) => player.id === playerId));
+    setSwapMode(false); setSwapPlayerIds([]); setLastDefensiveSwap(null); updateTeamSetup(side, validIds, sourceLineup ?? createLineupSnapshot(team, validIds));
+  };
+  const toggleDefensiveSwapPosition = (position: string) => setSelectedDefensiveSwapPositions((selected) => selected.includes(position) ? selected.filter((item) => item !== position) : [...selected, position]);
+  const swapHomeAwayDefensiveConfigurations = (selectedPositions?: string[]) => {
+    if (!home || !away) return;
+    const isPartialSwap = Boolean(selectedPositions?.length);
+    const positionLabels = FIELD_POSITIONS.filter((position) => selectedPositions?.includes(position.number)).map((position) => `${position.number}${position.label}`).join("、");
+    const applySwap = () => {
+      setLastDefensiveSwap({ homeLineup: lineupFor("home", home), awayLineup: lineupFor("away", away) });
+      const swapped = swapTeamDefensiveConfigurations(
+  sacrificeFlyReasonButton: { minHeight: 26, justifyContent: "center", borderRadius: 6, borderWidth: 1, borderColor: "#FDBA74", backgroundColor: BRAND.white, paddingHorizontal: 7, paddingVertical: 3 },
+  sacrificeFlyReasonButtonActive: { borderColor: "#C2410C", backgroundColor: "#F97316" },
+  sacrificeFlyReasonText: { color: "#9A3412", fontSize: 8, fontWeight: "800" },
+  sacrificeFlyReasonTextActive: { color: BRAND.white },
+  battedBallFieldingChoices: { gap: 5, paddingRight: 4 },
+  battedBallFieldingChoice: { minWidth: 82, minHeight: 38, alignItems: "center", justifyContent: "center", gap: 1, backgroundColor: BRAND.white, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 5 },
+  battedBallFieldingChoiceActive: { backgroundColor: "#D1FAE5", borderColor: BRAND.green },
+  battedBallFieldingChoiceCode: { color: BRAND.navy, fontSize: 10, fontWeight: "900" },
+  battedBallFieldingChoiceCodeActive: { color: BRAND.green },
+  battedBallFieldingChoiceDetail: { color: BRAND.muted, fontSize: 7, fontWeight: "800" },
+  battedBallFieldingChoiceDetailActive: { color: BRAND.green },
+  battedBallCompletionRow: { flexDirection: "row", justifyContent: "flex-end", gap: 7 },
+  pitchActionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 3, justifyContent: "space-between" },
+  pitchActionButton: { minHeight: 35, flexBasis: "15.8%", minWidth: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, borderRadius: 7, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#CBD5E1", paddingHorizontal: 3, paddingVertical: 2 },
+  pitchActionButtonEmphasis: { backgroundColor: "#FFF7ED", borderColor: "#FDBA74" },
+  pitchActionButtonSelected: { backgroundColor: "#DBEAFE", borderColor: BRAND.blue, borderWidth: 2 },
+  pitchActionMark: { color: BRAND.red, fontSize: 14, lineHeight: 16, fontWeight: "900" },
+  pitchActionText: { color: BRAND.navy, fontSize: 8, lineHeight: 10, fontWeight: "900", flexShrink: 1 },
+  liveMicroHint: { color: BRAND.muted, backgroundColor: "#F8FAFC", borderRadius: 7, padding: 7, fontSize: 9, lineHeight: 13 },
+  resultButtonSelected: { backgroundColor: "#DBEAFE", borderColor: BRAND.blue, borderWidth: 2 },
+  resultPreview: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#F8FAFC", borderRadius: 10, padding: 8 },
+  resultPreviewLabel: { color: BRAND.muted, fontSize: 9, fontWeight: "900" },
+  resultPreviewValue: { color: BRAND.navy, flex: 1, fontSize: 18, fontWeight: "900" },
+  quadrantUtilityRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  substitutionQuickRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  batterQueueSection: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 5, gap: 4 },
+  batterQueueTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900" },
+  batterQueueRow: { flexDirection: "row", gap: 4 },
+  batterQueueCard: { flex: 1, minWidth: 0, minHeight: 78, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: BRAND.white, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 7, padding: 4, gap: 4 },
+  batterQueueIdentity: { flex: 1, minWidth: 0, gap: 2 },
+  batterQueueOrder: { color: BRAND.blue, fontSize: 8, fontWeight: "900" },
+  batterQueueName: { color: BRAND.navy, fontSize: 9, fontWeight: "900" },
+  batterQueueCell: { borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 6, padding: 5, alignItems: "center", gap: 2 },
+  batterQueueCellLabel: { color: BRAND.muted, fontSize: 7, fontWeight: "900" },
+  batterQueueNotation: { color: BRAND.navy, fontSize: 12, fontWeight: "900" },
+  batterQueueResult: { color: BRAND.blue, fontSize: 9, fontWeight: "900" },
+  inningRailEmpty: { flex: 1, minHeight: 220, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC", borderRadius: 10, borderWidth: 1, borderColor: BRAND.line, padding: 14, gap: 5 },
+  inningRailEmptyTitle: { color: BRAND.navy, fontSize: 12, fontWeight: "900", textAlign: "center" },
+  inningRailEmptyText: { color: BRAND.muted, fontSize: 10, lineHeight: 14, textAlign: "center" },
+  inningRailList: { gap: 4 },
+  inningRailItem: { flexDirection: "row", gap: 4, alignItems: "stretch" },
+  inningRailIndex: { width: 18, justifyContent: "center", alignItems: "center", backgroundColor: BRAND.navy, borderRadius: 9 },
+  inningRailIndexText: { color: BRAND.white, fontSize: 9, fontWeight: "900" },
+  inningRailCell: { flex: 1, minWidth: 0, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 7, backgroundColor: "#F8FBFF", padding: 4, gap: 2 },
+  inningRailPlayer: { color: BRAND.navy, fontSize: 9, fontWeight: "900" },
+  inningRailScoreCell: { flexDirection: "row", minHeight: 75 },
+  inningRailPitchColumn: { width: 45, justifyContent: "center", alignItems: "center", borderRightWidth: 1, borderColor: "#CBD5E1", paddingRight: 4, gap: 3 },
+  inningRailPitchMarks: { color: BRAND.blue, fontSize: 9, fontWeight: "900", textAlign: "center" },
+  inningRailOuter: { flex: 1, marginLeft: 6, borderWidth: 1, borderColor: "#94A3B8", borderRadius: 6, padding: 4, justifyContent: "center", alignItems: "center", gap: 3 },
+  inningRailNotation: { color: BRAND.navy, fontSize: 12, fontWeight: "900" },
+  inningRailInner: { borderWidth: 1, borderColor: BRAND.blue, backgroundColor: "#EFF6FF", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, alignItems: "center" },
+  inningRailResult: { color: BRAND.blue, fontSize: 10, fontWeight: "900" },
+  heatmapCard: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 16, padding: 13, gap: 10 },
+  heatmapHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
+  heatmapTitle: { color: BRAND.navy, fontSize: 14, fontWeight: "900" },
+  heatmapHint: { color: BRAND.muted, fontSize: 10, marginTop: 3, lineHeight: 14, maxWidth: 255 },
+  heatmapBadge: { backgroundColor: BRAND.navy, color: BRAND.white, fontSize: 10, fontWeight: "900", paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  heatmapFilterRow: { flexDirection: "row", gap: 7 },
+  heatmapFilterButton: { flex: 1, minHeight: 40, justifyContent: "center", alignItems: "center", borderRadius: 9, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line },
+  heatmapFilterButtonActive: { backgroundColor: BRAND.navy, borderColor: BRAND.navy },
+  heatmapFilterText: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
+  heatmapFilterTextActive: { color: BRAND.white },
+  advancedHeatmapFilters: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 9, gap: 6 },
+  advancedHeatmapLabel: { color: BRAND.navy, fontSize: 10, fontWeight: "900", marginTop: 1 },
+  advancedHeatmapChoiceRow: { flexDirection: "row", gap: 7, paddingRight: 8 },
+  advancedHeatmapChoice: { minHeight: 34, justifyContent: "center", alignItems: "center", backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, paddingHorizontal: 10 },
+  advancedHeatmapChoiceActive: { backgroundColor: "#DBEAFE", borderColor: BRAND.blue },
+  advancedHeatmapChoiceText: { color: BRAND.muted, fontSize: 10, fontWeight: "800" },
+  advancedHeatmapChoiceTextActive: { color: BRAND.navy },
+  statsScopeCard: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 7 },
+  statsScopeLabel: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
+  statsScopeChoices: { flexDirection: "row", gap: 8 },
+  statsScopeChoice: { flex: 1, minHeight: 38, backgroundColor: BRAND.white, borderRadius: 9, borderWidth: 1, borderColor: BRAND.line, justifyContent: "center", alignItems: "center" },
+  statsScopeChoiceActive: { backgroundColor: BRAND.navy, borderColor: BRAND.navy },
+  statsScopeChoiceText: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
+  statsScopeChoiceTextActive: { color: BRAND.white },
+  statsScopeHint: { color: BRAND.muted, fontSize: 10, lineHeight: 14 },
+  periodCard: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 7 },
+  periodTitle: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
+  periodHint: { color: BRAND.muted, fontSize: 10, lineHeight: 14 },
+  periodChoices: { flexDirection: "row", gap: 7, paddingRight: 8 },

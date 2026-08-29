@@ -1,0 +1,12 @@
+Title:           Xps Document
+Author:          
+Producer:        Microsoft: Print To PDF
+CreationDate:    Mon Aug 24 00:32:58 2026 UTC
+ModDate:         Mon Aug 24 00:32:58 2026 UTC
+Custom Metadata: no
+Metadata Stream: no
+Tagged:          no
+UserProperties:  no
+Suspects:        no
+Form:            none
+JavaScript:      no

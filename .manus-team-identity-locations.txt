@@ -1,0 +1,245 @@
+=== team.name ===
+329:  const retainedTeams = current.teams.filter((team) => !LEGACY_SAMPLE_TEAM_NAMES.includes(team.name) && team.id !== "team-home" && team.id !== "team-away");
+382:      <Text style={styles.teamPillName}>{team.name}</Text>
+406:          {([ ["away", away, "客"], ["home", home, "主"] ] as const).map(([side, team, sideLabel]) => <View key={side} style={[styles.photoScoreboardTeamRow, side === "home" && styles.photoScoreboardHomeRow]}><View style={styles.photoScoreboardTeamCell}><Text style={styles.photoScoreboardSide}>{sideLabel}</Text><Text numberOfLines={1} style={styles.photoScoreboardTeamName}>{team.name}</Text></View>{rows.map((row) => <Text key={`${side}-${row.inning}`} style={[styles.photoScoreboardInningCell, row.inning === game.inning && styles.photoScoreboardActiveCell]}>{row[side]}</Text>)}<Text style={styles.photoScoreboardTotalCell}>{totals(side)}</Text><Text style={styles.photoScoreboardTotalCell}>{hits(side)}</Text><Text style={styles.photoScoreboardTotalCell}>{errors(side)}</Text></View>)}
+1724:          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.teamSelector}>{visibleTeams.map((team) => <Pressable key={team.id} onPress={() => onSelect(team.id)} style={[styles.teamSelectorItem, selected.id === team.id && styles.teamSelectorItemActive]}><View style={styles.teamSelectorNameRow}><Text style={[styles.teamSelectorName, selected.id === team.id && styles.teamSelectorNameActive]}>{team.name}</Text>{team.id === ownedTeamId ? <Text style={[styles.teamSelectorOwnedBadge, selected.id === team.id && styles.teamSelectorOwnedBadgeActive]}>所屬隊</Text> : null}</View><Text style={[styles.teamSelectorMeta, selected.id === team.id && styles.teamSelectorMetaActive]}>{team.school} · {team.players.length} 人</Text></Pressable>)}</ScrollView>
+1762:    <View style={styles.pageGap}><SectionTitle eyebrow="TEAM GAME DESK" title="單場詳情工作台" action={<Text style={styles.smallMuted}>{game.date}</Text>} /><View style={styles.statsOwnerCard}><View><Text style={styles.statsOwnerEyebrow}>統計預覽主體</Text><Text style={styles.statsOwnerTitle}>{primaryTeam.name}</Text><Text style={styles.statsOwnerMeta}>統計以所屬球隊為主；本場身分：{primarySideLabel}</Text></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsOwnerChoices}>{[away, home].filter((team, index, list) => list.findIndex((item) => item.id === team.id) === index).map((team) => <Pressable key={team.id} onPress={() => onSetPrimaryTeam(team.id)} style={[styles.statsOwnerChoice, team.id === primaryTeam.id && styles.statsOwnerChoiceActive]}><Text style={[styles.statsOwnerChoiceText, team.id === primaryTeam.id && styles.statsOwnerChoiceTextActive]}>{team.name}</Text><Text style={styles.statsOwnerChoiceMeta}>{team.id === game.homeTeamId ? "主場" : "客場"}</Text></Pressable>)}</ScrollView></View><View style={styles.statsScopeCard}><Text style={styles.statsScopeLabel}>統計範圍</Text><View style={styles.statsScopeChoices}><Pressable onPress={() => setPlayerScope("registered")} style={[styles.statsScopeChoice, playerScope === "registered" && styles.statsScopeChoiceActive]}><Text style={[styles.statsScopeChoiceText, playerScope === "registered" && styles.statsScopeChoiceTextActive]}>本場登錄</Text></Pressable><Pressable onPress={() => setPlayerScope("all")} style={[styles.statsScopeChoice, playerScope === "all" && styles.statsScopeChoiceActive]}><Text style={[styles.statsScopeChoiceText, playerScope === "all" && styles.statsScopeChoiceTextActive]}>全 25 人</Text></Pressable></View><Text style={styles.statsScopeHint}>{playerScope === "registered" ? "僅顯示本場已登錄並可上場的球員。" : "顯示固定 25 人名單，含尚未出賽的球員。"}</Text></View><View style={styles.periodCard}><Text style={styles.periodTitle}>週期時間統計</Text><Text style={styles.periodHint}>累計不限場次；選擇期間後只計入該日期範圍內所屬球隊的賽事。</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodChoices}>{([ ["all", "全部"], ["7d", "近 7 天"], ["30d", "近 30 天"], ["90d", "近 90 天"], ["year", "本年度"], ["custom", "自訂" ] ] as Array<[typeof periodPreset, string]>).map(([key, label]) => <Pressable key={key} onPress={() => setPeriodPreset(key)} style={[styles.periodChoice, periodPreset === key && styles.periodChoiceActive]}><Text style={[styles.periodChoiceText, periodPreset === key && styles.periodChoiceTextActive]}>{label}</Text></Pressable>)}</ScrollView>{periodPreset === "custom" ? <View style={styles.periodDateRow}><TextInput value={periodStart} onChangeText={setPeriodStart} placeholder="開始 YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.periodDateInput} /><Text style={styles.periodDateDivider}>至</Text><TextInput value={periodEnd} onChangeText={setPeriodEnd} placeholder="結束 YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.periodDateInput} /></View> : null}<Text style={styles.periodResult}>目前：{periodLabels[periodPreset]}，共 {filteredPrimaryGames.length} 場</Text></View><View style={styles.summaryStrip}><StatChip label={`${primaryTeam.name} 比分`} value={`${primaryRuns} : ${primarySide ? (primarySide === "home" ? summary?.awayRuns ?? 0 : summary?.homeRuns ?? 0) : 0}`} accent={BRAND.navy} /><StatChip label="本場安打" value={primaryBatting.reduce((sum, row) => sum + row.h, 0)} accent={BRAND.green} /><StatChip label="本場四壞" value={primaryBatting.reduce((sum, row) => sum + row.bb, 0)} accent={BRAND.blue} /><StatChip label="本場三振" value={primaryPerformance?.strikeouts ?? 0} accent={BRAND.red} /><StatChip label="賽事失誤" value={summary?.errors ?? 0} accent={BRAND.yellow} /></View><View style={styles.statsTabs}>{([ ["batting", "打擊統計"], ["pitching", "投手統計"], ["preview", "完整預覽"] ] as [StatsTab, string][]).map(([key, label]) => <Pressable key={key} onPress={() => onTab(key)} style={[styles.statsTab, tab === key && styles.statsTabActive]}><Text style={[styles.statsTabText, tab === key && styles.statsTabTextActive]}>{label}</Text></Pressable>)}</View>{tab === "batting" ? <View style={styles.statsSection}><View style={styles.teamStatSummary}><Text style={styles.tableTitle}>球隊整體表現｜早稻田紀錄法</Text><View style={styles.teamStatSummaryRow}><Text style={styles.teamStatSummaryValue}>R {primaryPerformance?.runs ?? 0}</Text><Text style={styles.teamStatSummaryValue}>H {primaryPerformance?.hits ?? 0}</Text><Text style={styles.teamStatSummaryValue}>BB {primaryPerformance?.walks ?? 0}</Text><Text style={styles.teamStatSummaryValue}>SB {primaryPerformance?.stolenBases ?? 0}</Text><Text style={styles.teamStatSummaryValue}>E {primaryPerformance?.errors ?? 0}</Text></View><Text style={styles.seasonHint}>目前統計主隊：{primaryTeam.name}；對手：{opponent.name}。個人逐球紀錄仍依主／客場保留於完整預覽。</Text></View><StatTable title={`單場個人｜${playerScope === "registered" ? "登錄名單" : "全 25 人"}｜${primarySideLabel}｜${primaryTeam.name}`} rows={primaryBatting} /><View style={styles.seasonCard}><Text style={styles.seasonTitle}>週期累計｜{playerScope === "registered" ? "曾登錄球員" : "全 25 人"}｜{primaryTeam.name}（{periodLabels[periodPreset]}，共 {filteredPrimaryGames.length} 場）</Text><Text style={styles.seasonHint}>不限場次，僅累計使用者所屬球隊在所選日期週期內參與的賽事。</Text><StatTable title={`週期累計個人｜${primaryTeam.name}`} rows={seasonPrimaryBatting} /></View></View> : null}{tab === "pitching" ? <View style={styles.statsSection}><PitchingTable game={game} team={primaryTeam} title={`本隊投手｜${primarySideLabel}｜${primaryTeam.name}`} /><PitchingTable game={game} team={opponent} title={`對手投手｜${opponent.name}`} /><HeatmapAnalytics game={game} players={[...away.players, ...home.players]} filter={pitchFilter} onFilter={setPitchFilter} /></View> : null}{tab === "preview" ? <FullPreview game={game} away={away} home={home} onOpenExportRange={onOpenExportRange} /> : null}</View>
+1818:    <View style={styles.statsOwnerCard}><View><Text style={styles.statsOwnerEyebrow}>統計預覽主體</Text><Text style={styles.statsOwnerTitle}>{primaryTeam.name}</Text><Text style={styles.statsOwnerMeta}>統計只納入所屬球隊賽事；本場身分：{primarySide === "home" ? "主場" : primarySide === "away" ? "客場" : "未參與"}</Text></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsOwnerChoices}>{[away, home].filter((team, index, list) => list.findIndex((item) => item.id === team.id) === index).map((team) => <Pressable key={team.id} onPress={() => onSetPrimaryTeam(team.id)} style={[styles.statsOwnerChoice, team.id === primaryTeam.id && styles.statsOwnerChoiceActive]}><Text style={[styles.statsOwnerChoiceText, team.id === primaryTeam.id && styles.statsOwnerChoiceTextActive]}>{team.name}</Text><Text style={styles.statsOwnerChoiceMeta}>{team.id === game.homeTeamId ? "主場" : "客場"}</Text></Pressable>)}</ScrollView></View>
+1921:        teamName: team.name,
+1938:        teamName: team.name,
+1956:        teamName: team.name,
+1961:        detailLines: [`球員：${playerOut?.name ?? "未知球員"} → ${playerIn?.name ?? "未知球員"}`, `守備位置：${substitution.position}`, `球隊：${team.name}`, `紀錄時間：${new Date(substitution.timestamp).toLocaleString("zh-TW")}`],
+1993:      <View style={[styles.wasedaSheetTitleRow, side === "away" ? styles.wasedaAwayTitle : styles.wasedaHomeTitle]}><View><Text style={styles.wasedaTeamCaption}>{side === "away" ? "客場／先攻" : "主場／後攻"}</Text><Text style={styles.wasedaTeamTitle}>{team.name}</Text></View><Text style={styles.wasedaTeamScore}>{side === "away" ? game.score.reduce((sum, inning) => sum + inning.away, 0) : game.score.reduce((sum, inning) => sum + inning.home, 0)}</Text></View>
+2001:            return <View key={player.id} style={styles.wasedaDataRow}><Text style={styles.wasedaPositionCell}>{playerPosition || "—"}</Text><Pressable accessibilityRole="button" accessibilityLabel={`查看${team.name}${player.name}逐局紀錄`} onPress={() => { const firstEvent = teamEvents.find((event) => event.batterId === player.id); if (firstEvent) onSelectRow(rows.find((row) => row.id === `atbat-${firstEvent.id}`) ?? rows[0]); }} style={({ pressed }) => [styles.wasedaPlayerCellWrap, pressed && styles.pressed]}><Text style={styles.wasedaPlayerText}>{battingOrderIndex >= 0 ? battingOrderIndex + 1 : "候"}. {player.name}</Text><Text style={styles.wasedaPlayerSub}>#{player.number}</Text></Pressable><Text style={styles.wasedaNumberCell}>{player.number}</Text>{innings.map((inning) => { const cellEvents = getCellEvents(player.id, inning); const event = aggregateInningRunnerEvents(cellEvents, player.id, inning); return <Pressable key={`${player.id}-${inning}`} accessibilityRole="button" accessibilityLabel={`修改${player.name}第${inning}局紀錄`} onPress={() => { if (event) { const row = rows.find((candidate) => candidate.id === `atbat-${event.id}`); if (row) onSelectRow(row); } }} style={({ pressed }) => [styles.wasedaInningCell, pressed && styles.pressed]}><WasedaPersonalRecordCell size="compact" event={event} showLabels={false} /></Pressable>; })}<Text style={styles.wasedaTotalCell}>{playerBatting?.ab ?? 0} AB / {playerBatting?.h ?? 0} H</Text></View>;
+2015:      <View style={styles.gameRecordSheet}><View style={styles.gameRecordSheetHeader}><View><Text style={styles.tableTitle}>{selectedScorebook.team.name}｜可編輯早稻田單場紀錄表</Text><Text style={styles.gameRecordSheetHint}>點選逐局格先查看明細；「補登打席」可為任何局數手動輸入完整打擊結果。</Text></View><Text style={styles.gameRecordSheetCount}>{rows.filter((row) => row.teamName === selectedScorebook.team.name).length} 筆</Text></View><View style={styles.gameRecordActionRow}><Button label="補登打席" onPress={onOpenManualAtBat} compact /><Button label={refreshing ? "整理中…" : "重新整理"} onPress={() => { void onRefresh(); }} disabled={refreshing} variant="secondary" compact /><Button label={`自動更新：${autoRefresh ? "開" : "關"}`} onPress={onToggleAutoRefresh} variant="secondary" compact /><Button label="匯出 PDF／圖片" onPress={onOpenExportRange} compact /></View><View style={styles.gameRecordSyncRow}><View style={[styles.gameRecordSyncBadge, syncState === "synced" ? styles.gameRecordSyncBadgeSynced : syncState === "refreshing" ? styles.gameRecordSyncBadgeRefreshing : styles.gameRecordSyncBadgePending]}><View style={[styles.gameRecordSyncDot, syncState === "refreshing" ? styles.gameRecordSyncDotRefreshing : syncState === "pending" ? styles.gameRecordSyncDotPending : styles.gameRecordSyncDotSynced]} /><Text style={styles.gameRecordSyncText}>{syncState === "synced" ? "資料已同步" : syncState === "refreshing" ? "同步檢查中" : "待同步"}</Text></View><Text style={styles.gameRecordSyncHint}>格內三區依序為球數欄、外圈格、內圈格；[補] 代表手動補登打席。</Text></View>{renderTeamSheet(selectedScorebook.team, selectedScorebook.side, selectedScorebook.batting, selectedScorebook.pitching, selectedScorebook.summary)}</View></View>
+2022:  return <View style={styles.previewStack}><View style={styles.previewCard}><Text style={styles.previewTitle}>完整預覽</Text><Text style={styles.previewMeta}>{game.name} · {game.venue}</Text><ScoreBoard game={game} away={away} home={home} /><View style={styles.exportRow}><Button label="匯出 PDF／圖片（選範圍）" onPress={onOpenExportRange} compact /></View></View><View style={styles.previewCard}><Text style={styles.previewTitle}>紀錄範圍</Text><View style={styles.rangeRow}><Text style={styles.rangeLabel}>局數</Text><Text style={styles.rangeValue}>1–{game.inning} 局（上限 {game.maxInnings} 局）</Text></View><View style={styles.rangeRow}><Text style={styles.rangeLabel}>逐球</Text><Text style={styles.rangeValue}>{game.events.length} 個打席／{game.events.reduce((sum, event) => sum + event.pitches.total, 0)} 球</Text></View><View style={styles.rangeRow}><Text style={styles.rangeLabel}>換人</Text><Text style={styles.rangeValue}>{game.substitutions.length} 次</Text></View></View><View style={styles.previewCard}><Text style={styles.previewTitle}>逐球符號</Text>{game.events.length === 0 ? <Text style={styles.emptyText}>尚未有紀錄。</Text> : game.events.slice(-12).reverse().map((event) => <View key={event.id} style={styles.symbolRow}><Text style={styles.symbolInning}>{event.inning}{event.half === "away" ? "上" : "下"}</Text><Text style={styles.symbolText}>{event.notation}</Text><Text style={styles.symbolResult}>{event.result}</Text></View>)}</View><View style={styles.previewCard}><Text style={styles.previewTitle}>換人歷史</Text>{game.substitutions.length === 0 ? <Text style={styles.emptyText}>尚未記錄換人。</Text> : game.substitutions.slice().reverse().map((substitution) => { const team = substitution.teamId === away.id ? away : home; const playerOut = team.players.find((player) => player.id === substitution.playerOutId); const playerIn = team.players.find((player) => player.id === substitution.playerInId); return <View key={substitution.id} style={styles.symbolRow}><Text style={styles.symbolInning}>{substitution.inning}{substitution.half === "away" ? "上" : "下"}</Text><Text style={styles.symbolText}>{team.name} #{playerOut?.number ?? "?"} → #{playerIn?.number ?? "?"}</Text><Text style={styles.symbolResult}>{substitution.position}</Text></View>; })}</View></View>;
+2096:  return <ImageBackground source={HOME_DEFENSE_FIELD_IMAGE} resizeMode="contain" style={styles.topDownField} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（使用者指定棒球場俯視圖）`}>
+2218:    if (!source) { Alert.alert("尚無可複製配置", `${team.name} 尚未建立過含先發配置的場次。`); return; }
+2331:    const teamStage = (side: "away" | "home", selected?: Team) => <View style={styles.wizardStepPanel}><Text style={styles.inputLabel}>選擇{side === "home" ? "主場" : "客場"}球隊</Text><View style={styles.modalChoiceRow}>{teams.map((team) => <Pressable key={`${side}-wizard-${team.id}`} onPress={() => setTeam(side, team)} style={[styles.modalChoice, selected?.id === team.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, selected?.id === team.id && styles.modalChoiceTextActive]}>{team.name}</Text></Pressable>)}</View><Text style={styles.wizardMinorLabel}>或當下建立新球隊</Text><View style={styles.wizardCreateTeamRow}><TextInput value={teamNameDraft} onChangeText={setTeamNameDraft} placeholder="學校或球隊名稱" placeholderTextColor={BRAND.muted} style={[styles.formInput, styles.wizardCreateTeamInput]} /><Button label="建立並套用" onPress={() => createTeamForSide(side)} compact /></View></View>;
+2358:        return <View key={`${side}-confirmation`} style={styles.wizardConfirmationTeam}><Text style={styles.wizardConfirmationTeamTitle}>{side === "home" ? "主場" : "客場"} · {team.name}</Text><View style={styles.wizardConfirmationColumns}><View style={styles.wizardConfirmationRoster}>{lineup.battingOrderIds.map((playerId, index) => { const player = team.players.find((candidate) => candidate.id === playerId); const position = FIELD_POSITIONS.find((candidate) => candidate.number === lineup.defensivePositions[playerId] || candidate.label === lineup.defensivePositions[playerId]); const conflicted = conflicts.some((conflict) => conflict.playerIds.includes(playerId)); return <View key={`${side}-confirmation-${playerId}`} style={[styles.wizardConfirmationPlayer, conflicted && styles.wizardConfirmationPlayerConflict]}><Text style={[styles.wizardConfirmationPlayerText, conflicted && styles.wizardConfirmationPlayerTextConflict]}>{index + 1}棒　#{player?.number ?? "—"} {player?.name ?? "未指派"}</Text><Text style={[styles.wizardConfirmationPosition, conflicted && styles.wizardConfirmationPositionConflict]}>{conflicted ? "守位重複" : position ? `${position.number}${position.label}` : "未排守備"}</Text></View>; })}</View><View style={styles.wizardConfirmationField}><TopDownLineupField team={team} lineup={lineup} conflictedPositions={conflicts.map((conflict) => conflict.position)} highlightedPositions={changedSwapPositions} /></View></View>{renderConflictFixSuggestions(side, team, lineup, "confirmation")}</View>;
+2398:  const wizardTeamStage = (side: "away" | "home", selected?: Team) => <View style={styles.wizardStepPanel}><Text style={styles.inputLabel}>選擇{side === "home" ? "主場" : "客場"}球隊</Text><View style={styles.modalChoiceRow}>{teams.map((team) => <Pressable key={`${side}-wizard-${team.id}`} onPress={() => setTeam(side, team)} style={[styles.modalChoice, selected?.id === team.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, selected?.id === team.id && styles.modalChoiceTextActive]}>{team.name}</Text></Pressable>)}</View><Text style={styles.wizardMinorLabel}>或當下建立新球隊</Text><View style={styles.wizardCreateTeamRow}><TextInput value={teamNameDraft} onChangeText={setTeamNameDraft} placeholder="學校或球隊名稱" placeholderTextColor={BRAND.muted} style={[styles.formInput, styles.wizardCreateTeamInput]} /><Button label="建立並套用" onPress={() => createTeamForSide(side)} compact /></View></View>;
+2424:  return <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalSheet}><View style={styles.modalHandle} /><View style={styles.modalHeader}><Text style={styles.modalTitle}>新增比賽</Text><Pressable onPress={onClose}><Text style={styles.modalClose}>關閉</Text></Pressable></View><ScrollView showsVerticalScrollIndicator={false}><Text style={styles.inputLabel}>賽事名稱</Text><TextInput value={form.name} onChangeText={(name) => onChange({ ...form, name })} placeholder="例如：春季聯賽第 3 場" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>盃賽／聯賽分類</Text><TextInput value={form.competition} onChangeText={(competition) => onChange({ ...form, competition })} placeholder="例如：春季聯賽、校際盃（選填）" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>比賽場地</Text><TextInput value={form.venue} onChangeText={(venue) => onChange({ ...form, venue })} placeholder="例如：市立棒球場" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>比賽日期</Text><TextInput value={form.date} onChangeText={(date) => onChange({ ...form, date })} placeholder="YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>天氣</Text><View style={styles.weatherChoiceRow}>{WEATHER_OPTIONS.map((option) => <Pressable key={option.value} onPress={() => onChange({ ...form, weather: option.value })} style={[styles.weatherChoice, form.weather === option.value && styles.weatherChoiceActive]}><Text style={styles.weatherIcon}>{option.icon}</Text><Text style={[styles.weatherChoiceText, form.weather === option.value && styles.modalChoiceTextActive]}>{option.label}</Text></Pressable>)}</View><Text style={styles.inputLabel}>客場球隊</Text><View style={styles.modalChoiceRow}>{teams.map((team) => <Pressable key={`away-${team.id}`} onPress={() => setTeam("away", team)} style={[styles.modalChoice, form.awayTeamId === team.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.awayTeamId === team.id && styles.modalChoiceTextActive]}>{team.name}</Text></Pressable>)}</View>{registrationPicker("away", away)}<Text style={styles.inputLabel}>主場球隊</Text><View style={styles.modalChoiceRow}>{teams.map((team) => <Pressable key={`home-${team.id}`} onPress={() => setTeam("home", team)} style={[styles.modalChoice, form.homeTeamId === team.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.homeTeamId === team.id && styles.modalChoiceTextActive]}>{team.name}</Text></Pressable>)}</View>{registrationPicker("home", home)}<Text style={styles.inputLabel}>比賽局數</Text><View style={styles.modalChoiceRow}>{([6, 7, 9, 15] as const).map((innings) => <Pressable key={innings} onPress={() => onChange({ ...form, maxInnings: innings })} style={[styles.inningsChoice, form.maxInnings === innings && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.maxInnings === innings && styles.modalChoiceTextActive]}>{innings} 局</Text></Pressable>)}</View><Button label="建立比賽並進入紀錄" onPress={onSubmit} /></ScrollView></View></View></Modal>;
+2468:    if (!source) { Alert.alert("尚無可複製配置", `${team.name} 尚未建立過含先發配置的場次。`); return; }
+2486:  return <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalSheet}><View style={styles.modalHandle} /><View style={styles.modalHeader}><Text style={styles.modalTitle}>新增比賽</Text><Pressable onPress={onClose}><Text style={styles.modalClose}>關閉</Text></Pressable></View><ScrollView showsVerticalScrollIndicator={false}><Text style={styles.inputLabel}>賽事名稱</Text><TextInput value={form.name} onChangeText={(name) => onChange({ ...form, name })} placeholder="例如：春季聯賽第 3 場" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>盃賽／聯賽分類</Text><TextInput value={form.competition} onChangeText={(competition) => onChange({ ...form, competition })} placeholder="例如：春季聯賽、校際盃（選填）" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>比賽場地</Text><TextInput value={form.venue} onChangeText={(venue) => onChange({ ...form, venue })} placeholder="例如：市立棒球場" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>比賽日期</Text><TextInput value={form.date} onChangeText={(date) => onChange({ ...form, date })} placeholder="YYYY-MM-DD" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>天氣</Text><View style={styles.weatherChoiceRow}>{WEATHER_OPTIONS.map((option) => <Pressable key={option.value} onPress={() => onChange({ ...form, weather: option.value })} style={[styles.weatherChoice, form.weather === option.value && styles.weatherChoiceActive]}><Text style={styles.weatherIcon}>{option.icon}</Text><Text style={[styles.weatherChoiceText, form.weather === option.value && styles.modalChoiceTextActive]}>{option.label}</Text></Pressable>)}</View><Text style={styles.inputLabel}>客場球隊</Text><View style={styles.modalChoiceRow}>{teams.map((team) => <Pressable key={`away-${team.id}`} onPress={() => setTeam("away", team)} style={[styles.modalChoice, form.awayTeamId === team.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.awayTeamId === team.id && styles.modalChoiceTextActive]}>{team.name}</Text></Pressable>)}</View>{registrationPicker("away", away)}<Text style={styles.inputLabel}>主場球隊</Text><View style={styles.modalChoiceRow}>{teams.map((team) => <Pressable key={`home-${team.id}`} onPress={() => setTeam("home", team)} style={[styles.modalChoice, form.homeTeamId === team.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.homeTeamId === team.id && styles.modalChoiceTextActive]}>{team.name}</Text></Pressable>)}</View>{registrationPicker("home", home)}<Text style={styles.inputLabel}>比賽局數</Text><View style={styles.modalChoiceRow}>{([6, 7, 9, 15] as const).map((innings) => <Pressable key={innings} onPress={() => onChange({ ...form, maxInnings: innings })} style={[styles.inningsChoice, form.maxInnings === innings && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.maxInnings === innings && styles.modalChoiceTextActive]}>{innings} 局</Text></Pressable>)}</View><Button label="建立比賽並進入紀錄" onPress={onSubmit} /></ScrollView></View></View></Modal>;
+=== team logo/color ===
+=== top components ===
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Alert,
+  ImageBackground,
+  Modal,
+  Platform,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useKeepAwake } from "expo-keep-awake";
+import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
+
+import { ScreenContainer } from "@/components/screen-container";
+import { WasedaPersonalRecordCell } from "@/components/baseball/waseda-personal-record-cell";
+import { HOME_DEFENSE_FIELD_IMAGE } from "@/constants/baseball-assets";
+import { startOAuthLogin } from "@/constants/oauth";
+import { useAuth } from "@/hooks/use-auth";
+import { shareGameImage, shareGamePdf, type GameReportFilter } from "@/lib/baseball/export";
+import { getVisibleTeams, orderTeamsWithPrimaryFirst } from "@/lib/baseball/team-selector";
+import { trpc } from "@/lib/trpc";
+import {
+  AtBatResult,
+  AgeGroup,
+  AGE_GROUP_OPTIONS,
+  AppData,
+  FIELD_POSITIONS,
+  Game,
+  GameLineup,
+  PitchFilter,
+  PitchLocation,
+  PitchOutcome,
+  PitchState,
+  PitchType,
+  RecordColumn,
+  RecordTrajectory,
+  PlayerStatScope,
+  School,
+  Player,
+  Team,
+  TeamSide,
+  Substitution,
+  SubstitutionType,
+  SpecialEvent,
+  SpecialEventType,
+  SPECIAL_EVENT_LABELS,
+  WEATHER_OPTIONS,
+  WeatherCondition,
+  createEmptyAtBatDraft,
+  createLineupSnapshot,
+  createInitialData,
+  formatAvg,
+  formatRate,
+  getBattingStats,
+  getPitchingStats,
+  getCurrentBatter,
+  getCurrentPitcher,
+  getGameSummary,
+  getHitZoneHeatmap,
+  getInningRows,
+  getLineupCompleteness,
+  getBattingOrderEligiblePlayerIds,
+  getDefensivePositionConflicts,
+  isEligibleForBattingOrder,
+  RESERVE_POSITION,
+  RESERVE_POSITION_LABEL,
+  suggestDefensiveConflictFixes,
+  getNotation,
+  getWasedaPitchMark,
+  getPitchZoneHeatmap,
+  getSpecialEventNotation,
+  getOpponentTeam,
+  opensBattedBallWorkflow,
+  getRecentEvents,
+  filterRecentGames,
+  getSeasonBattingStats,
+  filterGamesForStatistics,
+  getSacrificeBuntAdvancement,
+  getSacrificeFlyAdvancement,
+  canSacrificeFly,
+  getTeamSacrificeTotals,
+  getGamesForTeam,
+  getTeamForHalf,
+  getTeamPerformanceSummary,
+  getPitchLimitWarning,
+  getPitcherPitchLimitHistories,
+  getPlayerHeatmapAnalytics,
+  makeGame,
+  mergeAppData,
+  buildSpecialEventRunnerSummary,
+  nextFieldersChoiceRunnerState,
+  nextRunnerState,
+  nextSpecialRunnerState,
+  sortGameRosterForDisplay,
+  aggregateInningRunnerEvents,
+  isBuntFoulStrikeout,
+  isSacrificeBuntRecord,
+  isSacrificeFlyRecord,
+  SACRIFICE_BUNT_MODIFIER,
+  SACRIFICE_FLY_MODIFIER,
+  SACRIFICE_FLY_NO_SCORE_REASON_LABELS,
+  SacrificeFlyNoScoreReason,
+  normalizeAppData,
+  ensureScoreThroughInning,
+  updateGameAfterEvent,
+  updateGameAfterSpecialEvent,
+  swapDefensivePositions,
+  swapTeamDefensiveConfigurations,
+  getChangedDefensivePositions,
+} from "@/lib/baseball/types";
+import { createFuxing2026Data, FUXING_2026_GAMES, FUXING_COMPETITION, FUXING_CUP_BATTING_SUMMARY, FUXING_CUP_PITCHING_SUMMARY, FUXING_CUP_TEAM_BATTING_SUMMARY, FUXING_TEAM } from "@/lib/baseball/fuxing2026Data";
+import { groupPitchHistoryByZone } from "@/lib/baseball/pitch-history";
+import { type FieldingSequenceSuggestion, formatRecordColumnNotation, getFieldingExampleNotation, getFieldingSequenceSuggestions } from "@/lib/baseball/record-column-notation";
+
+const STORAGE_KEY = "baseball-scorer-pro:data:v1";
+const ONBOARDING_STORAGE_KEY = "baseball-scorer-pro:onboarding:v1";
+const BRAND = {
+  navy: "#123A68",
+  blue: "#1D5FA7",
+  sky: "#EAF3FB",
+  red: "#C83B44",
+  green: "#1F8A5B",
+  ink: "#10243E",
+  muted: "#6A7A8F",
+  line: "#D8E2ED",
+  paper: "#F7FAFD",
+  white: "#FFFFFF",
+  yellow: "#F5B942",
+};
+
+const RECORD_TRAJECTORIES: Array<{ id: RecordTrajectory; mark: string; label: string }> = [
+  { id: "fly", mark: "⌒", label: "高飛球" },
+  { id: "line", mark: "ー", label: "平飛球" },
+  { id: "ground", mark: "＿", label: "滾地球" },
+];
+const RECORD_MODIFIERS = ["E（失誤）", "DP（雙殺）", "TP（三殺）", "FC（野選）", "K+（不死三振）", "○K（見逃三振）", "CS（盜壘刺）", "PO（牽制出局）", "SB（盜壘）", "WP（暴投）", "PB（捕逸）", "BK（投手犯規）", "SH（犧牲觸擊）", "SF（高飛犧牲）"];
+const FIELDING_PLAY_CHOICES = [
+  { id: "DP" as const, label: "DP", detail: "雙殺" },
+  { id: "TP" as const, label: "TP", detail: "三殺" },
+  { id: "FC" as const, label: "FC", detail: "野選" },
+];
+
+const FIELD_POSITION_LAYOUT = [
+  { number: "1", top: 62, left: 50 },
+  { number: "2", top: 83, left: 50 },
+  { number: "3", top: 64, left: 71 },
+  { number: "4", top: 48, left: 61 },
+  { number: "5", top: 64, left: 29 },
+  { number: "6", top: 48, left: 39 },
+  { number: "7", top: 31, left: 22 },
+  { number: "8", top: 18, left: 50 },
+  { number: "9", top: 31, left: 78 },
+] as const;
+
+const RESULT_SHORTCUT_LABELS: Record<AtBatResult, string> = {
+  "1B": "一壘安打",
+  "2B": "二壘安打",
+  "3B": "三壘安打",
+  HR: "全壘打",
+  BB: "四壞球",
+  HBP: "觸身球",
+  K: "三振",
+  F: "高飛球",
+  G: "滾地球",
+  E: "失誤",
+};
+
+const RESULT_SHORTCUTS: Array<{ id: string; result: AtBatResult; code?: string; label?: string; calledStrikeout?: boolean }> = [
+  { id: "1B", result: "1B" }, { id: "2B", result: "2B" }, { id: "3B", result: "3B" }, { id: "HR", result: "HR" },
+  { id: "B", result: "BB" }, { id: "DB", result: "HBP" }, { id: "K", result: "K" }, { id: "called-K", result: "K", code: "○K", label: "見逃三振", calledStrikeout: true },
+  { id: "FO", result: "F" }, { id: "GO", result: "G" }, { id: "E", result: "E" },
+];
+
+function getResultShortcutCode(result: AtBatResult, fieldingPosition: string): string {
+  if (["1B", "2B", "3B", "HR"].includes(result)) return result;
+  if (result === "F") return "FO";
+  if (result === "G") return "GO";
+  if (result === "K") return "K";
+  return getNotation(result, fieldingPosition);
+}
+
+type MainTab = "home" | "record" | "gameLog" | "stats";
+type StatsTab = "batting" | "pitching" | "preview";
+type StatsMode = "game" | "date" | "month" | "cup";
+
+type NewGameForm = {
+  name: string;
+  competition: string;
+  ageGroup: AgeGroup;
+  venue: string;
+  date: string;
+  weather: WeatherCondition;
+  awayTeamId: string;
+  homeTeamId: string;
+  awayRegisteredPlayerIds: string[];
+  homeRegisteredPlayerIds: string[];
+  awayLineup?: GameLineup;
+  homeLineup?: GameLineup;
+  pitchLimitThresholds: [number, number, number];
+  maxInnings: 6 | 7 | 9 | 15;
+};
+
+type SpecialDraft = {
+  type: SpecialEventType;
+  fromBase: 1 | 2 | 3;
+  toBase: 2 | 3 | 4;
+};
+
+type ManualAtBatDraft = {
+  inning: number;
+  half: TeamSide;
+  batterId: string;
+  pitcherId: string;
+  result: AtBatResult;

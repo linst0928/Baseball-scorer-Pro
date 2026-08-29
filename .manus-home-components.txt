@@ -1,0 +1,123 @@
+--- home card ---
+dPlayerId: string | undefined; onAssign: (position: string) => void }) {
+  const layout = [
+    { number: "8", label: "中外", style: styles.fieldCenter },
+    { number: "7", label: "左外", style: styles.fieldLeft },
+    { number: "9", label: "右外", style: styles.fieldRight },
+    { number: "6", label: "游擊手", style: styles.fieldShort },
+    { number: "4", label: "二壘", style: styles.fieldSecond },
+    { number: "5", label: "三壘", style: styles.fieldThird },
+    { number: "3", label: "一壘", style: styles.fieldFirst },
+    { number: "2", label: "捕手", style: styles.fieldCatcher },
+    { number: "1", label: "投手", style: styles.fieldPitcher },
+  ];
+  return (
+    <View style={styles.fieldCard}>
+      <View style={styles.fieldHeader}>
+        <View>
+          <Text style={styles.fieldTitle}>守備位置配置（平板雙欄與觸控優化）</Text>
+          <Text style={styles.fieldHint}>點選下方球員，再點擊球場守位（或長按指派）</Text>
+        </View>
+        <Text style={styles.fieldSelected}>選取：{team.players.find((player) => player.id === selectedPlayerId)?.name ?? "未選"}</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fieldRosterStrip}>
+        {team.players.map((player) => (
+          <Pressable 
+            key={player.id} 
+            onPress={() => onAssign(`select:${player.id}`)} 
+            onLongPress={() => onAssign(`select:${player.id}`)}
+            style={[styles.fieldPlayerChip, player.id === selectedPlayerId && styles.fieldPlayerChipActive]}
+          >
+            <Text style={[styles.fieldPlayerNumber, player.id === selectedPlayerId && styles.fieldPlayerNumberActive]}>{player.number}</Text>
+            <Text numberOfLines={1} style={[styles.fieldPlayerName, player.id === selectedPlayerId && styles.fieldPlayerNameActive]}>{player.name}</Text>
+            <Text style={styles.fieldPlayerPosBadge}>{player.position || "未排"}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <ImageBackground
+        source={HOME_DEFENSE_FIELD_IMAGE}
+        resizeMode="contain"
+        style={styles.fieldCanvasLarge}
+        imageStyle={styles.fieldCanvasLargeImage}
+        accessibilityLabel="首頁守備位置配置圖（使用者指定棒球場俯視圖）"
+      >
+        {layout.map((node) => { 
+          const assigned = team.players.find((player) => player.position === node.number); 
+          return (
+            <Pressable 
+              key={node.number} 
+              onPress={() => onAssign(node.number)} 
+              onLongPress={() => onAssign(node.number)}
+              style={[styles.fieldNodeLarge, node.style]}
+            >
+              <Text style={styles.fieldNodeNumberLarge}>{node.number}</Text>
+              <Text style={styles.fieldNodeLabelLarge} numberOfLines={1}>{assigned?.name ? `${assigned.number}.${assigned.name}` : node.label}</Text>
+            </Pressable>
+          ); 
+        })}
+      </ImageBackground>
+    </View>
+  );
+}
+
+function TeamsView({ teams, schools, primaryTeamId, selectedTeamId, onSelect, onUpdatePlayer, onAssignBattingOrder, onManageSchools }: { teams: Team[]; schools: School[]; primaryTeamId?: string; selectedTeamId: string; onSelect: (id: string) => void; onUpdatePlayer: (teamId: string, playerId: string, patch: Partial<Player>) => void; onAssignBattingOrder: (teamId: string, playerId: string, battingOrder: number | undefined) => void; onManageSchools: () => void }) {
+  const selected = teams.find((team) => team.id === selectedTeamId) ?? teams[
+--- field component ---
+ss={onOpenSymbols} /></View> : <View style={styles.tutorialActionFlex}><Button label="下一步" onPress={() => onChangeStep(step + 1)} /></View>}</View>{finalStep ? <Pressable accessibilityRole="button" onPress={onComplete} style={styles.tutorialFinishLink}><Text style={styles.tutorialFinishText}>直接開始記錄</Text></Pressable> : null}</View></View></Modal>;
+}
+
+function TopDownLineupField({ team, lineup, conflictedPositions = [], highlightedPositions = [] }: { team: Team; lineup: GameLineup; conflictedPositions?: string[]; highlightedPositions?: string[] }) {
+  const playersForPosition = (number: string) => Object.entries(lineup.defensivePositions)
+    .filter(([, position]) => FIELD_POSITIONS.find((fieldPosition) => fieldPosition.number === position || fieldPosition.label === position)?.number === number)
+    .map(([playerId]) => team.players.find((player) => player.id === playerId))
+    .filter((player): player is Player => Boolean(player));
+
+  return <ImageBackground source={HOME_DEFENSE_FIELD_IMAGE} resizeMode="contain" style={styles.topDownField} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（使用者指定棒球場俯視圖）`}>
+    {FIELD_POSITION_LAYOUT.map((spot) => {
+      const fieldPosition = FIELD_POSITIONS.find((candidate) => candidate.number === spot.number);
+      const players = playersForPosition(spot.number);
+      const conflicted = conflictedPositions.includes(spot.number);
+      const highlighted = highlightedPositions.includes(spot.number);
+      return <View key={spot.number} style={[styles.topDownFieldMarker, players.length ? styles.topDownFieldMarkerFilled : styles.topDownFieldMarkerEmpty, highlighted && styles.topDownFieldMarkerChanged, conflicted && styles.topDownFieldMarkerConflict, { top: `${spot.top}%`, left: `${spot.left}%` }]}>
+        <Text style={[styles.topDownFieldMarkerText, !players.length && styles.topDownFieldMarkerTextEmpty]}>{players.length ? players.map((player) => `#${player.number}`).join("/") : spot.number}</Text>
+        <Text style={[styles.topDownFieldMarkerLabel, conflicted && styles.topDownFieldMarkerLabelConflict]}>{conflicted ? "重複" : fieldPosition?.label ?? spot.number}</Text>
+      </View>;
+    })}
+  </ImageBackground>;
+}
+
+function NewGameModal({ visible, form, teams, games, onChange, onCreateTeam, onClose, onSubmit }: { visible: boolean; form: NewGameForm; teams: Team[]; games: Game[]; onChange: (form: NewGameForm) => void; onCreateTeam: (name: string) => Team | null; onClose: () => void; onSubmit: () => void }) {
+  const [activeLineupTarget, setActiveLineupTarget] = useState<{ side: "away" | "home"; playerId: string } | null>(null);
+  const [swapMode, setSwapMode] = useState(false);
+  const [swapPlayerIds, setSwapPlayerIds] = useState<string[]>([]);
+  const [selectedDefensiveSwapPositions, setSelectedDefensiveSwapPositions] = useState<string[]>([]);
+  const [changedSwapPositions, setChangedSwapPositions] = useState<string[]>([]);
+  const [lastDefensiveSwap, setLastDefensiveSwap] = useState<{ homeLineup: GameLineup; awayLineup: GameLineup } | null>(null);
+  const changedSwapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [teamNameDraft, setTeamNameDraft] = useState("");
+  const [battingOrderTarget, setBattingOrderTarget] = useState<{ side: "away" | "home"; order: number } | null>(null);
+  const lastConflictSignature = useRef("");
+  const away = teams.find((team) => team.id === form.awayTeamId);
+  const home = teams.find((team) => team.id === form.homeTeamId);
+  const registered = (side: "away" | "home", team?: Team) => {
+    const ids = side === "away" ? form.awayRegisteredPlayerIds : form.homeRegisteredPlayerIds;
+    return ids.length ? ids : (team?.players.slice(0, 25).map((player) => player.id) ?? []);
+  };
+  const updateTeamSetup = (side: "away" | "home", registeredPlayerIds: string[], lineup: GameLineup) => {
+    onChange(side === "away" ? { ...form, awayRegisteredPlayerIds: registeredPlayerIds, awayLineup: lineup } : { ...form, homeRegisteredPlayerIds: registeredPlayerIds, homeLineup: lineup });
+  };
+  const lineupFor = (side: "away" | "home", team?: Team) => (side === "away" ? form.awayLineup : form.homeLineup) ?? (team ? createLineupSnapshot(team, registered(side, team)) : { battingOrderIds: [], defensivePositions: {} });
+  const feedback = (kind: "error" | "success") => {
+    if (Platform.OS !== "web") void Haptics.notificationAsync(kind === "error" ? Haptics.NotificationFeedbackType.Error : Haptics.NotificationFeedbackType.Success);
+  };
+  const conflictSignature = [away, home].map((team, index) => team ? getDefensivePositionConflicts(lineupFor(index === 0 ? "away" : "home", team)).map((conflict) => `${conflict.position}:${conflict.playerIds.sort().join(",")}`).join("|") : "").filter(Boolean).join(";");
+  useEffect(() => {
+    if (!visible) {
+      lastConflictSignature.current = "";
+      if (changedSwapTimeout.current) clearTimeout(changedSwapTimeout.current);
+      changedSwapTimeout.current = null;
+      setSwapMode(false);
+      setSwapPlayerIds([]);
+      setSelectedDefensiveSwapPositions([]);
+     

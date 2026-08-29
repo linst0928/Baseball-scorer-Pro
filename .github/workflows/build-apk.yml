@@ -1,0 +1,81 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
+      - name: 釋放 GitHub Runner 磁碟空間與設定權限
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo mkdir -p /usr/local/lib/android
+          sudo chown -R $USER:$USER /usr/local/lib/android
+
+      - name: 設定 Node.js 環境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 啟用 pnpm
+        run: corepack enable
+
+      - name: 設定 Java 環境
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 設定 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 安裝專案依賴套件
+        run: pnpm install --frozen-lockfile
+
+      - name: 驗證 TypeScript 與核心回歸測試
+        run: |
+          pnpm check
+          pnpm test
+
+      - name: 清除 APK 建置前快取與暫存產物
+        run: pnpm run clean:release
+
+      - name: 產生 Android 原生專案結構
+        run: pnpm exec expo prebuild --platform android --clean --no-install
+
+      - name: 使用 Gradle 進行 APK 編譯
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --max-workers=2 \
+            --stacktrace \
+            --warning-mode=all \
+            -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" \
+            -Dkotlin.daemon.jvm.options=-Xmx512m
+
+      - name: 儲存 APK 檔案供下載
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-APK
+          path: android/app/build/outputs/apk/release/*.apk

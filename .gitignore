@@ -1,0 +1,73 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# Dependencies and caches
+node_modules/
+.cache/
+
+# Expo and bundler output
+.expo/
+dist/
+build/
+web-build/
+expo-env.d.ts
+
+# Android build output and generated native artifacts
+android/app/build/
+android/.gradle/
+android/build/
+*.apk
+*.aab
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Debug logs
+npm-debug.log*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# System files
+.DS_Store
+Thumbs.db
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+
+# Archive and other build files
+*.tgz
+*.tar.gz
+
+# Webdev artifacts (checkpoint zips, migrations, etc.)
+.webdev/
+.project-config.json
