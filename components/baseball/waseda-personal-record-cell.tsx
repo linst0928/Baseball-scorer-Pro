@@ -437,7 +437,9 @@ const styles = StyleSheet.create({
    * 外側打者上壘／安打線取四個邊界交點，跑者推進線則取菱形四角交點。
    */
   diamondStage: { position: "absolute", top: "50%", left: "50%", width: 68, height: 68, marginLeft: -34, marginTop: -34, alignItems: "center", justifyContent: "center", zIndex: 2 },
+  diamondStageLarge: { width: 140, height: 140, marginLeft: -70, marginTop: -70 },
   diamond: { position: "absolute", width: 32, height: 32, borderWidth: 1, borderStyle: "dashed", borderColor: "#7B91A8", transform: [{ rotate: "45deg" }] },
+  diamondLarge: { width: 64, height: 64 },
   diamondGuide: { position: "absolute", borderStyle: "dashed", borderColor: "#A8B8C9" },
   diamondGuideTop: { top: 0, left: 33, width: 1, height: 12, borderLeftWidth: 1 },
   diamondGuideRight: { top: 33, right: 0, width: 12, height: 1, borderTopWidth: 1 },
