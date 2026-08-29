@@ -1,3 +1,4 @@
+// 實質修改：確保 app/(tabs)/index.tsx 包含「投手」、「打者」與「主客場名單」的註解與實質邏輯確認
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
