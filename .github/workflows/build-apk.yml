@@ -76,9 +76,33 @@ jobs:
             -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" \
             -Dkotlin.daemon.jvm.options=-Xmx512m
 
+      - name: 重新命名 APK 檔名與設定 Artifact 名稱
+        if: success()
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          if [ -z "$COMMIT_MSG" ]; then
+            COMMIT_MSG="update"
+          fi
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1 | tr -cd '[:alnum:]_- ' | tr ' ' '_')
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          
+          mkdir -p dist-apk
+          APK_PATH=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          if [ -n "$APK_PATH" ]; then
+            NEW_NAME="baseball-scorer-${FIRST_LINE}-${TIMESTAMP}.apk"
+            cp "$APK_PATH" "dist-apk/$NEW_NAME"
+            echo "RENAMED_APK=dist-apk/$NEW_NAME" >> $GITHUB_ENV
+            echo "ARTIFACT_NAME=Android-Debug-APK-${FIRST_LINE}-${TIMESTAMP}" >> $GITHUB_ENV
+          else
+            echo "RENAMED_APK=" >> $GITHUB_ENV
+            echo "ARTIFACT_NAME=Android-Debug-APK-${TIMESTAMP}" >> $GITHUB_ENV
+          fi
+
       - name: 儲存 Debug APK 檔案供下載
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Android-Debug-APK
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: ${{ env.ARTIFACT_NAME || 'Android-Debug-APK' }}
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            ${{ env.RENAMED_APK }}
