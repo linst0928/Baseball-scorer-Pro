@@ -1,6 +1,25 @@
 // Load environment variables with proper priority (system > .env)
 import "./scripts/load-env.js";
 import type { ExpoConfig } from "expo/config";
+import fs from "fs";
+import path from "path";
+
+let buildInfo = {
+  version: "1.1.2",
+  versionCode: 149,
+  buildIdentifier: "1.1.2-20260827-V04",
+  buildDate: "2026-08-27"
+};
+
+try {
+  const buildInfoPath = path.join(process.cwd(), "build-info.json");
+  if (fs.existsSync(buildInfoPath)) {
+    const parsed = JSON.parse(fs.readFileSync(buildInfoPath, "utf8"));
+    buildInfo = { ...buildInfo, ...parsed };
+  }
+} catch (e) {
+  // fallback
+}
 
 // Keep this package identity aligned with the user's GitHub Android build.
 const rawBundleId = "com.linst0928.baseballscorerpro";
@@ -30,7 +49,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.1.2",
+  version: buildInfo.version,
   orientation: "landscape",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -55,7 +74,7 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
-    versionCode: 149,
+    versionCode: buildInfo.versionCode,
     permissions: ["POST_NOTIFICATIONS"],
     intentFilters: [
       {
@@ -133,8 +152,8 @@ const config: ExpoConfig = {
     reactCompiler: true,
   },
   extra: {
-    buildIdentifier: "1.1.2-20260827-V04",
-    buildDate: "2026-08-27",
+    buildIdentifier: buildInfo.buildIdentifier,
+    buildDate: buildInfo.buildDate,
   },
 };
 

@@ -55,6 +55,9 @@ jobs:
           pnpm check
           pnpm test
 
+      - name: 自動更新版本與建置識別碼
+        run: node scripts/update-build-version.mjs
+
       - name: 清除 APK 建置前快取與暫存產物
         run: pnpm run clean:release
 
