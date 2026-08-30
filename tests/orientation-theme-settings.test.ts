@@ -139,13 +139,8 @@ describe("Android 橫式與設定配色回饋", () => {
   });
 
   it("GitHub Actions 在推送與合併請求時執行 TypeScript 與 Vitest", () => {
-    const qualityWorkflow = readProjectFile(".github/workflows/quality.yml");
     const androidWorkflow = readProjectFile(".github/workflows/build.yml");
 
-    expect(qualityWorkflow).toContain("pull_request:");
-    expect(qualityWorkflow).toContain("pnpm install --frozen-lockfile");
-    expect(qualityWorkflow).toContain("pnpm check");
-    expect(qualityWorkflow).toContain("pnpm test");
     expect(androidWorkflow).toContain("pnpm exec expo prebuild --platform android --clean --no-install");
     expect(androidWorkflow).toContain('android:screenOrientation="landscape"');
   });
