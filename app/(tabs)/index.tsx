@@ -1,4 +1,3 @@
-// 實質修改：確保 app/(tabs)/index.tsx 包含「投手」、「打者」與「主客場名單」的註解與實質邏輯確認
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -2009,7 +2008,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
                 <Text style={styles.pitcherHeaderLabel}>投手</Text>
                 <View style={styles.pitcherMetaGroup}>
                   <Text style={styles.pitcherTeamName}>{pitchingTeam.name}</Text>
-                  <Text style={styles.pitcherNameText}>{pitcher ? `#${pitcher.number} ${pitcher.name}` : "尚未指派"}</Text>
+                  <Text style={styles.pitcherNameText}>{playerIdentityLabel(pitcher, "#— 尚未設定")}</Text>
                 </View>
               </View>
               <View style={[styles.pitcherLimitBox, pitchWarningStyle, pitchWarningPulse && pitchLimitWarning.level !== "none" && styles.pitchLimitPulse]}>
@@ -2039,8 +2038,8 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
               <View style={styles.batterTitleGroup}>
                 <Text style={[styles.batterHeaderLabel, { borderColor: teamAccentColor(battingTeam, game.half), color: teamAccentColor(battingTeam, game.half) }]}>打者</Text>
                 <View style={styles.batterMetaGroup}>
-                  <Text style={styles.batterTeamName}>{battingTeam.name}</Text>
-                  <Text style={styles.batterNameText}>{batter ? `第 ${atBatOrder} 棒 #${batter.number} ${batter.name}` : "尚未指派"}</Text>
+                  <Text style={styles.batterTeamName}>{battingTeam.name} · 第 {atBatOrder} 棒</Text>
+                  <Text style={styles.batterNameText}>{playerIdentityLabel(batter, "#— 尚未設定")}</Text>
                 </View>
               </View>
               <View style={styles.batterCountsGroup}>
@@ -2118,18 +2117,21 @@ function RunnerActionConfirmationModal({ action, game, battingPlayers, onClose, 
 function LiveLineupPanel({ away, home, game, batter, pitcher }: { away: Team; home: Team; game: Game; batter?: Player; pitcher?: Player }) {
   const getLineup = (team: Team) => {
     const lineupPlayers = [...team.players]
-      .filter(p => p.battingOrder !== undefined && p.battingOrder >= 1 && p.battingOrder <= 9)
+      .filter((p) => p.battingOrder !== undefined && p.battingOrder >= 1 && p.battingOrder <= 9)
       .sort((a, b) => (a.battingOrder ?? 0) - (b.battingOrder ?? 0));
-    if (lineupPlayers.length > 0) return lineupPlayers;
-    return team.players.slice(0, 9);
+    if (lineupPlayers.length >= 9) return lineupPlayers.slice(0, 9);
+    const existingIds = new Set(lineupPlayers.map((p) => p.id));
+    const remaining = team.players.filter((p) => !existingIds.has(p.id));
+    return [...lineupPlayers, ...remaining].slice(0, 9);
   };
 
   const awayLineup = getLineup(away);
   const homeLineup = getLineup(home);
 
-  const renderPlayerRow = (player: Player, index: number, isCurrent: boolean) => {
+  const renderPlayerRow = (player: Player | undefined, index: number, isCurrent: boolean, side: TeamSide) => {
+    if (!player) return null;
     return (
-      <View key={player.id || index} style={[styles.lineupRowItem, isCurrent && styles.lineupRowItemActive]}>
+      <View key={player.id || `${side}-${index}`} style={[styles.lineupRowItem, isCurrent && styles.lineupRowItemActive]}>
         <Text style={[styles.lineupOrderText, isCurrent && styles.lineupOrderTextActive]}>{index + 1}</Text>
         <Text style={[styles.lineupNumberText, isCurrent && styles.lineupNumberTextActive]}>#{player.number}</Text>
         <Text numberOfLines={1} style={[styles.lineupNameText, isCurrent && styles.lineupNameTextActive]}>{player.name}</Text>
@@ -2143,15 +2145,15 @@ function LiveLineupPanel({ away, home, game, batter, pitcher }: { away: Team; ho
       <Text style={styles.liveLineupTitle}>主客場 1~9 棒打線名單</Text>
       <View style={styles.liveLineupSubRow}>
         <View style={styles.liveLineupTeamCol}>
-          <Text style={[styles.liveLineupTeamHeader, { color: BRAND.red }]}>{home.name.slice(0, 6)} (主)</Text>
+          <Text style={[styles.liveLineupTeamHeader, { color: BRAND.blue }]}>{away.name.slice(0, 6)} (客)</Text>
           <View style={styles.lineupListWrap}>
-            {homeLineup.map((p, idx) => renderPlayerRow(p, idx, batter?.id === p.id))}
+            {awayLineup.map((p, idx) => renderPlayerRow(p, idx, game.half === "away" && batter?.id === p?.id, "away"))}
           </View>
         </View>
         <View style={styles.liveLineupTeamCol}>
-          <Text style={[styles.liveLineupTeamHeader, { color: BRAND.blue }]}>{away.name.slice(0, 6)} (客)</Text>
+          <Text style={[styles.liveLineupTeamHeader, { color: BRAND.red }]}>{home.name.slice(0, 6)} (主)</Text>
           <View style={styles.lineupListWrap}>
-            {awayLineup.map((p, idx) => renderPlayerRow(p, idx, batter?.id === p.id))}
+            {homeLineup.map((p, idx) => renderPlayerRow(p, idx, game.half === "home" && batter?.id === p?.id, "home"))}
           </View>
         </View>
       </View>
@@ -2183,7 +2185,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
   const third = runnerLabel(game.runners.third, "三壘");
   const batterLabel = `${batter?.battingOrder ?? "—"}棒 #${batter?.number ?? "—"} ${batter?.name ?? "待選打者"}`;
   return <View style={styles.liveInfieldGrid}>
-    <View style={styles.liveRunnerDefenseRow}><View style={styles.liveRunnerDefenseCopy}><Text style={styles.liveRunnerDefenseDot}>◉</Text><Text style={styles.liveRunnerDefenseText}>守備：#{pitcher?.number ?? "—"} {pitcher?.name ?? "尚未設定投手"}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="放大檢視壘包紀錄格" onPress={() => setShowBaseZoom(true)} style={({ pressed }) => [styles.liveRunnerZoomButton, pressed && styles.pressed]}><Text style={styles.liveRunnerZoomIcon}>⊕</Text><Text style={styles.liveRunnerZoomText}>放大</Text></Pressable></View>
+    <View style={styles.liveRunnerDefenseRow}><View style={styles.liveRunnerDefenseCopy}><Text style={styles.liveRunnerDefenseDot}>◉</Text><Text style={styles.liveRunnerDefenseText}>守備：{playerIdentityLabel(pitcher, "#— 尚未設定")}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="放大檢視壘包紀錄格" onPress={() => setShowBaseZoom(true)} style={({ pressed }) => [styles.liveRunnerZoomButton, pressed && styles.pressed]}><Text style={styles.liveRunnerZoomIcon}>⊕</Text><Text style={styles.liveRunnerZoomText}>放大</Text></Pressable></View>
     <View style={styles.liveInfieldWorkRow}>
       <View style={styles.liveRunnerCrossContainer}>
         <Image
@@ -2192,8 +2194,8 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           style={styles.liveRunnerCrossBackgroundImage}
         />
         
-        {/* 二壘 */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "4%", left: "50%", transform: [{ translateX: -46 }] }]}>
+        {/* 二壘 (Top Center) */}
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "5%", left: "50%", transform: [{ translateX: -46 }] }]}>
           <View style={[styles.liveRunnerScoreCell, game.runners.second && styles.liveRunnerScoreCellOccupied]}>
             <WasedaBaseCell {...quadrants[2]} dense style={{ borderWidth: 0 }} />
           </View>
@@ -2202,8 +2204,8 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           </View>
         </View>
 
-        {/* 三壘 */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "34%", left: "4%" }]}>
+        {/* 三壘 (Middle Left) */}
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "35%", left: "5%" }]}>
           <View style={[styles.liveRunnerScoreCell, game.runners.third && styles.liveRunnerScoreCellOccupied]}>
             <WasedaBaseCell {...quadrants[3]} dense style={{ borderWidth: 0 }} />
           </View>
@@ -2212,8 +2214,8 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           </View>
         </View>
 
-        {/* 投手丘 */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "34%", left: "50%", transform: [{ translateX: -36 }] }]}>
+        {/* 投手丘 (Center) */}
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "35%", left: "50%", transform: [{ translateX: -36 }] }]}>
           <View style={styles.liveRunnerMound}>
             <Text style={styles.liveRunnerMoundText}>投</Text>
             <Text style={styles.liveRunnerMoundText}>#{pitcher?.number ?? "—"}</Text>
@@ -2221,8 +2223,8 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           </View>
         </View>
 
-        {/* 一壘 */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "34%", right: "4%" }]}>
+        {/* 一壘 (Middle Right) */}
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "35%", right: "5%" }]}>
           <View style={[styles.liveRunnerScoreCell, game.runners.first && styles.liveRunnerScoreCellOccupied]}>
             <WasedaBaseCell {...quadrants[1]} dense style={{ borderWidth: 0 }} />
           </View>
@@ -2231,8 +2233,8 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           </View>
         </View>
 
-        {/* 本壘 */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { bottom: "4%", left: "50%", transform: [{ translateX: -46 }] }]}>
+        {/* 本壘 (Bottom Center) */}
+        <View style={[styles.liveRunnerAbsoluteSlot, { bottom: "5%", left: "50%", transform: [{ translateX: -46 }] }]}>
           <View style={styles.liveRunnerScoreCell}>
             <WasedaBaseCell {...quadrants[0]} dense style={{ borderWidth: 0 }} />
           </View>
