@@ -141,6 +141,8 @@ describe("Android 橫式與設定配色回饋", () => {
   it("GitHub Actions 在推送與合併請求時執行 TypeScript 與 Vitest", () => {
     const androidWorkflow = readProjectFile(".github/workflows/build.yml");
 
+    expect(androidWorkflow).toContain("pnpm check");
+    expect(androidWorkflow).toContain("pnpm test");
     expect(androidWorkflow).toContain("pnpm exec expo prebuild --platform android --clean --no-install");
     expect(androidWorkflow).toContain('android:screenOrientation="landscape"');
   });

@@ -89,7 +89,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
   return <View style={[styles.sheet, { borderColor: accent, backgroundColor: surface }]}>
     <View style={styles.titleRow}>
       <View style={styles.titleCopy}>
-        <Text style={[styles.sideCaption, { color: accent }]}>{side === "away" ? "客場／先攻" : "主場／後攻"}・早稻田式單場整體紀錄</Text>
+        <Text style={[styles.sideCaption, { color: accent }]}>{side === "away" ? "客場(先攻)／先攻" : "主場(先守)／後攻"}・早稻田式單場整體紀錄</Text>
         <Text style={styles.title}>{team.name}</Text>
         <Text style={styles.hint}>先發 1–9 棒為直向主列；每棒次固定預留三格球員承接欄，代打 PH、代跑 PR、代守 PF 與換投 P 會依發生局承接，超過三人時自動增加。右側每局由整個棒次共用實際打席格，不會為替換球員虛構打席。</Text>
       </View>

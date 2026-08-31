@@ -339,6 +339,7 @@ export type Game = {
   ageGroup?: AgeGroup;
   venue: string;
   date: string;
+  time?: string;
   weather?: WeatherCondition;
   status: GameStatus;
   homeTeamId: string;
@@ -1851,7 +1852,7 @@ export function getGameSummary(game: Game, teams: Team[]): { away: Team; home: T
   };
 }
 
-export function makeGame(input: { name: string; competition?: string; ageGroup?: AgeGroup; venue: string; date: string; weather?: WeatherCondition; awayTeamId: string; homeTeamId: string; awayRegisteredPlayerIds?: string[]; homeRegisteredPlayerIds?: string[]; awayLineup?: GameLineup; homeLineup?: GameLineup; pitchLimitThresholds?: [number, number, number]; maxInnings: 6 | 7 | 9 | 15 }): Game {
+export function makeGame(input: { name: string; competition?: string; ageGroup?: AgeGroup; venue: string; date: string; time?: string; weather?: WeatherCondition; awayTeamId: string; homeTeamId: string; awayRegisteredPlayerIds?: string[]; homeRegisteredPlayerIds?: string[]; awayLineup?: GameLineup; homeLineup?: GameLineup; pitchLimitThresholds?: [number, number, number]; maxInnings: 6 | 7 | 9 | 15 }): Game {
   const now = new Date().toISOString();
   return {
     id: `game-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -1860,6 +1861,7 @@ export function makeGame(input: { name: string; competition?: string; ageGroup?:
     ageGroup: input.ageGroup ?? "U12",
     venue: input.venue || "未設定場地",
     date: input.date || now.slice(0, 10),
+    time: input.time,
     weather: input.weather ?? "sunny",
     status: "setup",
     homeTeamId: input.homeTeamId,
