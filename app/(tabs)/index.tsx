@@ -2035,31 +2035,82 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
 
           {/* 下半部：打者與打席區塊 */}
           <View style={[styles.liveQuadrant, styles.middleBatterPanel, { backgroundColor: teamSurfaceColor(battingTeam, game.half), borderColor: teamAccentColor(battingTeam, game.half) }]}>
-            <View style={styles.batterSectionHeader}>
-              <View style={styles.batterTitleGroup}>
-                <Text style={[styles.batterHeaderLabel, { borderColor: teamAccentColor(battingTeam, game.half), color: teamAccentColor(battingTeam, game.half) }]}>打者</Text>
-                <View style={styles.batterMetaGroup}>
-                  <Text style={styles.batterTeamName}>{battingTeam.name} · 第 {atBatOrder} 棒</Text>
-                  <Text style={styles.batterNameText}>{playerIdentityLabel(batter, "#— 尚未設定")}</Text>
+            <View style={styles.batterTwoColumnLayout}>
+              {/* 左側欄位：打者基本資訊與 BSO 燈號 */}
+              <View style={styles.batterLeftCol}>
+                {/* 上方：打者基本資訊 */}
+                <View style={styles.batterHeaderRow}>
+                  <Text style={[styles.batterHeaderLabel, { borderColor: teamAccentColor(battingTeam, game.half), color: teamAccentColor(battingTeam, game.half) }]}>打者</Text>
+                  <Text style={styles.batterTeamName}>{battingTeam.name} - 第 {atBatOrder} 棒 - {(batter?.throwingHand || "R")}{(batter?.battingHand || "R")}</Text>
+                </View>
+                
+                <Text numberOfLines={1} style={styles.batterLargeName}>
+                  {batter ? `#${batter.number} ${batter.name}` : "#— 尚未設定"}
+                </Text>
+
+                {/* 下方：BSO 燈號 */}
+                <View style={styles.bsoContainer}>
+                  {/* B 行 */}
+                  <View style={styles.bsoRow}>
+                    <Text style={[styles.bsoLabel, { color: BRAND.blue }]}>B</Text>
+                    <View style={styles.bsoDots}>
+                      {[1, 2, 3].map((dot) => {
+                        const active = pitchDraft.balls >= dot && pitchDraft.balls < 4;
+                        return (
+                          <View
+                            key={`b-${dot}`}
+                            style={[
+                              styles.bsoDot,
+                              active ? { backgroundColor: BRAND.green, borderColor: BRAND.green } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
+                  </View>
+                  
+                  {/* S 行 */}
+                  <View style={styles.bsoRow}>
+                    <Text style={[styles.bsoLabel, { color: "#EA580C" }]}>S</Text>
+                    <View style={styles.bsoDots}>
+                      {[1, 2].map((dot) => {
+                        const active = pitchDraft.strikes >= dot && pitchDraft.strikes < 3;
+                        return (
+                          <View
+                            key={`s-${dot}`}
+                            style={[
+                              styles.bsoDot,
+                              active ? { backgroundColor: "#FBBF24", borderColor: "#FBBF24" } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* O 行 */}
+                  <View style={styles.bsoRow}>
+                    <Text style={[styles.bsoLabel, { color: BRAND.red }]}>O</Text>
+                    <View style={styles.bsoDots}>
+                      {[1, 2].map((dot) => {
+                        const active = game.outs >= dot && game.outs < 3;
+                        return (
+                          <View
+                            key={`o-${dot}`}
+                            style={[
+                              styles.bsoDot,
+                              active ? { backgroundColor: BRAND.red, borderColor: BRAND.red } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
+                  </View>
                 </View>
               </View>
-              <View style={styles.batterCountsGroup}>
-                <View style={styles.compactCountPill}>
-                  <Text style={styles.compactCountLabel}>壞</Text>
-                  <Text style={styles.compactCountValue}>{pitchDraft.balls}</Text>
-                </View>
-                <View style={styles.compactCountPill}>
-                  <Text style={[styles.compactCountLabel, styles.strikeLabelColor]}>好</Text>
-                  <Text style={[styles.compactCountValue, styles.strikeValueColor]}>{pitchDraft.strikes}</Text>
-                </View>
-                <View style={styles.compactCountPill}>
-                  <Text style={[styles.compactCountLabel, styles.outLabelColor]}>出</Text>
-                  <Text style={[styles.compactCountValue, styles.outValueColor]}>{game.outs}</Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.currentAtBatWorkRow}>
-              <View style={styles.atBatRecordPanel}>
+
+              {/* 右側欄位：打席紀錄內容 */}
+              <View style={styles.batterRightCol}>
                 <CurrentAtBatPanel game={game} pitchDraft={pitchDraft} batter={batter} completedAtBat={latestCompletedAtBat} completedBatter={latestCompletedBatter} selectedResult={selectedResult} fieldingPosition={fieldingPosition} recordColumn={recordColumnDraft} />
               </View>
             </View>
@@ -4884,6 +4935,16 @@ const styles = StyleSheet.create({
   pitcherHistoryChipTextActive: { color: BRAND.navy, fontWeight: "900" },
 
   middleBatterPanel: { borderWidth: 1.5, padding: 10 },
+  batterTwoColumnLayout: { flexDirection: "row", gap: 12, alignItems: "stretch", flex: 1, minHeight: 140 },
+  batterLeftCol: { flex: 1.1, gap: 6, justifyContent: "space-between" },
+  batterRightCol: { flex: 1.5, minWidth: 0 },
+  batterHeaderRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  batterLargeName: { color: BRAND.ink, fontSize: 18, fontWeight: "900", marginVertical: 2 },
+  bsoContainer: { gap: 6, marginTop: 4, alignSelf: "flex-start" },
+  bsoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  bsoLabel: { fontSize: 12, fontWeight: "900", width: 12, textAlign: "center" },
+  bsoDots: { flexDirection: "row", gap: 6 },
+  bsoDot: { width: 15, height: 15, borderRadius: 7.5, borderWidth: 1.5 },
   batterSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
   batterTitleGroup: { flexDirection: "row", alignItems: "center", gap: 10 },
   batterHeaderLabel: { backgroundColor: BRAND.white, borderWidth: 1.5, fontSize: 13, fontWeight: "900", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
