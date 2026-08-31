@@ -38,7 +38,7 @@ export function buildGameReportHtml(game: Game, away: Team, home: Team, filter?:
     <h1>${escapeHtml(game.name)}</h1><p>${escapeHtml(away.name)}（客）對 ${escapeHtml(home.name)}（主）</p><p>${escapeHtml(game.venue)} · ${escapeHtml(game.date)} · ${game.maxInnings} 局制 · 匯出範圍：${escapeHtml(describeFilter(filter))}</p>
     <div class="score">${escapeHtml(away.name)} ${summary.awayRuns}　—　${summary.homeRuns} ${escapeHtml(home.name)}</div>
     <div class="summary"><div class="stat"><b>${summary.hits}</b>安打</div><div class="stat"><b>${summary.walks}</b>四壞</div><div class="stat"><b>${summary.strikeouts}</b>三振</div><div class="stat"><b>${summary.errors}</b>失誤</div></div>
-    <h2>逐局比分</h2><table><thead><tr><th>局</th><th>客場(先攻)</th><th>主場(先守)</th></tr></thead><tbody>${rows || '<tr><td colspan="3">選定範圍尚無比分紀錄</td></tr>'}</tbody></table>
+    <h2>逐局比分</h2><table><thead><tr><th>局</th><th>客場</th><th>主場</th></tr></thead><tbody>${rows || '<tr><td colspan="3">選定範圍尚無比分紀錄</td></tr>'}</tbody></table>
     <h2>逐球符號</h2><table><thead><tr><th>局</th><th>紀錄</th><th>結果</th><th>球數</th></tr></thead><tbody>${events || '<tr><td colspan="4">選定範圍尚無逐球紀錄</td></tr>'}</tbody></table>
     <h2>特殊事件</h2><table><thead><tr><th>局</th><th>紀錄</th><th>事件</th><th>影響</th></tr></thead><tbody>${specialEvents || '<tr><td colspan="4">選定範圍尚無特殊事件</td></tr>'}</tbody></table>
     <h2>完整換人紀錄</h2><table><thead><tr><th>局</th><th>球隊</th><th>球員</th><th>位置／角色</th></tr></thead><tbody>${substitutions || '<tr><td colspan="4">選定範圍尚無換人紀錄</td></tr>'}</tbody></table>
