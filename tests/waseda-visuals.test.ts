@@ -50,4 +50,35 @@ describe("早稻田跑壘藍線與盜壘箭頭", () => {
   it("一壘安打後原一壘跑者推進二壘時，安打紅線與不同壘間的藍線須同步保留", () => {
     expect(getRunnerAdvanceLines({ result: "1B", runnerAdvance: { type: "ADV", fromBase: 1, toBase: 2 } })).toEqual([{ segment: "first-to-second", hasArrow: false }]);
   });
+
+  it("確認所有壘包的推進與盜壘(不包含安打)流程皆會顯示藍色線條，而安打流程皆會顯示紅色線條", () => {
+    // 1. 推進、盜壘流程 -> 藍色線條 (不包含安打重疊部分)
+    // 0-1 壘間藍線 (由保送、觸身球、失誤、不死三振等推進觸發)
+    expect(getRunnerAdvanceLines({ result: "BB" })).toEqual([{ segment: "home-to-first", hasArrow: false }]);
+    expect(getRunnerAdvanceLines({ result: "HBP" })).toEqual([{ segment: "home-to-first", hasArrow: false }]);
+    expect(getRunnerAdvanceLines({ result: "E" })).toEqual([{ segment: "home-to-first", hasArrow: false }]);
+    expect(getRunnerAdvanceLines({ result: "K", modifiers: ["K+（不死三振）"] })).toEqual([{ segment: "home-to-first", hasArrow: false }]);
+
+    // 1-2 壘間藍線 (一般推進、盜壘成功)
+    expect(getRunnerAdvanceLines({ result: "1B", runnerAdvance: { type: "ADV", fromBase: 1, toBase: 2 } })).toEqual([{ segment: "first-to-second", hasArrow: false }]);
+    expect(getRunnerAdvanceLines({ result: "1B", runnerAdvance: { type: "SB", fromBase: 1, toBase: 2 } })).toEqual([{ segment: "first-to-second", hasArrow: true, label: "SB" }]);
+
+    // 2-3 壘間藍線 (一般推進、盜壘成功)
+    expect(getRunnerAdvanceLines({ result: "1B", runnerAdvance: { type: "ADV", fromBase: 2, toBase: 3 } })).toEqual([{ segment: "second-to-third", hasArrow: false }]);
+    expect(getRunnerAdvanceLines({ result: "1B", runnerAdvance: { type: "SB", fromBase: 2, toBase: 3 } })).toEqual([{ segment: "second-to-third", hasArrow: true, label: "SB" }]);
+
+    // 3-4 (三壘回本壘) 壘間藍線 (一般推進回本壘得分、盜壘回本壘得分)
+    expect(getRunnerAdvanceLines({ result: "1B", runnerAdvance: { type: "ADV", fromBase: 3, toBase: 4 } })).toEqual([{ segment: "third-to-home", hasArrow: false }]);
+    expect(getRunnerAdvanceLines({ result: "1B", runnerAdvance: { type: "SB", fromBase: 3, toBase: 4 } })).toEqual([{ segment: "third-to-home", hasArrow: true, label: "SB" }]);
+
+    // 2. 安打流程 -> 紅色線條
+    // 一壘安打：本壘到一壘紅色線條
+    expect(getHitAdvanceSegments("1B")).toEqual(["home-to-first"]);
+    // 二壘安打：本壘到一壘、一壘到二壘紅色線條
+    expect(getHitAdvanceSegments("2B")).toEqual(["home-to-first", "first-to-second"]);
+    // 三壘安打：本壘到一壘、一壘到二壘、二壘到三壘紅色線條
+    expect(getHitAdvanceSegments("3B")).toEqual(["home-to-first", "first-to-second", "second-to-third"]);
+    // 全壘打：本壘到一壘、一壘到二壘、二壘到三壘、三壘到本壘紅色線條
+    expect(getHitAdvanceSegments("HR")).toEqual(["home-to-first", "first-to-second", "second-to-third", "third-to-home"]);
+  });
 });
