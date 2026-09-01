@@ -1089,7 +1089,7 @@ function App() {
     setShowTutorial(true);
   }, []);
 
-  const recordOutcome = useCallback((result: AtBatResult, pitchOverride = pitchDraft, recordColumnOverride = recordColumnDraft) => {
+  const recordOutcome = useCallback((result: AtBatResult, pitchOverride = pitchDraft, recordColumnOverride = recordColumnDraft, customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>) => {
     if (!activeGame || !currentBatter || !currentPitcher) return;
     const droppedThirdStrikeRequested = result === "K" && (recordColumnOverride.modifiers ?? []).some((modifier) => /不死三振|dropped\s*third|K\+/i.test(modifier));
     const droppedThirdStrike = droppedThirdStrikeRequested && (!activeGame.runners.first || activeGame.outs >= 2);
@@ -1110,9 +1110,36 @@ function App() {
     if (droppedThirdStrikeRequested && !droppedThirdStrike) {
       Alert.alert("不死三振不成立", "一壘有人且未滿兩出局時不可跑壘；本打席已依早稻田核心規範記為一般三振出局。");
     }
-    const runnerResult = sacrificeResult ?? (finalRecordColumn.fieldingPlay === "FC"
+    const baseRunnerResult = sacrificeResult ?? (finalRecordColumn.fieldingPlay === "FC"
       ? nextFieldersChoiceRunnerState(activeGame.runners, currentBatter.id)
       : nextRunnerState(activeGame.runners, result, currentBatter.id, { droppedThirdStrike, outs: activeGame.outs }));
+    
+    // 如果有自訂跑者進壘選取，將跑者壘位與得分進行調整更新
+    let runnerResult = baseRunnerResult;
+    if (customRunnerAdvances && customRunnerAdvances.length > 0) {
+      const nextRunners = { ...baseRunnerResult.runners };
+      let customRuns = baseRunnerResult.runs;
+      customRunnerAdvances.forEach((adv) => {
+        const runnerId = adv.fromBase === 1 ? activeGame.runners.first : adv.fromBase === 2 ? activeGame.runners.second : activeGame.runners.third;
+        if (!runnerId) return;
+        if (adv.fromBase === 1 && nextRunners.first === runnerId) nextRunners.first = null;
+        if (adv.fromBase === 2 && nextRunners.second === runnerId) nextRunners.second = null;
+        if (adv.fromBase === 3 && nextRunners.third === runnerId) nextRunners.third = null;
+      });
+      customRunnerAdvances.forEach((adv) => {
+        const runnerId = adv.fromBase === 1 ? activeGame.runners.first : adv.fromBase === 2 ? activeGame.runners.second : activeGame.runners.third;
+        if (!runnerId) return;
+        if (adv.toBase === 4) {
+          customRuns += 1;
+        } else if (adv.toBase === 3) {
+          nextRunners.third = runnerId;
+        } else if (adv.toBase === 2) {
+          nextRunners.second = runnerId;
+        }
+      });
+      runnerResult = { runners: nextRunners, runs: customRuns };
+    }
+
     gameHistoryRef.current[activeGame.id] = [...(gameHistoryRef.current[activeGame.id] ?? []), { game: activeGame, pitchDraft, fieldingPosition, selectedResult, recordColumnDraft }].slice(-20);
     const isBallInPlay = ["1B", "2B", "3B", "HR", "F", "G", "E"].includes(result);
     const locations = [...(pitchOverride.locations ?? [])];
@@ -1147,7 +1174,7 @@ function App() {
       timestamp: new Date().toISOString(),
     };
     updateActiveGame((game) => {
-      const updated = updateGameAfterEvent(game, event, runnerResult.runners, runnerResult.runs);
+      const updated = updateGameAfterEvent(game, event, runnerResult.runners, runnerResult.runs, customRunnerAdvances);
       return game.half === "away"
         ? { ...updated, awayBatterIndex: game.awayBatterIndex + 1 }
         : { ...updated, homeBatterIndex: game.homeBatterIndex + 1 };
@@ -1919,6 +1946,9 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
   const [selectedRailInning, setSelectedRailInning] = useState(game.inning);
   const [summaryMode, setSummaryMode] = useState<"compact" | "detailed">("compact");
   const [runnerActionConfirmation, setRunnerActionConfirmation] = useState<"CS" | "WP" | "PB" | "BK" | null>(null);
+  const handleWorkflowCommit = useCallback((result: AtBatResult, customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>) => {
+    onOutcome(result, pitchDraft, recordColumnDraft, customRunnerAdvances);
+  }, [onOutcome, pitchDraft, recordColumnDraft]);
   const completedPitcherHistories = useMemo(() => getPitcherPitchLimitHistories(game), [game]);
   const completedCurrentPitcherPitches = completedPitcherHistories.find((history) => history.pitcherId === pitcher?.id)?.pitches ?? 0;
   const currentPitcherPitches = completedCurrentPitcherPitches + pitchDraft.total;
@@ -2118,7 +2148,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
 
           <View style={[styles.liveQuadrant, styles.middleControlsPanel]}>
             <LivePanelTitle number="4" title="擊出／觸擊後事件、換人與後兩棒次" subtitle="選擇「• 擊出球」或「⌁ 觸擊」後，完成球性、方向、結果與傳球事件。" />
-            {selectedResult === "K" ? <View style={styles.battedBallWaitingCard}><Text style={styles.battedBallWaitingTitle}>第三好球確認</Text><Text style={styles.battedBallWaitingHint}>請確認捕手是否接捕第三好球；一般三振會記出局，只有未接捕且壘況合法時才可記 K+ 並讓打者上一壘。</Text><View style={styles.substitutionQuickRow}><Button label="一般 K：記出局" onPress={() => onOutcome("K", buildStrikeoutRecord(false))} variant={droppedThirdStrikeSelected ? "secondary" : "primary"} compact touch fluid /><Button label="K+：未接捕上一壘" disabled={!droppedThirdStrikeEligibility.allowed} onPress={() => onOutcome("K", buildStrikeoutRecord(true))} variant={droppedThirdStrikeSelected ? "primary" : "secondary"} compact touch fluid /></View><Text style={styles.recordCorrectionSafetyText}>{droppedThirdStrikeEligibility.allowed ? "K+ 合法：第三好球未接捕後，可記 K 統計並使打者安全上一壘。" : `K+ 不可用：${droppedThirdStrikeEligibility.reason ?? "一壘有人且未滿兩出局時，打者仍為三振出局。"}`}</Text></View> : <BattedBallWorkflowControls active={opensBattedBallWorkflow(pitchDraft.locations?.at(-1)?.outcome)} triggerOutcome={pitchDraft.locations?.at(-1)?.outcome} batter={batter} battingPlayers={battingTeam.players} runners={game.runners} games={games} draft={recordColumnDraft} result={selectedResult} fieldingPosition={fieldingPosition} onChange={onRecordColumnChange} onSelectResult={onSelectResult} onClearResult={onClearSelectedResult} onPosition={selectPosition} onCommit={onOutcome} onOpenSymbolHelp={onOpenSymbolHelp} onHitByPitch={() => onOutcome("HBP")} />}
+            {selectedResult === "K" ? <View style={styles.battedBallWaitingCard}><Text style={styles.battedBallWaitingTitle}>第三好球確認</Text><Text style={styles.battedBallWaitingHint}>請確認捕手是否接捕第三好球；一般三振會記出局，只有未接捕且壘況合法時才可記 K+ 並讓打者上一壘。</Text><View style={styles.substitutionQuickRow}><Button label="一般 K：記出局" onPress={() => onOutcome("K", buildStrikeoutRecord(false))} variant={droppedThirdStrikeSelected ? "secondary" : "primary"} compact touch fluid /><Button label="K+：未接捕上一壘" disabled={!droppedThirdStrikeEligibility.allowed} onPress={() => onOutcome("K", buildStrikeoutRecord(true))} variant={droppedThirdStrikeSelected ? "primary" : "secondary"} compact touch fluid /></View><Text style={styles.recordCorrectionSafetyText}>{droppedThirdStrikeEligibility.allowed ? "K+ 合法：第三好球未接捕後，可記 K 統計並使打者安全上一壘。" : `K+ 不可用：${droppedThirdStrikeEligibility.reason ?? "一壘有人且未滿兩出局時，打者仍為三振出局。"}`}</Text></View> : <BattedBallWorkflowControls active={opensBattedBallWorkflow(pitchDraft.locations?.at(-1)?.outcome)} triggerOutcome={pitchDraft.locations?.at(-1)?.outcome} batter={batter} battingPlayers={battingTeam.players} runners={game.runners} games={games} draft={recordColumnDraft} result={selectedResult} fieldingPosition={fieldingPosition} onChange={onRecordColumnChange} onSelectResult={onSelectResult} onClearResult={onClearSelectedResult} onPosition={selectPosition} onCommit={handleWorkflowCommit} onOpenSymbolHelp={onOpenSymbolHelp} onHitByPitch={() => onOutcome("HBP")} />}
             <View style={styles.substitutionQuickRow}><Button label="代打" onPress={() => onSubstitute("代打")} variant="secondary" compact touch fluid /><Button label="代跑" onPress={() => onSubstitute("代跑")} variant="secondary" compact touch fluid /><Button label="換投" onPress={() => onSubstitute("換投")} variant="secondary" compact touch fluid /></View>
             <View style={styles.substitutionQuickRow}><Button label="代守" onPress={() => onSubstitute("換守")} variant="secondary" compact touch fluid /><Button label="特殊事件" onPress={onSpecialEvent} variant="secondary" compact touch fluid /><Button label="結束比賽" onPress={onFinish} variant={game.status === "final" ? "secondary" : "danger"} compact touch fluid /></View>
             <BatterQueuePreview players={nextBatters} events={game.events} />
@@ -2384,11 +2414,14 @@ const RECORD_CORRECTION_RESULT_SYMBOL_IDS: Partial<Record<AtBatResult | "FC" | "
   G: "ground-out",
 };
 
-function BattedBallWorkflowControls({ active, triggerOutcome, batter, battingPlayers, runners, games, draft, result, fieldingPosition, onChange, onSelectResult, onClearResult, onPosition, onCommit, onOpenSymbolHelp, onHitByPitch }: { active: boolean; triggerOutcome?: PitchOutcome; batter?: Player; battingPlayers: Player[]; runners: Game["runners"]; games: Game[]; draft: RecordColumn; result: AtBatResult | null; fieldingPosition: string; onChange: (value: RecordColumn) => void; onSelectResult: (result: AtBatResult) => void; onClearResult: () => void; onPosition: (position: string) => void; onCommit: (result: AtBatResult) => void; onOpenSymbolHelp: (help: SymbolHelp) => void; onHitByPitch: () => void }) {
+function BattedBallWorkflowControls({ active, triggerOutcome, batter, battingPlayers, runners, games, draft, result, fieldingPosition, onChange, onSelectResult, onClearResult, onPosition, onCommit, onOpenSymbolHelp, onHitByPitch }: { active: boolean; triggerOutcome?: PitchOutcome; batter?: Player; battingPlayers: Player[]; runners: Game["runners"]; games: Game[]; draft: RecordColumn; result: AtBatResult | null; fieldingPosition: string; onChange: (value: RecordColumn) => void; onSelectResult: (result: AtBatResult) => void; onClearResult: () => void; onPosition: (position: string) => void; onCommit: (result: AtBatResult, customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>) => void; onOpenSymbolHelp: (help: SymbolHelp) => void; onHitByPitch: () => void }) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [fieldingEvent, setFieldingEvent] = useState<FieldingEventChoice | null>(null);
   const [sfNoScoreWarning, setSfNoScoreWarning] = useState(false);
   const [showFcConfirmation, setShowFcConfirmation] = useState(false);
+  const [runnerTarget1, setRunnerTarget1] = useState<2 | 3 | 4>(2);
+  const [runnerTarget2, setRunnerTarget2] = useState<3 | 4>(3);
+  const [runnerTarget3, setRunnerTarget3] = useState<4>(4);
   const modifiers = draft.modifiers ?? [];
   const ballInPlayResults = RESULT_SHORTCUTS.filter((shortcut) => ["1B", "2B", "3B", "HR", "F", "G", "E"].includes(shortcut.result));
   const fieldingExample = result ? getFieldingExampleNotation(result, draft.battedBallPosition ?? fieldingPosition, draft) : "";
@@ -2404,12 +2437,20 @@ function BattedBallWorkflowControls({ active, triggerOutcome, batter, battingPla
   const fieldingSuggestions = useMemo(() => getFieldingSequenceSuggestions({ battedBallPosition: draft.battedBallPosition ?? fieldingPosition, result, runners, games }), [draft.battedBallPosition, fieldingPosition, games, result, runners]);
 
   useEffect(() => {
-    if (!active) {
-      setStep(1);
-      setFieldingEvent(null);
+    if (result === "1B") {
+      setRunnerTarget1(2);
+      setRunnerTarget2(3);
+      setRunnerTarget3(4);
+    } else if (result === "2B") {
+      setRunnerTarget1(3);
+      setRunnerTarget2(4);
+      setRunnerTarget3(4);
+    } else if (result === "3B" || result === "HR") {
+      setRunnerTarget1(4);
+      setRunnerTarget2(4);
+      setRunnerTarget3(4);
     }
-  }, [active, batter?.id]);
-  const needsSequence = fieldingEvent !== null && fieldingEvent !== "none";
+  }, [result]);
 
   useEffect(() => {
     if (!active) {
@@ -2417,6 +2458,7 @@ function BattedBallWorkflowControls({ active, triggerOutcome, batter, battingPla
       setFieldingEvent(null);
     }
   }, [active, batter?.id]);
+  const needsSequence = fieldingEvent !== null && fieldingEvent !== "none";
 
   const chooseFieldingEvent = (choice: FieldingEventChoice) => {
     setFieldingEvent(choice);
@@ -2427,8 +2469,6 @@ function BattedBallWorkflowControls({ active, triggerOutcome, batter, battingPla
       return;
     }
     if (choice === "FC") {
-      // FC 是守備選擇，不可保留先前誤選的一壘安打等安打結果。
-      // 以滾地守備結果保存，讓打者計 AB 而不計 H；跑者／出局則由 FC 專用結算處理。
       onSelectResult("G");
     }
     onChange({ ...draft, fieldingPlay: choice, modifiers: cleanModifiers });
@@ -2474,6 +2514,24 @@ function BattedBallWorkflowControls({ active, triggerOutcome, batter, battingPla
 
   const readyToCommit = Boolean(result && fieldingEvent && (!needsSequence || draft.fieldingSequence?.trim()));
   const stepLabels = ["球性", "方向／位置", "結果", "傳球事件"];
+
+  const hasRunnersOnBase = Boolean(runners.first || runners.second || runners.third);
+  const runner1Player = battingPlayers.find((p) => p.id === runners.first);
+  const runner2Player = battingPlayers.find((p) => p.id === runners.second);
+  const runner3Player = battingPlayers.find((p) => p.id === runners.third);
+
+  const handleCommitWork = () => {
+    if (!result) return;
+    if (fieldingEvent === "FC") {
+      setShowFcConfirmation(true);
+      return;
+    }
+    const customAdvances: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }> = [];
+    if (runners.first) customAdvances.push({ runnerId: runners.first, fromBase: 1, toBase: runnerTarget1 });
+    if (runners.second) customAdvances.push({ runnerId: runners.second, fromBase: 2, toBase: runnerTarget2 });
+    if (runners.third) customAdvances.push({ runnerId: runners.third, fromBase: 3, toBase: runnerTarget3 });
+    onCommit(result, customAdvances);
+  };
   return <View style={styles.battedBallWorkflowCard}>
     <View style={styles.battedBallWorkflowHeader}><View><Text style={styles.battedBallWorkflowTitle}>擊出／觸擊後打擊事件</Text><Text style={styles.battedBallWorkflowHint}>已記錄「{triggerLabel}」；請依序完成四步，最後才寫入本打席。</Text></View><Text style={styles.battedBallWorkflowPreview}>{result ? formatRecordColumnNotation(result, fieldingPosition, draft) : "第 1 步"}</Text></View>{step === 4 && needsSequence ? <FieldingSequenceButtonEditor value={draft.fieldingSequence ?? ""} suggestions={fieldingSuggestions} hitDirection={draft.battedBallPosition ?? fieldingPosition} onChange={(fieldingSequence) => onChange({ ...draft, fieldingSequence })} onPreset={(preset) => { const cleanModifiers = modifiers.filter((item) => !/^(DP|TP|FC)（/.test(item)); setFieldingEvent(preset.fieldingPlay ?? "routine"); onChange({ ...draft, fieldingSequence: preset.sequence, fieldingPlay: preset.fieldingPlay, modifiers: cleanModifiers }); }} /> : null}
     <View style={styles.battedBallStepRow}>{stepLabels.map((label, index) => { const stepNumber = (index + 1) as 1 | 2 | 3 | 4; return <View key={label} style={[styles.battedBallStepChip, step === stepNumber && styles.battedBallStepChipActive, step > stepNumber && styles.battedBallStepChipDone]}><Text style={[styles.battedBallStepIndex, step >= stepNumber && styles.battedBallStepIndexActive]}>{stepNumber}</Text><Text style={[styles.battedBallStepText, step >= stepNumber && styles.battedBallStepTextActive]}>{label}</Text></View>; })}</View>
@@ -2503,7 +2561,36 @@ function BattedBallWorkflowControls({ active, triggerOutcome, batter, battingPla
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.battedBallFieldingChoices}>{([{ id: "none", label: "無傳接", detail: "安打／直接出局" }, { id: "routine", label: "一般傳接", detail: "例：5ー3、5Eー3" }, ...FIELDING_PLAY_CHOICES] as Array<{ id: FieldingEventChoice; label: string; detail: string }>).map((choice) => <Pressable key={choice.id} onPress={() => chooseFieldingEvent(choice.id)} onLongPress={() => { if (choice.id === "DP" || choice.id === "TP" || choice.id === "FC") onOpenSymbolHelp(getModifierSymbolHelp(`${choice.id}（${choice.detail}）`)); }} delayLongPress={420} accessibilityHint="長按查看早稻田符號說明" style={({ pressed }) => [styles.battedBallFieldingChoice, fieldingEvent === choice.id && styles.battedBallFieldingChoiceActive, pressed && styles.pressed]}><Text style={[styles.battedBallFieldingChoiceCode, fieldingEvent === choice.id && styles.battedBallFieldingChoiceCodeActive]}>{choice.label}</Text><Text style={[styles.battedBallFieldingChoiceDetail, fieldingEvent === choice.id && styles.battedBallFieldingChoiceDetailActive]}>{choice.detail}</Text></Pressable>)}</ScrollView>
       {needsSequence ? <View style={styles.fieldingPlayEditor}><View style={styles.fieldingPlayHeader}><Text style={styles.recordColumnFieldLabel}>即時早稻田預覽</Text><Text style={styles.fieldingPlayPreview}>{result ? formatRecordColumnNotation(result, fieldingPosition, draft) || "請選擇傳接球序列" : "請選擇打擊結果"}</Text></View></View> : null}
       <View style={styles.recordColumnDetailRow}><View style={styles.recordColumnSequenceWrap}><Text style={styles.recordColumnFieldLabel}>打點（選填）</Text><Text style={styles.recordColumnFieldHint}>選擇得分打點後，會隨此打席同步計入統計。</Text></View><View style={styles.recordColumnRbiWrap}><View style={styles.recordColumnRbiRow}>{[0, 1, 2, 3, 4].map((value) => <Pressable key={value} onPress={() => setRbi(value)} style={({ pressed }) => [styles.recordColumnRbiButton, draft.rbi === value && styles.recordColumnRbiButtonActive, pressed && styles.pressed]}><Text style={[styles.recordColumnRbiText, draft.rbi === value && styles.recordColumnRbiTextActive]}>{value}</Text></Pressable>)}</View></View></View>
-      <View style={styles.battedBallCompletionRow}><Button label="上一步" onPress={() => clearAfter(3)} variant="secondary" compact touch /><Button label={fieldingEvent === "FC" ? "確認 FC 壘位" : "完成並寫入打席"} onPress={() => { if (!result) return; if (fieldingEvent === "FC") { setShowFcConfirmation(true); return; } onCommit(result); }} compact touch disabled={!readyToCommit} /></View>
+      {hasRunnersOnBase ? <View style={styles.sacrificeFlyReasonPanel}>
+        <Text style={styles.sacrificeFlyReasonTitle}>分別確認壘上跑者進壘狀態</Text>
+        <View style={{ gap: 6 }}>
+          {runners.third ? <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+            <Text style={{ color: BRAND.navy, fontSize: 10, fontWeight: "900" }}>三壘 #{runner3Player?.number ?? "—"} {runner3Player?.name ?? "跑者"}：</Text>
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              <Button label="留在三壘 (3)" onPress={() => setRunnerTarget3(3 as any)} variant={runnerTarget3 === (3 as any) ? "primary" : "secondary"} compact />
+              <Button label="推進回本得分 (4)" onPress={() => setRunnerTarget3(4)} variant={runnerTarget3 === 4 ? "primary" : "secondary"} compact />
+            </View>
+          </View> : null}
+          {runners.second ? <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+            <Text style={{ color: BRAND.navy, fontSize: 10, fontWeight: "900" }}>二壘 #{runner2Player?.number ?? "—"} {runner2Player?.name ?? "跑者"}：</Text>
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              <Button label="留在二壘 (2)" onPress={() => setRunnerTarget2(2 as any)} variant={runnerTarget2 === (2 as any) ? "primary" : "secondary"} compact />
+              <Button label="推進三壘 (3)" onPress={() => setRunnerTarget2(3)} variant={runnerTarget2 === 3 ? "primary" : "secondary"} compact />
+              <Button label="回本得分 (4)" onPress={() => setRunnerTarget2(4)} variant={runnerTarget2 === 4 ? "primary" : "secondary"} compact />
+            </View>
+          </View> : null}
+          {runners.first ? <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+            <Text style={{ color: BRAND.navy, fontSize: 10, fontWeight: "900" }}>一壘 #{runner1Player?.number ?? "—"} {runner1Player?.name ?? "跑者"}：</Text>
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              <Button label="留在一壘 (1)" onPress={() => setRunnerTarget1(1 as any)} variant={runnerTarget1 === (1 as any) ? "primary" : "secondary"} compact />
+              <Button label="推進二壘 (2)" onPress={() => setRunnerTarget1(2)} variant={runnerTarget1 === 2 ? "primary" : "secondary"} compact />
+              <Button label="推進三壘 (3)" onPress={() => setRunnerTarget1(3)} variant={runnerTarget1 === 3 ? "primary" : "secondary"} compact />
+              <Button label="回本得分 (4)" onPress={() => setRunnerTarget1(4)} variant={runnerTarget1 === 4 ? "primary" : "secondary"} compact />
+            </View>
+          </View> : null}
+        </View>
+      </View> : null}
+      <View style={styles.battedBallCompletionRow}><Button label="上一步" onPress={() => clearAfter(3)} variant="secondary" compact touch /><Button label={fieldingEvent === "FC" ? "確認 FC 壘位" : "完成並寫入打席"} onPress={handleCommitWork} compact touch disabled={!readyToCommit} /></View>
     </View> : null}
     <FieldersChoiceConfirmationModal visible={showFcConfirmation} batter={batter} battingPlayers={battingPlayers} runners={runners} result={result} draft={draft} fieldingPosition={fieldingPosition} onClose={() => setShowFcConfirmation(false)} onConfirm={() => { if (result) onCommit(result); setShowFcConfirmation(false); }} />
   </View>;

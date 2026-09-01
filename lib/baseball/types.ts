@@ -1699,12 +1699,28 @@ export function updateGameAfterSpecialEvent(game: Game, event: SpecialEvent, run
   };
 }
 
-export function updateGameAfterEvent(game: Game, event: AtBatEvent, runnerState: RunnerState, runs: number): Game {
+export function updateGameAfterEvent(
+  game: Game,
+  event: AtBatEvent,
+  runnerState: RunnerState,
+  runs: number,
+  customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>,
+): Game {
   const nextScore = ensureScoreThroughInning(game.score, event.inning).map((row) => row.inning === event.inning ? { ...row, [event.half]: row[event.half] + runs } : row);
   const forcedBaseOnBallsAdvances = getForcedBaseOnBallsAdvances(game.runners, event.result, event.id, {
     droppedThirdStrike: event.droppedThirdStrike,
     outs: game.outs,
   });
+  const customAdvances = (customRunnerAdvances ?? []).map(({ runnerId, fromBase, toBase }) => ({
+    runnerId,
+    advance: {
+      id: `${event.id}-custom-${runnerId}-${fromBase}-${toBase}`,
+      type: "ADV" as const,
+      fromBase,
+      toBase,
+      notation: `推進 ${fromBase}→${toBase === 4 ? "得分" : toBase}`,
+    },
+  }));
   const isFieldersChoice = event.recordColumn?.fieldingPlay === "FC";
   const fieldersChoiceRunnerOut = isFieldersChoice && Boolean(game.runners.first);
   const batterOut = isAtBatOut(event) && !isFieldersChoice;
@@ -1755,14 +1771,27 @@ export function updateGameAfterEvent(game: Game, event: AtBatEvent, runnerState:
       }
     }
   });
+  const customAdvanceSourceIndexes = new Map<string, number>();
+  customAdvances.forEach(({ runnerId }) => {
+    for (let index = game.events.length - 1; index >= 0; index -= 1) {
+      if (game.events[index].batterId === runnerId) {
+        customAdvanceSourceIndexes.set(runnerId, index);
+        break;
+      }
+    }
+  });
   const eventsWithRunnerAdvances = game.events.map((atBat, index) => {
     const runnerOut = runnerOutAdvances.find((entry) => runnerOutSourceIndexes.get(entry.runnerId) === index);
     const forcedAdvances = forcedBaseOnBallsAdvances
       .filter((entry) => forcedAdvanceSourceIndexes.get(entry.runnerId) === index)
       .map((entry) => entry.advance);
+    const customAdvs = customAdvances
+      .filter((entry) => customAdvanceSourceIndexes.get(entry.runnerId) === index)
+      .map((entry) => entry.advance);
     const advances = [
       ...(runnerOut ? [runnerOut.advance] : []),
       ...forcedAdvances,
+      ...customAdvs,
     ];
     return advances.length > 0 ? { ...atBat, runnerAdvances: [...(atBat.runnerAdvances ?? []), ...advances] } : atBat;
   });

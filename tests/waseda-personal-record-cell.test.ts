@@ -121,10 +121,8 @@ describe("早稻田個人打席格的球性與傳接分區", () => {
     expect(source).toContain('runnerAdvanceArrowSecondToThird: { left: 9.5, top: 26, transform: [{ rotate: "135deg" }] }');
     expect(source).toContain('runnerAdvanceArrowThirdToHome: { left: 26, top: 48.5, transform: [{ rotate: "45deg" }] }');
 
-    // 跑壘歷程合併去重與得分自動繪製三壘到本壘藍線邏輯
+    // 跑壘歷程合併去重邏輯
     expect(source).toContain("const mergedRunnerAdvances: RunnerAdvanceContext[] = [...syncedRunnerAdvances];");
-    expect(source).toContain("if (finalRuns > 0) {");
-    expect(source).toContain("mergedRunnerAdvances.push({ fromBase: 3, toBase: 4, type: \"ADV\" });");
 
     // 安打標籤位於最左上角落
     expect(source).toContain('leftTop: { position: "absolute", top: 2, left: 3, maxWidth: "42%", color: COLORS.blue, fontSize: 9, fontWeight: "900" }');

@@ -1476,4 +1476,14 @@ describe("單場早稻田紀錄表資料投影", () => {
     expect(source).toContain("建立完成，已設為所屬球隊");
     expect(source).toContain("result !== false");
   });
+
+  it("擊出球流程支援壘上跑者進壘分別確認與多進壘藍線記錄回寫", () => {
+    const source = readFileSync(resolve(process.cwd(), "app/(tabs)/index.tsx"), "utf8");
+
+    expect(source).toContain("分別確認壘上跑者進壘狀態");
+    expect(source).toContain("setRunnerTarget1");
+    expect(source).toContain("setRunnerTarget2");
+    expect(source).toContain("setRunnerTarget3");
+    expect(source).toContain("customRunnerAdvances");
+  });
 });

@@ -225,12 +225,6 @@ export function WasedaPersonalRecordCell({
       mergedRunnerAdvances.push(runnerAdvance);
     }
   }
-  if (finalRuns > 0) {
-    const hasThirdToHome = mergedRunnerAdvances.some((adv) => adv.fromBase === 3 && adv.toBase === 4);
-    if (!hasThirdToHome) {
-      mergedRunnerAdvances.push({ fromBase: 3, toBase: 4, type: "ADV" });
-    }
-  }
   const runnerAdvanceContexts = mergedRunnerAdvances
     .filter((advance) => !(batterReachesFirst && advance.fromBase === 0 && advance.toBase === 1));
   /** 打者上一壘獨立保留，避免被其他跑者進壘紀錄覆蓋或誤繪為菱形內線。 */
