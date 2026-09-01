@@ -108,7 +108,22 @@ describe("早稻田個人打席格的球性與傳接分區", () => {
     expect(source).toContain("batterReachLine: { position: \"absolute\", width: 48, height: 3");
     expect(source).toContain("runnerHomeToFirst: { left: 29, top: 44, transform: [{ rotate: \"-45deg\" }]");
     expect(source).toContain("hitHomeToFirst: { left: 27, top: 50, transform: [{ rotate: \"-45deg\" }]");
-    expect(source).toContain("runnerAdvanceContexts = (runnerAdvance ? [runnerAdvance] : syncedRunnerAdvances)");
+    expect(source).toContain("const runnerAdvanceContexts = mergedRunnerAdvances");
     expect(source).toContain("runnerSegmentStyle(line.segment)");
+  });
+
+  it("盜壘(SB)箭頭精準對齊藍線最前端終點，且多重跑壘事件完整合併歷史推進軌跡", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/baseball/waseda-personal-record-cell.tsx"), "utf8");
+
+    // 箭頭座標精確對齊頂點終點
+    expect(source).toContain('runnerAdvanceArrowHomeToFirst: { left: 48.5, top: 32.5, transform: [{ rotate: "-45deg" }] }');
+    expect(source).toContain('runnerAdvanceArrowFirstToSecond: { left: 32, top: 9.5, transform: [{ rotate: "-135deg" }] }');
+    expect(source).toContain('runnerAdvanceArrowSecondToThird: { left: 9.5, top: 26, transform: [{ rotate: "135deg" }] }');
+    expect(source).toContain('runnerAdvanceArrowThirdToHome: { left: 26, top: 48.5, transform: [{ rotate: "45deg" }] }');
+
+    // 跑壘歷程合併去重邏輯
+    expect(source).toContain("const mergedRunnerAdvances: RunnerAdvanceContext[] = [...syncedRunnerAdvances];");
+    expect(source).toContain("mergedRunnerAdvances.findIndex(");
+    expect(source).toContain("mergedRunnerAdvances.push(runnerAdvance);");
   });
 });

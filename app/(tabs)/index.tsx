@@ -2681,7 +2681,7 @@ function getLiveWasedaQuadrants(game: Game, pitchDraft: PitchDraft, selectedResu
 function LiveWasedaInfield({ game, pitchDraft, batter }: { game: Game; pitchDraft: PitchDraft; batter?: Player }) {
   const quadrants = getLiveWasedaQuadrants(game, pitchDraft);
   return <View style={styles.liveWasedaCard}>
-    <View style={styles.liveWasedaHeader}><View><Text style={styles.liveWasedaTitle}>現場四分格 · 早稻田紀錄</Text><Text style={styles.liveWasedaHint}>左上本壘呈現球數欄、外圈格及內圈格；一、二、三壘以跑壘外圈格及內圈格即時同步。</Text></View><Text style={styles.liveWasedaBatter}>{playerIdentityLabel(batter, "#— 待選打者")}</Text></View>
+    <View style={styles.liveWasedaHeader}><View><Text style={styles.liveWasedaTitle}>現場四分格 · 早稻田紀錄</Text><Text style={styles.liveWasedaHint}>左上本壘呈現球數欄、外圈格及內圈格；一、二、三壘以跑壘外圈格及內圈格即時同步。</Text></View><Text style={styles.liveWasedaBatter}>{playerIdentityLabel(batter, "#— 尚未設定")}</Text></View>
     <View style={styles.liveWasedaQuadrantGrid}>
       {quadrants.map((quadrant) => <WasedaBaseCell key={quadrant.label} {...quadrant} />)}
     </View>

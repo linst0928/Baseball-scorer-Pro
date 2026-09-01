@@ -209,7 +209,23 @@ export function WasedaPersonalRecordCell({
     .map((advance) => ({ type: advance.type, fromBase: advance.fromBase, toBase: advance.toBase }));
   /** 保送、不死三振、觸身與失誤上壘均須走外框交點，不能誤用菱形內的跑壘線。 */
   const batterReachesFirst = finalResult === "BB" || finalResult === "HBP" || finalResult === "E" || droppedThirdStrike;
-  const runnerAdvanceContexts = (runnerAdvance ? [runnerAdvance] : syncedRunnerAdvances)
+  const mergedRunnerAdvances: RunnerAdvanceContext[] = [...syncedRunnerAdvances];
+  if (runnerAdvance && runnerAdvance.fromBase !== undefined && runnerAdvance.toBase !== undefined) {
+    const existingIndex = mergedRunnerAdvances.findIndex(
+      (adv) => adv.fromBase === runnerAdvance.fromBase && adv.toBase === runnerAdvance.toBase,
+    );
+    if (existingIndex >= 0) {
+      if (runnerAdvance.type) {
+        mergedRunnerAdvances[existingIndex] = {
+          ...mergedRunnerAdvances[existingIndex],
+          type: runnerAdvance.type,
+        };
+      }
+    } else {
+      mergedRunnerAdvances.push(runnerAdvance);
+    }
+  }
+  const runnerAdvanceContexts = mergedRunnerAdvances
     .filter((advance) => !(batterReachesFirst && advance.fromBase === 0 && advance.toBase === 1));
   /** 打者上一壘獨立保留，避免被其他跑者進壘紀錄覆蓋或誤繪為菱形內線。 */
   const batterFirstBaseLines = batterReachesFirst
@@ -451,10 +467,10 @@ const styles = StyleSheet.create({
   /** 保送、不死三振、觸身與失誤上壘由底邊交點逆時鐘接至右邊交點。 */
   batterReachLine: { position: "absolute", width: 48, height: 3, borderRadius: 2, backgroundColor: COLORS.blue, zIndex: 4 },
   runnerAdvanceArrow: { position: "absolute", color: COLORS.blue, fontSize: 9, fontWeight: "900", zIndex: 3 },
-  runnerAdvanceArrowHomeToFirst: { left: 50, top: 34, transform: [{ rotate: "-45deg" }] },
-  runnerAdvanceArrowFirstToSecond: { left: 37, top: 8, transform: [{ rotate: "-135deg" }] },
-  runnerAdvanceArrowSecondToThird: { left: 6, top: 14, transform: [{ rotate: "135deg" }] },
-  runnerAdvanceArrowThirdToHome: { left: 7, top: 44, transform: [{ rotate: "45deg" }] },
+  runnerAdvanceArrowHomeToFirst: { left: 48.5, top: 32.5, transform: [{ rotate: "-45deg" }] },
+  runnerAdvanceArrowFirstToSecond: { left: 32, top: 9.5, transform: [{ rotate: "-135deg" }] },
+  runnerAdvanceArrowSecondToThird: { left: 9.5, top: 26, transform: [{ rotate: "135deg" }] },
+  runnerAdvanceArrowThirdToHome: { left: 26, top: 48.5, transform: [{ rotate: "45deg" }] },
   runnerAdvanceLabel: { position: "absolute", color: COLORS.blue, fontSize: 6, fontWeight: "900", zIndex: 3 },
   runnerAdvanceLabelBK: { color: "#0F4E90", backgroundColor: "transparent", borderRadius: 3, overflow: "hidden", paddingHorizontal: 2, fontSize: 7, letterSpacing: -0.2 },
   runnerAdvanceLabelHomeToFirst: { left: 43, top: 51 },
