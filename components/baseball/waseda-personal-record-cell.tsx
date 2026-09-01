@@ -225,6 +225,12 @@ export function WasedaPersonalRecordCell({
       mergedRunnerAdvances.push(runnerAdvance);
     }
   }
+  if (finalRuns > 0) {
+    const hasThirdToHome = mergedRunnerAdvances.some((adv) => adv.fromBase === 3 && adv.toBase === 4);
+    if (!hasThirdToHome) {
+      mergedRunnerAdvances.push({ fromBase: 3, toBase: 4, type: "ADV" });
+    }
+  }
   const runnerAdvanceContexts = mergedRunnerAdvances
     .filter((advance) => !(batterReachesFirst && advance.fromBase === 0 && advance.toBase === 1));
   /** 打者上一壘獨立保留，避免被其他跑者進壘紀錄覆蓋或誤繪為菱形內線。 */
@@ -383,9 +389,9 @@ const styles = StyleSheet.create({
   pitchMarkGrid: { width: 20, height: 82, marginTop: 2, flexDirection: "column", flexWrap: "wrap", alignContent: "flex-start", overflow: "hidden" },
   pitchMarkGridCompact: { width: 16, height: 62, marginTop: 1 },
   pitchMarkGridLive: { width: 16, height: 62, marginTop: 1 },
-  pitchMarkCell: { width: 10, height: 5, color: COLORS.ink, fontSize: 6, fontWeight: "900", lineHeight: 5, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
-  pitchMarkCellCompact: { width: 8, height: 4.4, fontSize: 5.5, lineHeight: 4.4 },
-  pitchMarkCellLive: { width: 8, height: 4.4, fontSize: 5.5, lineHeight: 4.4 },
+  pitchMarkCell: { width: 10, height: 11, color: COLORS.ink, fontSize: 9.5, fontWeight: "900", lineHeight: 11, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
+  pitchMarkCellCompact: { width: 8, height: 8.8, fontSize: 8, fontWeight: "900", lineHeight: 8.8, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
+  pitchMarkCellLive: { width: 8, height: 8.8, fontSize: 8, fontWeight: "900", lineHeight: 8.8, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   /** 最外層 wrap 已提供紙本格線；外圈僅承載符號，避免再畫一層重複方框。 */
   outerArea: { flex: 1, minHeight: 96, position: "relative", overflow: "hidden", backgroundColor: "transparent", borderWidth: 0 },
   /** 緊湊格維持 68px 高的單一紙本方格，不加內嵌外框。 */
@@ -411,8 +417,8 @@ const styles = StyleSheet.create({
   replacementBadgePitchCountLive: { fontSize: 4.5, lineHeight: 5.5 },
   outerCorrectionMark: { position: "absolute", top: 12, left: 4, right: 4, color: COLORS.blue, fontSize: 8, fontWeight: "900", lineHeight: 10, textAlign: "center" },
   outerCorrectionMarkLive: { top: 6, left: 3, right: 3, fontSize: 7, lineHeight: 8.5 },
-  leftTop: { position: "absolute", top: 12, left: 5, maxWidth: "42%", color: COLORS.blue, fontSize: 9, fontWeight: "900" },
-  leftTopLive: { top: 5, left: 3, fontSize: 8 },
+  leftTop: { position: "absolute", top: 2, left: 3, maxWidth: "42%", color: COLORS.blue, fontSize: 9, fontWeight: "900" },
+  leftTopLive: { top: 2, left: 2, fontSize: 8 },
   rightTop: { position: "absolute", top: 12, right: 5, maxWidth: "42%", color: COLORS.blue, fontSize: 8, fontWeight: "900", textAlign: "right" },
   rightTopLive: { top: 5, right: 3, fontSize: 7.5 },
   /** BB／K+ 緊鄰本壘至一壘藍線，與參考表的右下上壘分區一致。 */
@@ -473,10 +479,10 @@ const styles = StyleSheet.create({
   runnerAdvanceArrowThirdToHome: { left: 26, top: 48.5, transform: [{ rotate: "45deg" }] },
   runnerAdvanceLabel: { position: "absolute", color: COLORS.blue, fontSize: 6, fontWeight: "900", zIndex: 3 },
   runnerAdvanceLabelBK: { color: "#0F4E90", backgroundColor: "transparent", borderRadius: 3, overflow: "hidden", paddingHorizontal: 2, fontSize: 7, letterSpacing: -0.2 },
-  runnerAdvanceLabelHomeToFirst: { left: 43, top: 51 },
-  runnerAdvanceLabelFirstToSecond: { left: 40, top: 2 },
-  runnerAdvanceLabelSecondToThird: { left: 0, top: 2 },
-  runnerAdvanceLabelThirdToHome: { left: 1, top: 50 },
+  runnerAdvanceLabelHomeToFirst: { left: 40, top: 42 },
+  runnerAdvanceLabelFirstToSecond: { left: 37, top: 14 },
+  runnerAdvanceLabelSecondToThird: { left: 16, top: 12 },
+  runnerAdvanceLabelThirdToHome: { left: 12, top: 44 },
   /** 菱形底端→右端，依逆時鐘前進的第一段內部跑壘線。 */
   runnerHomeToFirst: { left: 29, top: 44, transform: [{ rotate: "-45deg" }] },
   runnerFirstToSecond: { left: 29, top: 21, transform: [{ rotate: "45deg" }] },

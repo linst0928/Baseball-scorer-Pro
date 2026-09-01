@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getHitAdvanceSegments, getRunnerAdvanceLines } from "../lib/baseball/waseda-visuals";
+import { getHitAdvanceSegments, getRunnerAdvanceLines, splitPitchMarksForVerticalGrid } from "../lib/baseball/waseda-visuals";
 
 describe("早稻田安打推進線", () => {
   it("一壘安打僅繪製本壘至一壘的右下紅線", () => {
@@ -12,6 +12,15 @@ describe("早稻田安打推進線", () => {
     expect(getHitAdvanceSegments("3B")).toHaveLength(3);
     expect(getHitAdvanceSegments("HR")).toHaveLength(4);
     expect(getHitAdvanceSegments("BB")).toEqual([]);
+  });
+});
+
+describe("逐球欄分割與最多球數", () => {
+  it("每欄最多7球、兩欄共最多14球，超過14球不溢出", () => {
+    const marks20 = "○—△▲⊖⌁◓•○—△▲⊖⌁◓•";
+    const [col1, col2] = splitPitchMarksForVerticalGrid(marks20);
+    expect(col1).toHaveLength(7);
+    expect(col2).toHaveLength(7);
   });
 });
 

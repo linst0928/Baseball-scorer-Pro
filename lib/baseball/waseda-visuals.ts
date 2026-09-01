@@ -23,12 +23,12 @@ export function getHitAdvanceSegments(result?: AtBatResult): HitAdvanceSegment[]
 }
 
 /**
- * 個人紀錄欄的球數以兩個直式欄呈現，每欄固定最多14球。
- * 回傳值供 React Native 的 column + wrap 版面與回歸測試共用，超過28球不溢出格外。
+ * 個人紀錄欄的球數以兩個直式欄呈現，每欄固定最多7球，兩欄共最多14球。
+ * 回傳值供 React Native 的 column + wrap 版面與回歸測試共用，超過14球不溢出格外。
  */
 export function splitPitchMarksForVerticalGrid(marks?: string): [string[], string[]] {
-  const items = Array.from(marks ?? "").slice(0, 28);
-  return [items.slice(0, 14), items.slice(14, 28)];
+  const items = Array.from(marks ?? "").slice(0, 14);
+  return [items.slice(0, 7), items.slice(7, 14)];
 }
 
 export type RunnerAdvanceContext = {

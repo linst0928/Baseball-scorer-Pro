@@ -1208,12 +1208,12 @@ describe("單場早稻田紀錄表資料投影", () => {
     expect(aggregate?.runnerAdvances?.map((advance) => advance.type)).toEqual(["SB", "WP", "PB"]);
   });
 
-  it("逐球球數欄固定以兩個直式欄各容納14球，最多28球不溢出", () => {
+  it("逐球球數欄固定以兩個直式欄各容納7球，最多14球不溢出", () => {
     const [firstColumn, secondColumn] = splitPitchMarksForVerticalGrid("○●△×•⌒ー○●△×•⌒ー○●△×•⌒ー○●△×•⌒ー○●");
-    expect(firstColumn).toHaveLength(14);
-    expect(secondColumn).toHaveLength(14);
-    expect([...firstColumn, ...secondColumn]).toHaveLength(28);
-    expect([...firstColumn, ...secondColumn]).toEqual(Array.from("○●△×•⌒ー○●△×•⌒ー○●△×•⌒ー○●△×•⌒ー"));
+    expect(firstColumn).toHaveLength(7);
+    expect(secondColumn).toHaveLength(7);
+    expect([...firstColumn, ...secondColumn]).toHaveLength(14);
+    expect([...firstColumn, ...secondColumn]).toEqual(Array.from("○●△×•⌒ー○●△×•⌒ー"));
   });
 
   it("門檻前三球依序呈現黃、橘、紅的漸進預警，達標後切換下一門檻", () => {
