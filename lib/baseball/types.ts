@@ -5,7 +5,7 @@ export type AtBatResult = "1B" | "2B" | "3B" | "HR" | "BB" | "HBP" | "K" | "F" |
  * 跑壘特殊事件與純紀錄註記共用同一條可追溯時間線。
  * 後四種 annotation 僅為早稻田記錄法的書寫符號，絕不可參與統計或狀態結算。
  */
-export type SpecialEventType = "SB" | "CS" | "WP" | "PB" | "BK" | "ADV" | "OFFENSIVE_TIMEOUT" | "DEFENSIVE_TIMEOUT" | "INNING_END" | "GAME_END_EARLY";
+export type SpecialEventType = "SB" | "CS" | "WP" | "PB" | "BK" | "PO" | "ADV" | "OFFENSIVE_TIMEOUT" | "DEFENSIVE_TIMEOUT" | "INNING_END" | "GAME_END_EARLY";
 export type PitchType = "fastball" | "breaking";
 export type PitchFilter = PitchType | "all";
 /** 打席的輸入來源；手動補登不改變現場正在進行的攻守狀態。 */
@@ -30,7 +30,7 @@ export type RecordColumn = {
   sacrificeFlyNoScoreReason?: SacrificeFlyNoScoreReason;
 };
 /** 換人角色，保留舊版 position 欄位以相容既有紀錄。 */
-export type SubstitutionType = "代打" | "代跑" | "換投" | "換守";
+export type SubstitutionType = "代打" | "代跑" | "換投" | "換守" | "PH" | "PR" | "RP" | "DEFENSE";
 /** 早稻田球數欄的逐球狀態；依個人紀錄欄圖例區分觸擊與界外失誤。 */
 export type PitchOutcome = "ball" | "strike" | "foul" | "foulTip" | "swingingStrike" | "bunt" | "missedBunt" | "buntFoul" | "foulError" | "inPlay" | "droppedThirdStrike";
 /**
@@ -294,6 +294,10 @@ export type RunnerAdvanceRecord = {
   /** 跑者出局時的該半局出局順序，供來源打席內圈同步呈現。 */
   outNumber?: 1 | 2 | 3;
   notation: string;
+  /** 貢獻此進壘之打者 ID，日後計算打點 (RBI) 依據 */
+  advancedByBatterId?: string;
+  /** 貢獻此進壘之打擊棒次 (1-9)，早稻田進壘藍線渲染依據 */
+  advancedByOrder?: number;
 };
 
 export type SpecialEvent = {
@@ -1004,6 +1008,14 @@ export function getBattingStats(game: Game, team: Team, scope: PlayerStatScope =
     const slg = atBats ? totalBases / atBats : 0;
     const obpDenominator = atBats + bb + hbp;
     const obp = obpDenominator ? (hits.length + bb + hbp) / obpDenominator : 0;
+    const specialRuns = (game.specialEvents ?? []).filter((se) => se.runnerId === player.id && se.toBase === 4 && se.type !== "CS").length;
+    const eventRuns = game.events.reduce((sum, event) => {
+      if (event.batterId === player.id && event.result === "HR") return sum;
+      const advs = (event.runnerAdvances ?? []).filter((adv) => adv.toBase === 4 && adv.type !== "LOB");
+      const matched = advs.filter((adv) => adv.runnerId === player.id).length;
+      return sum + matched;
+    }, 0);
+    const runsCount = hr + specialRuns + eventRuns;
     return {
       player,
       ab: atBats,
@@ -1014,7 +1026,7 @@ export function getBattingStats(game: Game, team: Team, scope: PlayerStatScope =
       hr,
       bb,
       hbp,
-      r: 0,
+      r: runsCount,
       rbi,
       sh: sacrificeBunts.length,
       sf: sacrificeFlies.length,
@@ -1103,7 +1115,19 @@ export function getTeamPerformanceSummary(games: Game[], team: Team): TeamPerfor
 
 export function getPitchingStats(game: Game, team: Team, scope: PlayerStatScope = "all"): PitchingLine[] {
   const players = scope === "registered" ? getRegisteredPlayers(game, team) : team.players;
-  return players.filter((player) => player.position === "投手" || player.number === 1).map((player) => {
+  const pitcherIdsWithEvents = new Set(game.events.map((e) => e.pitcherId).filter(Boolean));
+  const pitcherIdsInSubs = new Set(
+    (game.substitutions ?? [])
+      .filter((s) => s.teamId === team.id && (s.position === "投手" || s.type === "換投" || s.type === "RP"))
+      .map((s) => s.playerInId)
+  );
+
+  return players.filter((player) =>
+    player.position === "投手" ||
+    player.number === 1 ||
+    pitcherIdsWithEvents.has(player.id) ||
+    pitcherIdsInSubs.has(player.id)
+  ).map((player) => {
     const events = game.events.filter((event) => event.pitcherId === player.id);
     const outs = events.filter(isAtBatOut).length;
     const h = events.filter((event) => ["1B", "2B", "3B", "HR"].includes(event.result)).length;
@@ -1566,7 +1590,23 @@ export function getCurrentBatter(game: Game, team: Team): Player {
   const index = game.half === "away" ? game.awayBatterIndex : game.homeBatterIndex;
   const registeredPlayers = getRegisteredPlayers(game, team);
   const battingPool = registeredPlayers.length > 0 ? registeredPlayers : team.players;
-  return battingPool[index % Math.max(battingPool.length, 1)] ?? team.players[0];
+  
+  // 棒球打序以 9 人為一輪槽位 (0~8)
+  const slotIndex = index % 9;
+
+  // 檢查是否有針對該棒次/球員的代打 (PH) 更換
+  const teamSubs = (game.substitutions ?? []).filter((s) => s.teamId === team.id && (s.type === "代打" || s.type === "PH"));
+  const lastSub = teamSubs.reverse().find((s) => {
+    const outPlayer = team.players.find((p) => p.id === s.playerOutId);
+    return outPlayer ? (outPlayer.number - 1) % 9 === slotIndex : false;
+  });
+
+  if (lastSub) {
+    const inPlayer = team.players.find((p) => p.id === lastSub.playerInId);
+    if (inPlayer) return inPlayer;
+  }
+
+  return battingPool[slotIndex] ?? team.players[0];
 }
 
 export function getCurrentPitcher(game: Game, homeTeam: Team, awayTeam: Team): Player {
@@ -1719,6 +1759,7 @@ export function updateGameAfterEvent(
       fromBase,
       toBase,
       notation: `推進 ${fromBase}→${toBase === 4 ? "得分" : toBase}`,
+      runnerId,
     },
   }));
   const isFieldersChoice = event.recordColumn?.fieldingPlay === "FC";
@@ -1773,8 +1814,11 @@ export function updateGameAfterEvent(
   });
   const customAdvanceSourceIndexes = new Map<string, number>();
   customAdvances.forEach(({ runnerId }) => {
+    const subRecord = (game.substitutions ?? []).find((s) => s.playerInId === runnerId && (s.type === "代跑" || s.type === "PR"));
+    const effectiveBatterId = subRecord?.playerOutId ?? runnerId;
+
     for (let index = game.events.length - 1; index >= 0; index -= 1) {
-      if (game.events[index].batterId === runnerId) {
+      if (game.events[index].batterId === effectiveBatterId) {
         customAdvanceSourceIndexes.set(runnerId, index);
         break;
       }
@@ -1799,6 +1843,8 @@ export function updateGameAfterEvent(
   const nextHalf: TeamSide = halfEnded ? (game.half === "away" ? "home" : "away") : game.half;
   const nextInning = halfEnded && game.half === "home" ? game.inning + 1 : game.inning;
   const nextScoreFilled = nextScore.map((row) => row.inning <= nextInning ? row : row);
+  const nextAwayBatterIndex = game.half === "away" ? game.awayBatterIndex + 1 : game.awayBatterIndex;
+  const nextHomeBatterIndex = game.half === "home" ? game.homeBatterIndex + 1 : game.homeBatterIndex;
   return {
     ...game,
     status: "live",
@@ -1806,6 +1852,8 @@ export function updateGameAfterEvent(
     half: nextHalf,
     outs: halfEnded ? 0 : nextOuts,
     runners: halfEnded ? { first: null, second: null, third: null } : settledRunners,
+    awayBatterIndex: nextAwayBatterIndex,
+    homeBatterIndex: nextHomeBatterIndex,
     score: nextScoreFilled,
     events: halfEnded ? markLeftOnBase([...eventsWithRunnerAdvances, event], settledRunners, event.id) : [...eventsWithRunnerAdvances, event],
     specialEvents: halfEnded

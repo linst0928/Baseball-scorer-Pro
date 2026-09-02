@@ -189,7 +189,7 @@ export function WasedaPersonalRecordCell({
   const lowerRight = finalRecord && finalResult
     ? getFieldingSequenceNotation(finalResult, finalRecord)
     : finalRecord?.fieldingSequence || (!battedBallTrajectory && !hit && !onBaseMarks && !runnerNotation ? finalNotation : "");
-  const allowedInnerMarks = new Set(["—", "○", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "ℓ", "CS", "ꓘ"]);
+  const allowedInnerMarks = new Set(["—", "○", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "ℓ", "CS", "ꓘ"]);
   const requestedInnerMark = innerMarkOverride ?? correction?.innerMark;
   const safeInnerOverride = requestedInnerMark && allowedInnerMarks.has(requestedInnerMark) ? requestedInnerMark : undefined;
   /**
@@ -197,7 +197,7 @@ export function WasedaPersonalRecordCell({
    * 安打種類保留在外圈與紅色壘線，絕不寫入中央。
    */
   const innerMark = safeInnerOverride
-    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "ꓘ" : (out && typeof finalOutsBefore === "number" ? ["I", "II", "III"][Math.min(finalOutsBefore, 2)] : (finalRuns > 0 ? "○" : "—")))));
+    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "ꓘ" : (out && typeof finalOutsBefore === "number" ? ["①", "②", "③"][Math.min(finalOutsBefore, 2)] : (finalRuns > 0 ? "○" : "—")))));
   const rbi = Math.max(0, Math.min(finalRecord?.rbi ?? 0, 4));
   const liveSize = size === "live";
   const compactSize = size === "compact";
@@ -206,7 +206,7 @@ export function WasedaPersonalRecordCell({
   const hitAdvanceSegments = getHitAdvanceSegments(finalResult);
   const syncedRunnerAdvances = runnerAdvances
     .filter((advance): advance is typeof advance & { fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 } => Boolean(advance.fromBase && advance.toBase))
-    .map((advance) => ({ type: advance.type, fromBase: advance.fromBase, toBase: advance.toBase }));
+    .map((advance) => ({ type: advance.type, fromBase: advance.fromBase, toBase: advance.toBase, advancedByOrder: advance.advancedByOrder }));
   /** 保送、不死三振、觸身與失誤上壘均須走外框交點，不能誤用菱形內的跑壘線。 */
   const batterReachesFirst = finalResult === "BB" || finalResult === "HBP" || finalResult === "E" || droppedThirdStrike;
   const mergedRunnerAdvances: RunnerAdvanceContext[] = [...syncedRunnerAdvances];

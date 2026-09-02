@@ -35,12 +35,13 @@ export type RunnerAdvanceContext = {
   type?: RunnerAdvanceRecord["type"];
   fromBase?: 0 | 1 | 2 | 3;
   toBase?: 1 | 2 | 3 | 4;
+  advancedByOrder?: number;
 };
 
 export type RunnerAdvanceLine = {
   segment: HitAdvanceSegment;
   hasArrow: boolean;
-  label?: "SB" | "BK";
+  label?: "SB" | "BK" | string;
 };
 
 const BASE_ADVANCE_SEGMENTS: Record<"0-1" | "1-2" | "2-3" | "3-4", HitAdvanceSegment> = {
@@ -70,7 +71,8 @@ export function getRunnerAdvanceLines({
     if (getHitAdvanceSegments(result).includes(segment)) return [];
     const stolenBase = runnerAdvance.type === "SB";
     const balk = runnerAdvance.type === "BK";
-    return [{ segment, hasArrow: stolenBase, label: stolenBase ? "SB" : balk ? "BK" : undefined }];
+    const customLabel = runnerAdvance.advancedByOrder !== undefined ? `(${runnerAdvance.advancedByOrder})` : undefined;
+    return [{ segment, hasArrow: stolenBase, label: stolenBase ? "SB" : balk ? "BK" : customLabel }];
   }
 
   const droppedThirdStrike = result === "K" && modifiers.some((modifier) => /不死三振|dropped\s*third|K\+/i.test(modifier));

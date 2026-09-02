@@ -90,4 +90,18 @@ describe("早稻田跑壘藍線與盜壘箭頭", () => {
     // 全壘打：本壘到一壘、一壘到二壘、二壘到三壘、三壘到本壘紅色線條
     expect(getHitAdvanceSegments("HR")).toEqual(["home-to-first", "first-to-second", "second-to-third", "third-to-home"]);
   });
+
+  it("推進跑者時，若提供 advancedByOrder，應在藍色進壘線上渲染對應棒次的圓括號數字標記 (如 (4))", () => {
+    expect(
+      getRunnerAdvanceLines({
+        runnerAdvance: { type: "ADV", fromBase: 1, toBase: 2, advancedByOrder: 4 },
+      })
+    ).toEqual([{ segment: "first-to-second", hasArrow: false, label: "(4)" }]);
+
+    expect(
+      getRunnerAdvanceLines({
+        runnerAdvance: { type: "ADV", fromBase: 2, toBase: 3, advancedByOrder: 9 },
+      })
+    ).toEqual([{ segment: "second-to-third", hasArrow: false, label: "(9)" }]);
+  });
 });

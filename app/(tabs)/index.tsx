@@ -37,6 +37,7 @@ import { WasedaScorebookTeamSheet } from "@/components/baseball/waseda-scorebook
 import { ScorebookDisplayEditor, ScorebookGameSelector } from "@/components/baseball/scorebook-workbench-controls";
 import { HOME_DEFENSE_FIELD_IMAGE } from "@/constants/baseball-assets";
 import { INTERFACE_COLOR_MODES, resolveInterfacePalette, useThemeContext, type InterfaceColorMode, type InterfacePalette } from "@/lib/theme-provider";
+import { loadScenarioState, createScenarioTeams } from "@/lib/baseball/test-scenarios";
 import { shareGameImage, shareGamePdf, shareGameScoreCsv, type GameReportFilter } from "@/lib/baseball/export";
 import { getVisibleTeams, orderTeamsWithPrimaryFirst } from "@/lib/baseball/team-selector";
 import {
@@ -1174,10 +1175,7 @@ function App() {
       timestamp: new Date().toISOString(),
     };
     updateActiveGame((game) => {
-      const updated = updateGameAfterEvent(game, event, runnerResult.runners, runnerResult.runs, customRunnerAdvances);
-      return game.half === "away"
-        ? { ...updated, awayBatterIndex: game.awayBatterIndex + 1 }
-        : { ...updated, homeBatterIndex: game.homeBatterIndex + 1 };
+      return updateGameAfterEvent(game, event, runnerResult.runners, runnerResult.runs, customRunnerAdvances);
     });
     const nextAtBatDraft = createEmptyAtBatDraft();
     setPitchDraft(nextAtBatDraft.pitchDraft);
@@ -1218,6 +1216,24 @@ function App() {
     setShowSpecialEvent(false);
     announceOperationFeedback("success", "特殊紀錄已寫入", `${event.notation}${event.reason ? `・${event.reason}` : ""} 已保存；可使用「復原上一筆」回退。`);
   }, [activeGame, announceOperationFeedback, currentPitcher, fieldingPosition, pitchDraft, recordColumnDraft, selectedResult, updateActiveGame]);
+
+  const handleInjectScenario = useCallback((scenarioId: 1 | 2 | 3 | 4 | 5) => {
+    const scenarioGame = loadScenarioState(scenarioId);
+    const scenarioTeams = createScenarioTeams();
+    setData((prev: AppData) => ({
+      ...prev,
+      teams: [
+        ...prev.teams.filter((t) => !scenarioTeams.some((st) => st.id === t.id)),
+        ...scenarioTeams,
+      ],
+      games: [
+        scenarioGame,
+        ...prev.games.filter((g) => g.id !== scenarioGame.id),
+      ],
+      activeGameId: scenarioGame.id,
+    }));
+    Alert.alert("壓力測試劇本注入成功", `已成功載入「劇本 ${scenarioId}」之完整狀態與賽事資料！`);
+  }, [setData]);
 
   const recordBalk = useCallback(() => {
     if (!activeGame || !currentPitcher) return;
