@@ -298,6 +298,7 @@ export type RunnerAdvanceRecord = {
   advancedByBatterId?: string;
   /** 貢獻此進壘之打擊棒次 (1-9)，早稻田進壘藍線渲染依據 */
   advancedByOrder?: number;
+  runnerId?: string;
 };
 
 export type SpecialEvent = {
@@ -522,6 +523,7 @@ export const SPECIAL_EVENT_LABELS: Record<SpecialEventType, string> = {
   WP: "暴投",
   PB: "捕逸",
   BK: "投手犯規",
+  PO: "牽制出局",
   ADV: "進壘",
   OFFENSIVE_TIMEOUT: "攻方暫停",
   DEFENSIVE_TIMEOUT: "守方暫停",
