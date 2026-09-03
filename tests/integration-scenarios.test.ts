@@ -7,6 +7,7 @@ import {
   runScenario5,
   loadScenarioState,
 } from "../lib/baseball/test-scenarios";
+import { nextRunnerState } from "../lib/baseball/types";
 
 describe("系統全面壓力與整合測試 (5大棒球劇本)", () => {
   describe("🎬 劇本一：常規推進、安打不推進與棒次跨局連續性 (基礎打擊戰)", () => {
@@ -72,6 +73,12 @@ describe("系統全面壓力與整合測試 (5大棒球劇本)", () => {
 
       expect(assertions.timePlayRequiresConfirmation).toBe(true);
       expect(assertions.timePlayIsForcePlayOut).toBe(false);
+
+      // 加強斷言：失誤上壘時，打者應安全站上一壘，若一壘有人則強制推進二壘
+      const stateBeforeError = { first: "away-1", second: null, third: null };
+      const resultAfterError = nextRunnerState(stateBeforeError, "E", "away-2");
+      expect(resultAfterError.runners.first).toBe("away-2");
+      expect(resultAfterError.runners.second).toBe("away-1");
     });
 
     it("支援一鍵載入劇本四狀態", () => {

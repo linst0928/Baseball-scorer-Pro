@@ -207,9 +207,12 @@ export function PitchByPitchWizard({
       : present.game.homeRegisteredPlayerIds?.[present.game.homeBatterIndex];
 
     const nextRunnersWithBatter = { ...tempRunners };
-    // 安打只決定打者到達哪一壘，原壘上跑者已在 Step 3 循序處理
+    // 安打、失誤、保送與特殊上壘決定打者到達哪一壘，原壘上跑者已在 Step 3 循序處理
     if (tempOuts < 3 && batterId) {
-      if (atBatResult === "1B") {
+      const isFielderChoice = atBatResult === "G" && (battedBallType === "ground" || finalRecordColumn.fieldingPlay === "FC");
+      const isDroppedThirdStrike = atBatResult === "K" && Boolean(finalRecordColumn.modifiers?.includes("K+"));
+      
+      if (atBatResult === "1B" || atBatResult === "E" || atBatResult === "BB" || atBatResult === "HBP" || isFielderChoice || isDroppedThirdStrike) {
         nextRunnersWithBatter.first = batterId;
       } else if (atBatResult === "2B") {
         nextRunnersWithBatter.second = batterId;

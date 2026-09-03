@@ -1507,7 +1507,7 @@ export function getTeamSacrificeTotals(lines: Array<Pick<BattingLine, "sh" | "sf
 
 export function nextRunnerState(runners: RunnerState, result: AtBatResult, batterId: string, options?: { droppedThirdStrike?: boolean; outs?: number }): { runners: RunnerState; runs: number } {
   const droppedThirdStrike = Boolean(options?.droppedThirdStrike && isDroppedThirdStrikeLegal(runners, options?.outs ?? 0));
-  if (result === "BB" || result === "HBP" || (result === "K" && droppedThirdStrike)) {
+  if (result === "BB" || result === "HBP" || result === "E" || (result === "K" && droppedThirdStrike)) {
     if (!runners.first) return { runners: { ...runners, first: batterId }, runs: 0 };
     if (!runners.second) return { runners: { ...runners, second: runners.first, first: batterId }, runs: 0 };
     if (!runners.third) return { runners: { ...runners, third: runners.second, second: runners.first, first: batterId }, runs: 0 };
