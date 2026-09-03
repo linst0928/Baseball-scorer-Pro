@@ -2372,7 +2372,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
       </View>
       {runnerActionRail}
     </View>
-    <View style={styles.liveRunnerOutRow}><Text style={styles.liveRunnerOutIcon}>◔</Text><Text style={styles.liveRunnerOutText}>出局數：{game.outs === 0 ? "○" : "Ⅱ"}（{game.outs} 出局）</Text></View>
+    <View style={styles.liveRunnerOutRow}><Text style={styles.liveRunnerOutIcon}>◔</Text><Text style={styles.liveRunnerOutText}>出局數：{game.outs === 0 ? "○" : game.outs === 1 ? "I" : game.outs === 2 ? "II" : "III"}（{game.outs} 出局）</Text></View>
     <BaseCellZoomModal visible={showBaseZoom} quadrants={quadrants} onClose={() => setShowBaseZoom(false)} />
   </View>;
 }

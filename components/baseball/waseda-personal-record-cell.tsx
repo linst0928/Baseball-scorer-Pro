@@ -197,7 +197,7 @@ export function WasedaPersonalRecordCell({
    * 安打種類保留在外圈與紅色壘線，絕不寫入中央。
    */
   const innerMark = safeInnerOverride
-    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "ꓘ" : (out && typeof finalOutsBefore === "number" ? ["①", "②", "③"][Math.min(finalOutsBefore, 2)] : (finalRuns > 0 ? "○" : "—")))));
+    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "ꓘ" : (out && typeof finalOutsBefore === "number" ? ["I", "II", "III"][Math.min(finalOutsBefore, 2)] : (finalRuns > 0 ? "○" : "—")))));
   const rbi = Math.max(0, Math.min(finalRecord?.rbi ?? 0, 4));
   const liveSize = size === "live";
   const compactSize = size === "compact";
