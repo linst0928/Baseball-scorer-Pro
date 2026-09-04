@@ -1966,3 +1966,15 @@ export function makeGame(input: { name: string; competition?: string; ageGroup?:
     updatedAt: now,
   };
 }
+
+export function formatGameDateTime(game?: { date: string; time?: string } | null): string {
+  if (!game || !game.date) return "";
+  const rawDate = game.date.trim();
+  if (rawDate.includes(" ")) {
+    return rawDate;
+  }
+  if (game.time && game.time.trim()) {
+    return `${rawDate} ${game.time.trim()}`;
+  }
+  return `${rawDate} 08:00`;
+}

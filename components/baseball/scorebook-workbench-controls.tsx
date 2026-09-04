@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import type { Game, ScorebookDisplayOverride, Team } from "@/lib/baseball/types";
+import { type Game, type ScorebookDisplayOverride, type Team, formatGameDateTime } from "@/lib/baseball/types";
 
 export type ScorebookDisplayEditField = "player" | "defense";
 
@@ -78,7 +78,7 @@ export function ScorebookGameSelector({ activeGameId, games, onSelect }: Scorebo
           <Text style={styles.filterLabel}>狀態</Text><View style={styles.chipRow}>{([ ["all", "全部場次"], ["live", "現場進行中"], ["examples", "2013 WBC 範例"] ] as const).map(([value, label]) => <Pressable key={value} onPress={() => setScope(value)} style={({ pressed }) => [styles.chip, scope === value && styles.chipActive, pressed && styles.pressed]}><Text style={[styles.chipText, scope === value && styles.chipTextActive]}>{label}</Text></Pressable>)}</View>
           <Text style={styles.filterLabel}>日期</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>{dates.map((value) => <Pressable key={value} onPress={() => setDate(value)} style={({ pressed }) => [styles.chip, date === value && styles.chipActive, pressed && styles.pressed]}><Text style={[styles.chipText, date === value && styles.chipTextActive]}>{value}</Text></Pressable>)}</ScrollView>
           <Text style={styles.filterLabel}>盃賽／聯賽</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>{competitions.map((value) => <Pressable key={value} onPress={() => setCompetition(value)} style={({ pressed }) => [styles.chip, competition === value && styles.chipActive, pressed && styles.pressed]}><Text style={[styles.chipText, competition === value && styles.chipTextActive]}>{value}</Text></Pressable>)}</ScrollView>
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>{filteredGames.length ? filteredGames.map((game) => <Pressable key={game.id} onPress={() => { onSelect(game.id); setVisible(false); }} style={({ pressed }) => [styles.option, game.id === activeGameId && styles.optionSelected, pressed && styles.pressed]}><View style={styles.gameRowCopy}><Text style={styles.optionTitle}>{game.name}</Text><Text style={styles.optionSubtitle}>{game.date} · {game.competition || "未分類賽事"} · {isDisplayExample(game) ? "唯讀展示範例" : game.status === "final" ? "已結束" : "現場紀錄"}</Text></View><Text style={styles.selectMark}>{game.id === activeGameId ? "目前" : "開啟"}</Text></Pressable>) : <Text style={styles.empty}>目前沒有符合篩選條件的場次。</Text>}</ScrollView>
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>{filteredGames.length ? filteredGames.map((game) => <Pressable key={game.id} onPress={() => { onSelect(game.id); setVisible(false); }} style={({ pressed }) => [styles.option, game.id === activeGameId && styles.optionSelected, pressed && styles.pressed]}><View style={styles.gameRowCopy}><Text style={styles.optionTitle}>{game.name}</Text><Text style={styles.optionSubtitle}>{formatGameDateTime(game)} · {game.competition || "未分類賽事"} · {isDisplayExample(game) ? "唯讀展示範例" : game.status === "final" ? "已結束" : "現場紀錄"}</Text></View><Text style={styles.selectMark}>{game.id === activeGameId ? "目前" : "開啟"}</Text></Pressable>) : <Text style={styles.empty}>目前沒有符合篩選條件的場次。</Text>}</ScrollView>
         </View>
       </View>
     </Modal>

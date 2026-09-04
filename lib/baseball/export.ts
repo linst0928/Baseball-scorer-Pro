@@ -3,7 +3,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 
-import { Game, Team, getGameSummary, getInningRows } from "./types";
+import { Game, Team, getGameSummary, getInningRows, formatGameDateTime } from "./types";
 import { buildGameScoreCsv, describeFilter, filterGameForReport } from "./export-core";
 import type { GameReportFilter } from "./export-core";
 
@@ -35,7 +35,7 @@ export function buildGameReportHtml(game: Game, away: Team, home: Team, filter?:
     th { background: #123A68; color: white; }
     .notes { white-space: pre-wrap; padding: 12px; background: #FFF9E9; border: 1px solid #F2DF9E; border-radius: 8px; }
   </style></head><body>
-    <h1>${escapeHtml(game.name)}</h1><p>${escapeHtml(away.name)}（客）對 ${escapeHtml(home.name)}（主）</p><p>${escapeHtml(game.venue)} · ${escapeHtml(game.date)} · ${game.maxInnings} 局制 · 匯出範圍：${escapeHtml(describeFilter(filter))}</p>
+    <h1>${escapeHtml(game.name)}</h1><p>${escapeHtml(away.name)}（客）對 ${escapeHtml(home.name)}（主）</p><p>${escapeHtml(game.venue)} · ${escapeHtml(formatGameDateTime(game))} · ${game.maxInnings} 局制 · 匯出範圍：${escapeHtml(describeFilter(filter))}</p>
     <div class="score">${escapeHtml(away.name)} ${summary.awayRuns}　—　${summary.homeRuns} ${escapeHtml(home.name)}</div>
     <div class="summary"><div class="stat"><b>${summary.hits}</b>安打</div><div class="stat"><b>${summary.walks}</b>四壞</div><div class="stat"><b>${summary.strikeouts}</b>三振</div><div class="stat"><b>${summary.errors}</b>失誤</div></div>
     <h2>逐局比分</h2><table><thead><tr><th>局</th><th>客場</th><th>主場</th></tr></thead><tbody>${rows || '<tr><td colspan="3">選定範圍尚無比分紀錄</td></tr>'}</tbody></table>

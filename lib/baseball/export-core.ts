@@ -1,4 +1,4 @@
-import { Game, Team, getGameSummary, getInningRows } from "./types";
+import { Game, Team, getGameSummary, getInningRows, formatGameDateTime } from "./types";
 
 type ScoreByInning = { inning: number; away: number; home: number };
 
@@ -19,7 +19,7 @@ export function buildGameScoreCsv(game: Game, away: Team, home: Team): string {
   const lines = [
     ["欄位", "內容"],
     ["比賽名稱", game.name],
-    ["日期", game.date],
+    ["日期時間", formatGameDateTime(game)],
     ["賽事", game.competition || ""],
     ["場地", game.venue || ""],
     ["客隊", away.name],
