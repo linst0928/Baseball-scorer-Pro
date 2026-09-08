@@ -5,11 +5,11 @@ import type { AtBatEvent, Team, GameLineup } from "../lib/baseball/types";
 const mockTeam = (id: string, name: string): Team => ({
   id,
   name,
-  code: name.slice(0, 2),
+  school: "測試學校",
   players: [
-    { id: `${id}-p1`, name: "投手A", number: 11, position: "1", throwingHand: "R", battingHand: "R" },
-    { id: `${id}-p2`, name: "投手B", number: 18, position: "1", throwingHand: "L", battingHand: "L" },
-    { id: `${id}-c1`, name: "捕手A", number: 22, position: "2", throwingHand: "R", battingHand: "R" },
+    { id: `${id}-p1`, name: "投手A", number: 11, position: "1", throwingHand: "R", battingHand: "R", bats: "R" },
+    { id: `${id}-p2`, name: "投手B", number: 18, position: "1", throwingHand: "L", battingHand: "L", bats: "L" },
+    { id: `${id}-c1`, name: "捕手A", number: 22, position: "2", throwingHand: "R", battingHand: "R", bats: "R" },
   ],
 });
 

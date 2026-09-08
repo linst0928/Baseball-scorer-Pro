@@ -5,7 +5,7 @@ import type { Game, Team, AtBatEvent } from "../lib/baseball/types";
 const mockTeam = (id: string, name: string): Team => ({
   id,
   name,
-  code: name.slice(0, 2),
+  school: "測試學校",
   players: Array.from({ length: 9 }, (_, i) => ({
     id: `${id}-p${i + 1}`,
     name: `球員${i + 1}`,
@@ -13,7 +13,6 @@ const mockTeam = (id: string, name: string): Team => ({
     position: "1",
     throwingHand: "R",
     battingHand: "R",
-    throws: "R",
     bats: "R",
   })),
 });

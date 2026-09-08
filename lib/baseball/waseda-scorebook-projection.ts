@@ -297,9 +297,9 @@ export function calculateWasedaMatrixStats(game: { events: readonly AtBatEvent[]
   const hits = teamEvents.filter((e) => ["1B", "2B", "3B", "HR"].includes(e.result as string) || /\b(1B|2B|3B|HR)\b/.test(e.notation || "")).length;
   const walks = teamEvents.filter((e) => (e.result as string) === "BB" || (e.result as string) === "IBB" || /\b(BB|IBB)\b/.test(e.notation || "")).length;
   const hbp = teamEvents.filter((e) => e.result === "HBP" || /\bHBP\b/.test(e.notation || "")).length;
-  const strikeouts = teamEvents.filter((e) => ["K", "KL", "KS"].includes(e.result) || /\b(K|KL|KS)\b/.test(e.notation || "")).length;
-  const doublePlays = teamEvents.filter((e) => /\b(DP|GDP|TP)\b/.test(e.result) || /\b(DP|GDP|TP)\b/.test(e.notation || "")).length;
-  const sacrifices = teamEvents.filter((e) => ["SH", "SF", "SAC"].includes(e.result) || /\b(SH|SF|SAC)\b/.test(e.notation || "")).length;
+  const strikeouts = teamEvents.filter((e) => ["K", "KL", "KS"].includes(e.result as string) || /\b(K|KL|KS)\b/.test(e.notation || "")).length;
+  const doublePlays = teamEvents.filter((e) => /\b(DP|GDP|TP)\b/.test(e.result as string) || /\b(DP|GDP|TP)\b/.test(e.notation || "")).length;
+  const sacrifices = teamEvents.filter((e) => ["SH", "SF", "SAC"].includes(e.result as string) || /\b(SH|SF|SAC)\b/.test(e.notation || "")).length;
   const stolenBases = teamSpecialEvents.filter((e) => e.type === "SB").length + teamEvents.filter((e) => /\bSB\b/.test(e.notation || "")).length;
   const caughtStealing = teamSpecialEvents.filter((e) => e.type === "CS").length + teamEvents.filter((e) => /\bCS\b/.test(e.notation || "")).length;
 
@@ -402,8 +402,8 @@ export function getDetailedPitcherStats(game: { events: readonly AtBatEvent[]; s
     const hr = pitcherEvents.filter((e) => (e.result as string) === "HR" || /\bHR\b/.test(e.notation || "")).length;
     const walks = pitcherEvents.filter((e) => (e.result as string) === "BB" || (e.result as string) === "IBB" || /\b(BB|IBB)\b/.test(e.notation || "")).length;
     const hbp = pitcherEvents.filter((e) => e.result === "HBP" || /\bHBP\b/.test(e.notation || "")).length;
-    const strikeouts = pitcherEvents.filter((e) => ["K", "KL", "KS"].includes(e.result) || /\b(K|KL|KS)\b/.test(e.notation || "")).length;
-    const wp = pitcherEvents.filter((e) => e.result === "WP" || /\bWP\b/.test(e.notation || "")).length + defenseSpecialEvents.filter((se: any) => se.type === "WP").length;
+    const strikeouts = pitcherEvents.filter((e) => ["K", "KL", "KS"].includes(e.result as string) || /\b(K|KL|KS)\b/.test(e.notation || "")).length;
+    const wp = pitcherEvents.filter((e) => (e.result as string) === "WP" || /\bWP\b/.test(e.notation || "")).length + defenseSpecialEvents.filter((se: any) => se.type === "WP").length;
     const runs = pitcherEvents.reduce((sum, e) => sum + (e.runsScored || 0), 0);
     const er = runs; // 預設自責分等於失分
 
@@ -464,7 +464,7 @@ export function getDetailedCatcherStats(game: { events: readonly AtBatEvent[]; s
   const defenseSpecialEvents = ((game as any).specialEvents || []).filter((se: any) => se.half === defenseHalf);
   const defenseAtBatEvents = game.events.filter((e) => e.half === defenseHalf);
 
-  const totalPB = defenseSpecialEvents.filter((se: any) => se.type === "PB").length + defenseAtBatEvents.filter((e) => e.result === "PB" || /\bPB\b/.test(e.notation || "")).length;
+  const totalPB = defenseSpecialEvents.filter((se: any) => se.type === "PB").length + defenseAtBatEvents.filter((e) => (e.result as string) === "PB" || /\bPB\b/.test(e.notation || "")).length;
   const totalSB = defenseSpecialEvents.filter((se: any) => se.type === "SB").length + defenseAtBatEvents.filter((e) => /\bSB\b/.test(e.notation || "")).length;
   const totalCS = defenseSpecialEvents.filter((se: any) => se.type === "CS").length + defenseAtBatEvents.filter((e) => /\bCS\b/.test(e.notation || "")).length;
 
