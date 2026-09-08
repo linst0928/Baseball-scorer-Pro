@@ -1596,7 +1596,7 @@ export function nextFieldersChoiceRunnerState(runners: RunnerState, batterId: st
 }
 
 export function getCurrentBatter(game: Game, team: Team): Player {
-  const index = game.half === "away" ? game.awayBatterIndex : game.homeBatterIndex;
+  const index = team.id === game.awayTeamId ? game.awayBatterIndex : game.homeBatterIndex;
   const registeredPlayers = getRegisteredPlayers(game, team);
   const battingPool = registeredPlayers.length > 0 ? registeredPlayers : team.players;
   

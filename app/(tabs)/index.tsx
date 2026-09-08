@@ -4608,7 +4608,7 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
                 <View style={[styles.gameRecordSyncDot, isReadOnly ? styles.gameRecordSyncDotPending : syncState === "refreshing" ? styles.gameRecordSyncDotRefreshing : syncState === "pending" ? styles.gameRecordSyncDotPending : styles.gameRecordSyncDotSynced]} />
                 <Text style={styles.gameRecordSyncText}>{isReadOnly ? "唯讀展示資料" : syncState === "synced" ? "資料已同步" : syncState === "refreshing" ? "同步檢查中" : "待同步"}</Text>
               </View>
-              <Text numberOfLines={2} style={styles.gameRecordSyncHint}>{isReadOnly ? "展示投影不會加入本機保存、現場逐球、統計或匯出範圍。" : canUndo ? "可復原最近一次正式打席、換人或特殊註記；復原後會回到寫入前的壘包、比分與名單狀態。" : "格內三區依序為球數欄、外圈格、內圈格；長按已完成打席格可做顯示補正。"}</Text>
+              <Text numberOfLines={2} style={styles.gameRecordSyncHint}>{isReadOnly ? "展示投影不會加入本機保存、現場逐球、統計或匯出範圍，唯讀且不寫入本機資料。" : canUndo ? "可復原最近一次正式打席、換人或特殊註記；復原後會回到寫入前的壘包、比分與名單狀態。" : "格內三區依序為球數欄、外圈格、內圈格；長按已完成打席格可做顯示補正。"}</Text>
             </View>
           </View>
         </View>

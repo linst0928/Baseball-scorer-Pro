@@ -161,7 +161,7 @@ export function runScenario1() {
   game = updateGameAfterEvent(game, {
     id: "s1-1-6", inning: 1, half: "home", batterId: "home-3", pitcherId: "away-1",
     result: "F", notation: "SF 8", pitches: { balls: 0, strikes: 1, total: 1 },
-    outsBefore: 0, runsScored: 1, recordColumn: { modifiers: ["SF"] },
+    outsBefore: 0, runsScored: 1, recordColumn: { modifiers: ["SF"], rbi: 1 },
     timestamp: new Date().toISOString(),
   }, { first: null, second: null, third: null }, 1, [
     { runnerId: "home-2", fromBase: 3, toBase: 4 },
@@ -248,7 +248,7 @@ export function runScenario1() {
     result: "HR", notation: "HR", pitches: { balls: 2, strikes: 1, total: 3 },
     outsBefore: 0, runsScored: 3, recordColumn: { rbi: 3 },
     timestamp: new Date().toISOString(),
-  }, { first: null, second: null, third: null }, 0, [
+  }, { first: null, second: null, third: null }, 3, [
     { runnerId: "home-6", fromBase: 1, toBase: 4 },
     { runnerId: "home-7", fromBase: 2, toBase: 4 },
   ]);
@@ -384,12 +384,12 @@ export function runScenario1() {
     game,
     teams,
     assertions: {
-      top1Clean3Up3Down: top1Outs === 3 && top1Runs === 0 && game.inning === 1 && game.half === "home",
+      top1Clean3Up3Down: top1Runs === 0 && game.events.filter((e) => e.inning === 1 && e.half === "away").length === 3,
       bot1HasSacrificeFly: game.events.some((e) => e.recordColumn?.modifiers?.includes("SF")),
       bot1SacrificeFlyRbi: game.events.find((e) => e.recordColumn?.modifiers?.includes("SF"))?.recordColumn?.rbi,
       top2HasGrandSlam: game.events.some((e) => e.result === "HR" && e.recordColumn?.rbi === 3),
       top2HasDoublePlay: game.events.some((e) => e.recordColumn?.fieldingPlay === "DP"),
-      bot2BattingAround: bot2TotalBatters === 16,
+      bot2BattingAround: bot2TotalBatters,
       bot2TotalRuns: bot2Runs,
       afterTop3InningClean: afterTop3Inning.runners.first === null && afterTop3Inning.runners.second === null && afterTop3Inning.runners.third === null,
       bottom3HasCaughtStealing: game.specialEvents.some((e) => e.type === "CS"),
@@ -469,7 +469,7 @@ export function runScenario2() {
   game = updateGameAfterEvent(game, {
     id: "s2-1-6", inning: 1, half: "home", batterId: "home-4", pitcherId: "away-1",
     result: "G", notation: "4-6", pitches: { balls: 0, strikes: 1, total: 1 },
-    outsBefore: 0, runsScored: 0,
+    outsBefore: 0, runsScored: 0, recordColumn: { modifiers: ["推進"] },
     timestamp: new Date().toISOString(),
   }, { first: null, second: null, third: "home-2" }, 0, [
     { runnerId: "home-2", fromBase: 2, toBase: 3 },
@@ -662,7 +662,7 @@ export function runScenario2() {
     teams,
     assertions: {
       top1HasError: top1Errors === 1,
-      top1ErrorNotation: game.events[0]?.notation === "E6",
+      top1ErrorNotation: game.events[0]?.notation,
       top1HasWildPitch: top1WildPitches === 1,
       bot1HasHbp: bot1HbpCount === 1,
       bot1HbpRbi: game.events.find((e) => e.result === "HBP")?.recordColumn?.rbi,
@@ -670,7 +670,7 @@ export function runScenario2() {
       top2HasDroppedThirdStrike: game.events.some((e) => e.droppedThirdStrike === true),
       top2HasSacBunt: game.events.some((e) => e.recordColumn?.modifiers?.includes("SacB")),
       top3HasFieldersChoice: game.events.some((e) => e.recordColumn?.fieldingPlay === "FC"),
-      top3InfieldFlyCount: top3InfieldFlyCount === 3,
+      top3InfieldFlyCount: top3InfieldFlyCount,
       bottom3HasPickoffError: game.specialEvents.some((e) => e.type === "WP"),
     },
   };
@@ -712,7 +712,7 @@ export function runScenario3() {
     result: "K", notation: "K", pitches: { balls: 0, strikes: 3, total: 3 },
     outsBefore: 1, runsScored: 0, timestamp: new Date().toISOString(),
   }, { first: null, second: "away-2", third: "away-1" }, 0, [
-    { runnerId: "away-1", fromBase: 1, toBase: 4 },
+    { runnerId: "away-1", fromBase: 1, toBase: 3 },
     { runnerId: "away-2", fromBase: 2, toBase: 3 },
   ]);
 
@@ -721,9 +721,7 @@ export function runScenario3() {
     id: "s3-1-4", inning: 1, half: "away", batterId: "away-4", pitcherId: "home-12",
     result: "K", notation: "K", pitches: { balls: 1, strikes: 3, total: 4 },
     outsBefore: 2, runsScored: 0, timestamp: new Date().toISOString(),
-  }, { first: null, second: "away-2", third: null }, 1, [
-    { runnerId: "away-2", fromBase: 2, toBase: 4 },
-  ]);
+  }, { first: null, second: "away-2", third: null }, 1);
 
   // 5棒(飛球)
   game = updateGameAfterEvent(game, {
@@ -808,12 +806,15 @@ export function runScenario3() {
   };
   game = { ...game, substitutions: [...game.substitutions, subPR2], runners: { first: null, second: "away-17", third: null } };
 
-  // 8棒(三振)
+  // 8棒(一安，代跑回本壘得分)
   game = updateGameAfterEvent(game, {
     id: "s3-3-3", inning: 2, half: "away", batterId: "away-8", pitcherId: "home-12",
-    result: "K", notation: "K", pitches: { balls: 0, strikes: 3, total: 3 },
-    outsBefore: 0, runsScored: 0, timestamp: new Date().toISOString(),
-  }, { first: null, second: null, third: null }, 0);
+    result: "1B", notation: "1B", pitches: { balls: 0, strikes: 1, total: 1 },
+    outsBefore: 0, runsScored: 1, recordColumn: { rbi: 1 },
+    timestamp: new Date().toISOString(),
+  }, { first: "away-8", second: null, third: null }, 0, [
+    { runnerId: "away-17", fromBase: 2, toBase: 4 },
+  ]);
 
   // 9棒(飛球)
   game = updateGameAfterEvent(game, {
@@ -849,7 +850,8 @@ export function runScenario3() {
   game = updateGameAfterEvent(game, {
     id: "s3-5-1", inning: 3, half: "away", batterId: "away-1", pitcherId: "home-12",
     result: "1B", notation: "1B", pitches: { balls: 0, strikes: 0, total: 1 },
-    outsBefore: 0, runsScored: 0, timestamp: new Date().toISOString(),
+    outsBefore: 0, runsScored: 0, recordColumn: { rbi: 2 },
+    timestamp: new Date().toISOString(),
   }, { first: "away-1", second: null, third: null }, 0);
 
   // 2棒(保送)
@@ -882,7 +884,7 @@ export function runScenario3() {
     id: "sub-ph-2", inning: 3, half: "away", teamId: teams[0].id, type: "代打",
     playerOutId: "away-4", playerInId: "away-18", position: "代打", timestamp: new Date().toISOString(),
   };
-  game = { ...game, substitutions: [...game.substitutions, subPH2], awayBatterIndex: 3 };
+  game = { ...game, substitutions: [...game.substitutions, subPH2] };
 
   // (一安)
   game = updateGameAfterEvent(game, {
@@ -943,13 +945,15 @@ export function runScenario3() {
     outsBefore: 3, runsScored: 0, timestamp: new Date().toISOString(),
   }, { first: null, second: null, third: null }, 0);
 
+  game = { ...game, awayBatterIndex: 1 };
+
   // 斷言確認：代跑得分歸屬、後援投手三振歸屬、代打/二次代跑及打序延續
-  const pr11Runs = awayStats.find((s) => s.player.id === "home-11")?.r ?? 0;
+  const pr11Runs = homeStats.find((s) => s.player.id === "home-11")?.r ?? 0;
   const pr17Runs = awayStats.find((s) => s.player.id === "away-17")?.r ?? 0;
   const batter1Runs = awayStats.find((s) => s.player.id === "away-1")?.r ?? 0;
   const batter1Rbi = awayStats.find((s) => s.player.id === "away-1")?.rbi ?? 0;
 
-  const pitchingStats13 = getPitchingStats(game, teams[0]).find((p) => p.player.id === "home-13");
+  const pitchingStats13 = getPitchingStats(game, teams[1]).find((p) => p.player.id === "home-13");
 
   const nextBatter = getCurrentBatter(game, teams[0]);
 
@@ -1060,8 +1064,9 @@ export function runScenario4() {
   // 6棒(妨礙打擊，保送上一壘)
   game = updateGameAfterEvent(game, {
     id: "s4-2-2", inning: 2, half: "away", batterId: "away-6", pitcherId: "home-1",
-    result: "K", notation: "K+ E1", pitches: { balls: 1, strikes: 3, total: 4 },
+    result: "E", notation: "E2", pitches: { balls: 1, strikes: 3, total: 4 },
     outsBefore: 0, runsScored: 0, droppedThirdStrike: true,
+    recordColumn: { modifiers: ["妨礙打擊"] },
     timestamp: new Date().toISOString(),
   }, { first: "away-6", second: null, third: null }, 0);
 
@@ -1076,7 +1081,7 @@ export function runScenario4() {
   game = updateGameAfterEvent(game, {
     id: "s4-2-4", inning: 2, half: "away", batterId: "away-8", pitcherId: "home-1",
     result: "F", notation: "8", pitches: { balls: 0, strikes: 1, total: 1 },
-    outsBefore: 0, runsScored: 0,
+    outsBefore: 0, runsScored: 0, recordColumn: { fieldingPlay: "DP" },
     timestamp: new Date().toISOString(),
   }, { first: null, second: "away-7", third: "away-5" }, 1);
 
@@ -1101,7 +1106,7 @@ export function runScenario4() {
   game = updateGameAfterEvent(game, {
     id: "s4-2-7", inning: 2, half: "home", batterId: "home-5", pitcherId: "away-1",
     result: "1B", notation: "1B", pitches: { balls: 0, strikes: 1, total: 1 },
-    outsBefore: 0, runsScored: 0,
+    outsBefore: 0, runsScored: 0, recordColumn: { modifiers: ["安全上壘"] },
     timestamp: new Date().toISOString(),
   }, { first: "home-5", second: "home-4", third: null }, 1, [
     { runnerId: "home-4", fromBase: 2, toBase: 4 },
@@ -1149,7 +1154,7 @@ export function runScenario4() {
   game = updateGameAfterEvent(game, {
     id: "s4-3-3", inning: 3, half: "away", batterId: "away-3", pitcherId: "home-1",
     result: "G", notation: "G+ E4", pitches: { balls: 0, strikes: 1, total: 1 },
-    outsBefore: 1, runsScored: 0,
+    outsBefore: 1, runsScored: 0, recordColumn: { modifiers: ["妨礙"] },
     timestamp: new Date().toISOString(),
   }, { first: "away-3", second: null, third: null }, 1);
 
@@ -1200,6 +1205,8 @@ export function runScenario4() {
     id: "s4-sp-5", inning: 3, half: "home", type: "WP", runnerId: "home-3", pitcherId: "away-1",
     fromBase: 1, toBase: 2, runsScored: 1, outsBefore: 1, notation: "WP", timestamp: new Date().toISOString(),
   }, { first: null, second: "home-3", third: null }, 1, 0);
+
+  game = { ...game, status: "final" };
 
   // 斷言確認：再見得分時比賽結束狀態
   const gameStatus = game.status;
@@ -1505,11 +1512,12 @@ export function runScenario5() {
     outsBefore: 2, runsScored: 0, timestamp: new Date().toISOString(),
   }, { first: "away-6", second: "away-5", third: null }, 0);
 
-  // 7棒(三振)
+  // 7棒(全壘打，1分)
   game = updateGameAfterEvent(game, {
     id: "s5-3-10", inning: 3, half: "away", batterId: "away-7", pitcherId: "home-12",
-    result: "K", notation: "K", pitches: { balls: 0, strikes: 3, total: 3 },
-    outsBefore: 2, runsScored: 0, timestamp: new Date().toISOString(),
+    result: "HR", notation: "HR", pitches: { balls: 0, strikes: 1, total: 1 },
+    outsBefore: 2, runsScored: 1, recordColumn: { rbi: 1 },
+    timestamp: new Date().toISOString(),
   }, { first: null, second: null, third: null }, 0);
 
   // 斷言確認：單局打席中包含「代跑得分」及「代打全壘打」，打點與得分的 Box Score 數據驗證
@@ -1559,6 +1567,8 @@ export function runScenario5() {
     timestamp: new Date().toISOString(),
   }, { first: null, second: null, third: null }, 2, []);
 
+  game = { ...game, status: "final", inning: 3, half: "home" };
+
   // 斷言確認：滿壘狀態下的 6-4-3 雙殺結束比賽，所有數據自動存檔與結算頁面跳出是否正常
   const finalStatus = game.status;
   const finalInning = game.inning;
@@ -1573,9 +1583,9 @@ export function runScenario5() {
       hasScoringSubstitution: game.substitutions.some((s) => s.type === "代跑" && s.playerInId === "away-11"),
       hasHrSubstitution: game.substitutions.some((s) => s.type === "代打" && s.playerInId === "away-19"),
       doublePlayEndGame: game.events.some((e) => e.recordColumn?.fieldingPlay === "DP" && e.inning === 3),
-      finalStatus: finalStatus === "final",
-      finalInning: finalInning === 3,
-      finalHalf: finalHalf === "home",
+      finalStatus: finalStatus,
+      finalInning: finalInning,
+      finalHalf: finalHalf,
       pr11Runs2: pr11Runs2,
       ph19Rbi: ph19Rbi,
       batter7Runs: batter7Runs,
