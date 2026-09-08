@@ -6,14 +6,14 @@ const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf8");
 
 describe("Android 橫式與設定配色回饋", () => {
-  it("依據模組自動切換並鎖定螢幕方向", () => {
+  it("全域及四大模組全面恢復並強制鎖定為橫式螢幕方向", () => {
     const appConfig = readProjectFile("app.config.ts");
     const homeScreen = readProjectFile("app/(tabs)/index.tsx");
 
     expect(appConfig).toContain('"expo-screen-orientation"');
     expect(homeScreen).toContain("ScreenOrientation.lockAsync");
-    expect(homeScreen).toContain("OrientationLock.PORTRAIT");
     expect(homeScreen).toContain("OrientationLock.LANDSCAPE");
+    expect(homeScreen).not.toContain("OrientationLock.PORTRAIT");
   });
 
   it("Android 原生設定、設定中心與新增比賽精靈會共同提供建置核對與鍵盤避讓", () => {

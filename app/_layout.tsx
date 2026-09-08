@@ -41,9 +41,8 @@ export default function RootLayout() {
     initManusRuntime();
   }, []);
 
-  // The scoring workspace is designed with module-based auto-locking.
-  // Home, Record, and Stats modules auto-lock to Portrait mode.
-  // Single Game Record module (gameLog) auto-locks to Landscape mode.
+  // The scoring workspace is locked to Landscape mode across all modules.
+  // Home, Live Record, Single Game Record, and Stats modules all lock to Landscape mode.
   useEffect(() => {
     // Left empty to let individual screen modules control their own orientation locks.
   }, []);

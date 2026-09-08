@@ -710,35 +710,27 @@ function App() {
         ScreenOrientation.getOrientationAsync(),
         ScreenOrientation.getOrientationLockAsync(),
       ]);
-      const targetLock = tab === "gameLog"
-        ? ScreenOrientation.OrientationLock.LANDSCAPE
-        : ScreenOrientation.OrientationLock.PORTRAIT;
+      const targetLock = ScreenOrientation.OrientationLock.LANDSCAPE;
       const isLandscape =
         orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
         orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
-      const isPortrait =
-        orientation === ScreenOrientation.Orientation.PORTRAIT_UP ||
-        orientation === ScreenOrientation.Orientation.PORTRAIT_DOWN;
-      const expectedLandscape = tab === "gameLog";
-      const healthy = expectedLandscape ? (isLandscape && lock === targetLock) : (isPortrait && lock === targetLock);
+      const healthy = isLandscape && lock === targetLock;
       setOrientationDiagnostic({
         label: healthy ? "方向鎖定中" : "方向需確認",
-        detail: healthy ? (expectedLandscape ? "橫式" : "直式") : "重新鎖定中",
+        detail: healthy ? "橫式" : "重新鎖定中",
         healthy,
       });
     } catch {
       setOrientationDiagnostic({ label: "方向鎖定中", detail: "狀態待確認", healthy: false });
     }
-  }, [tab]);
+  }, []);
 
   const relockOrientation = useCallback(async () => {
     if (Platform.OS === "web") {
       await refreshOrientationDiagnostic();
       return;
     }
-    const targetLock = tab === "gameLog"
-      ? ScreenOrientation.OrientationLock.LANDSCAPE
-      : ScreenOrientation.OrientationLock.PORTRAIT;
+    const targetLock = ScreenOrientation.OrientationLock.LANDSCAPE;
     setOrientationDiagnostic({ label: "方向鎖定中", detail: "重新套用中", healthy: false });
     try {
       await ScreenOrientation.lockAsync(targetLock);
@@ -748,7 +740,7 @@ function App() {
       setOrientationDiagnostic({ label: "方向需確認", detail: "鎖定失敗", healthy: false });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
     }
-  }, [refreshOrientationDiagnostic, tab]);
+  }, [refreshOrientationDiagnostic]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -764,20 +756,14 @@ function App() {
           ScreenOrientation.getOrientationLockAsync(),
         ]);
         if (!mounted) return;
-        const targetLock = tab === "gameLog"
-          ? ScreenOrientation.OrientationLock.LANDSCAPE
-          : ScreenOrientation.OrientationLock.PORTRAIT;
+        const targetLock = ScreenOrientation.OrientationLock.LANDSCAPE;
         const isLandscape =
           orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
           orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
-        const isPortrait =
-          orientation === ScreenOrientation.Orientation.PORTRAIT_UP ||
-          orientation === ScreenOrientation.Orientation.PORTRAIT_DOWN;
-        const expectedLandscape = tab === "gameLog";
-        const healthy = expectedLandscape ? (isLandscape && lock === targetLock) : (isPortrait && lock === targetLock);
+        const healthy = isLandscape && lock === targetLock;
         setOrientationDiagnostic({
           label: healthy ? "方向鎖定中" : "方向需確認",
-          detail: healthy ? (expectedLandscape ? "橫式" : "直式") : "重新鎖定中",
+          detail: healthy ? "橫式" : "重新鎖定中",
           healthy,
         });
       } catch {
@@ -793,15 +779,13 @@ function App() {
       mounted = false;
       ScreenOrientation.removeOrientationChangeListener(subscription);
     };
-  }, [tab]);
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
     const autoLock = async () => {
       try {
-        const targetLock = tab === "gameLog"
-          ? ScreenOrientation.OrientationLock.LANDSCAPE
-          : ScreenOrientation.OrientationLock.PORTRAIT;
+        const targetLock = ScreenOrientation.OrientationLock.LANDSCAPE;
         await ScreenOrientation.lockAsync(targetLock);
         await refreshOrientationDiagnostic();
       } catch {
