@@ -41,38 +41,11 @@ export default function RootLayout() {
     initManusRuntime();
   }, []);
 
-  // The scoring workspace is designed exclusively for landscape operation.
-  // Keep the runtime lock in addition to app.config.ts so Android remains
-  // landscape after returning from a system screen or an interrupted launch.
+  // The scoring workspace is designed with module-based auto-locking.
+  // Home, Record, and Stats modules auto-lock to Portrait mode.
+  // Single Game Record module (gameLog) auto-locks to Landscape mode.
   useEffect(() => {
-    if (Platform.OS === "web") return;
-
-    const lockLandscape = async () => {
-      try {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      } catch {
-        // Native orientation support is unavailable only in unsupported shells.
-      }
-    };
-
-    void lockLandscape();
-    const retryTimer = setTimeout(() => void lockLandscape(), 400);
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void lockLandscape();
-    });
-    const orientationSubscription = ScreenOrientation.addOrientationChangeListener(({ orientationInfo }) => {
-      const orientation = orientationInfo.orientation;
-      const isLandscape =
-        orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
-        orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
-      if (!isLandscape) void lockLandscape();
-    });
-
-    return () => {
-      clearTimeout(retryTimer);
-      subscription.remove();
-      orientationSubscription.remove();
-    };
+    // Left empty to let individual screen modules control their own orientation locks.
   }, []);
 
   // Android scoring screens use immersive mode to preserve the full landscape

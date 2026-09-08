@@ -6,18 +6,14 @@ const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf8");
 
 describe("Android 橫式與設定配色回饋", () => {
-  it("同時以 Expo 建置設定與執行期鎖定維持橫式介面", () => {
+  it("依據模組自動切換並鎖定螢幕方向", () => {
     const appConfig = readProjectFile("app.config.ts");
-    const rootLayout = readProjectFile("app/_layout.tsx");
+    const homeScreen = readProjectFile("app/(tabs)/index.tsx");
 
-    expect(appConfig).toContain('orientation: "landscape"');
     expect(appConfig).toContain('"expo-screen-orientation"');
-    expect(appConfig).toContain('"initialOrientation": "LANDSCAPE"');
-    expect(appConfig).toContain('"./plugins/with-android-landscape"');
-    expect(rootLayout).toContain('ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)');
-    expect(rootLayout).toContain('if (state === "active") void lockLandscape()');
-    expect(rootLayout).toContain('ScreenOrientation.addOrientationChangeListener');
-    expect(rootLayout).toContain('orientationSubscription.remove()');
+    expect(homeScreen).toContain("ScreenOrientation.lockAsync");
+    expect(homeScreen).toContain("OrientationLock.PORTRAIT");
+    expect(homeScreen).toContain("OrientationLock.LANDSCAPE");
   });
 
   it("Android 原生設定、設定中心與新增比賽精靈會共同提供建置核對與鍵盤避讓", () => {
@@ -158,14 +154,14 @@ describe("Android 橫式與設定配色回饋", () => {
     expect(homeScreen).toContain("orientationDiagnosticText: { color: BRAND.navy, fontSize: 8");
   });
 
-  it("方向診斷旁提供可重新套用橫式鎖定的緊湊控制項", () => {
+  it("方向診斷旁提供可重新套用螢幕方向鎖定的緊湊控制項", () => {
     const homeScreen = readProjectFile("app/(tabs)/index.tsx");
 
-    expect(homeScreen).toContain("const relockLandscape");
-    expect(homeScreen).toContain("ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)");
+    expect(homeScreen).toContain("const relockOrientation");
+    expect(homeScreen).toContain("ScreenOrientation.lockAsync");
     expect(homeScreen).toContain("orientationRelockPill");
-    expect(homeScreen).toContain('accessibilityLabel="重新鎖定橫式方向"');
-    expect(homeScreen).toContain("void relockLandscape()");
+    expect(homeScreen).toContain('accessibilityLabel="重新鎖定螢幕方向"');
+    expect(homeScreen).toContain("void relockOrientation()");
   });
 
   it("建立球隊時會以不分大小寫的名稱檢查阻擋重複隊名", () => {

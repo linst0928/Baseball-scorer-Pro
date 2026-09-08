@@ -1141,7 +1141,7 @@ export function getPitchingStats(game: Game, team: Team, scope: PlayerStatScope 
   });
 }
 
-export const DEFAULT_PITCH_LIMIT_THRESHOLDS: [number, number, number] = [50, 70, 85];
+export const DEFAULT_PITCH_LIMIT_THRESHOLDS: [number, number, number] = [25, 45, 85];
 
 export function normalizePitchLimitThresholds(value: unknown): [number, number, number] {
   if (!Array.isArray(value)) return DEFAULT_PITCH_LIMIT_THRESHOLDS;
@@ -1149,6 +1149,13 @@ export function normalizePitchLimitThresholds(value: unknown): [number, number, 
   return values.length === 3 && values[0] < values[1] && values[1] < values[2]
     ? [values[0], values[1], values[2]]
     : DEFAULT_PITCH_LIMIT_THRESHOLDS;
+}
+
+export function getRecentBattingStats(games: Game[], team: Team, limit = 10, scope: PlayerStatScope = "all"): BattingLine[] {
+  const teamGames = getGamesForTeam(games, team.id)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-limit);
+  return getSeasonBattingStats(teamGames, team, scope);
 }
 
 export function getPitcherGamePitchCount(game: Game, pitcherId: string): number {

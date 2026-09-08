@@ -169,4 +169,88 @@ describe("Scoring History Stack Reducer", () => {
     expect(state.present.game.runners.third).toBeNull();
     expect(state.present.selectedResult).toBe("1B");
   });
+
+  it("能對精靈特有之 UI 階段與暫存狀態在歷史堆疊 (Undo/Redo) 巡航時安全進行拷貝與回復", () => {
+    const initial = createMockSnapshot("game-1", 0);
+    initial.wizardStep = 1;
+    initial.wizardTempOuts = 1;
+    initial.wizardTempRunners = { first: "runner-1", second: null, third: null };
+
+    let state: HistoryState = {
+      past: [],
+      present: initial,
+      future: [],
+    };
+
+    const nextSnapshot = createMockSnapshot("game-1", 1);
+    nextSnapshot.wizardStep = 2;
+    nextSnapshot.wizardTempOuts = 2;
+    nextSnapshot.wizardTempRunners = { first: "runner-1", second: "runner-2", third: null };
+
+    state = historyReducer(state, { type: "PUSH_SNAPSHOT", payload: nextSnapshot });
+
+    expect(state.past).toHaveLength(1);
+    expect(state.past[0].wizardStep).toBe(1);
+    expect(state.past[0].wizardTempOuts).toBe(1);
+    expect(state.past[0].wizardTempRunners?.first).toBe("runner-1");
+
+    expect(state.present.wizardStep).toBe(2);
+    expect(state.present.wizardTempOuts).toBe(2);
+    expect(state.present.wizardTempRunners?.second).toBe("runner-2");
+
+    // 測試 UNDO
+    state = historyReducer(state, { type: "UNDO" });
+    expect(state.present.wizardStep).toBe(1);
+    expect(state.present.wizardTempOuts).toBe(1);
+    expect(state.present.wizardTempRunners?.second).toBeNull();
+  });
+
+  it("Time Play 防呆判定：測試非封殺第 3 出局發生時，確認得分是否採計的狀態變更與分數累加邏輯", () => {
+    const initial = createMockSnapshot("game-time-play", 2); // 當前已 2 出局
+    initial.game.score = [{ inning: 1, away: 0, home: 0 }];
+    initial.game.half = "away";
+    initial.wizardStep = 3;
+    initial.wizardTempOuts = 2;
+    initial.wizardTempRuns = 1; // 跑者在本次打擊中跑回本壘，目前累計 1 分
+
+    let state: HistoryState = {
+      past: [],
+      present: initial,
+      future: [],
+    };
+
+    // 模擬跑者被刺殺，造成第 3 出局 (非封殺出局，例如盜三壘被觸殺)
+    const outSnapshot = createMockSnapshot("game-time-play", 3);
+    outSnapshot.wizardStep = 4;
+    outSnapshot.wizardTempOuts = 3;
+    outSnapshot.wizardRequireTimePlay = true; // 觸發 Time Play 確認
+    outSnapshot.wizardTempRuns = 1;
+
+    state = historyReducer(state, { type: "PUSH_SNAPSHOT", payload: outSnapshot });
+
+    expect(state.present.wizardRequireTimePlay).toBe(true);
+    expect(state.present.wizardTempRuns).toBe(1);
+
+    // 情況 A：選「是，得分算數」(採計得分)
+    const allowedSnapshot = createMockSnapshot("game-time-play", 3);
+    allowedSnapshot.wizardStep = 4;
+    allowedSnapshot.wizardTempOuts = 3;
+    allowedSnapshot.wizardRequireTimePlay = false;
+    allowedSnapshot.wizardTempRuns = 1; // 得分維持 1
+
+    let stateAllowed = historyReducer(state, { type: "PUSH_SNAPSHOT", payload: allowedSnapshot });
+    expect(stateAllowed.present.wizardRequireTimePlay).toBe(false);
+    expect(stateAllowed.present.wizardTempRuns).toBe(1);
+
+    // 情況 B：選「否，得分不算」(不採計得分，得分扣除重設為 0)
+    const deniedSnapshot = createMockSnapshot("game-time-play", 3);
+    deniedSnapshot.wizardStep = 4;
+    deniedSnapshot.wizardTempOuts = 3;
+    deniedSnapshot.wizardRequireTimePlay = false;
+    deniedSnapshot.wizardTempRuns = 0; // 得分重設為 0
+
+    let stateDenied = historyReducer(state, { type: "PUSH_SNAPSHOT", payload: deniedSnapshot });
+    expect(stateDenied.present.wizardRequireTimePlay).toBe(false);
+    expect(stateDenied.present.wizardTempRuns).toBe(0);
+  });
 });

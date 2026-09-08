@@ -1,0 +1,2 @@
+error TS5023: Unknown compiler option '-eq'.
+error TS5023: Unknown compiler option '-e'.

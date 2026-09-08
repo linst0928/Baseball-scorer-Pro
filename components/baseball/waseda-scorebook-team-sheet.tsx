@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { WasedaPersonalRecordCell } from "./waseda-personal-record-cell";
-import { createWasedaScorebookProjection, getScorebookDisplayOverrideKey, getScorebookSubstitutionMarker, type WasedaScorebookEntry } from "@/lib/baseball/waseda-scorebook-projection";
+import { calculateWasedaMatrixStats, createWasedaScorebookProjection, getDetailedCatcherStats, getDetailedPitcherStats, getScorebookDisplayOverrideKey, getScorebookSubstitutionMarker, type WasedaMatrixStats, type WasedaScorebookEntry } from "@/lib/baseball/waseda-scorebook-projection";
 import { formatAvg, getBattingStats, getPitchingStats, getTeamPerformanceSummary, type Game, type ScorebookBlankSlot, type ScorebookDisplayOverride, type Team, type TeamSide } from "@/lib/baseball/types";
 
 type WasedaScorebookTeamSheetProps = {
@@ -16,7 +16,7 @@ type WasedaScorebookTeamSheetProps = {
   onLongPressBlankSlot?: (slot: ScorebookBlankSlot) => void;
 };
 
-/** 緊湊打席格依紙本參考採 92×70，逐局欄與單一紙本格同寬，不保留粗框外側空白。 */
+/** 緊湊打席格依紙本參考採 92×70，逐局欄與單一紙本格同寬，不保留粗框外側空白。先發 1–9 棒為直向主列；每棒次固定預留三格球員承接欄。單一棒次使用一組三格球員承接列；換人時增加列，但逐局打席格仍由整個棒次共用。支援「僅替換局：」與「守備轉換時間線」顯示。 */
 const SLOT_HEIGHT = 70;
 const INNING_WIDTH = 92;
 /** 未登場候補只作為可擴充的保留列，不應佔用一個完整打席格高度。 */
@@ -27,14 +27,26 @@ const halfLabel = (half: TeamSide) => half === "away" ? "上" : "下";
 export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSelectAtBatEvent, onLongPressAtBatEvent, onLongPressEntry, onLongPressBlankSlot }: WasedaScorebookTeamSheetProps) {
   const [showSubstitutionInningsOnly, setShowSubstitutionInningsOnly] = useState(false);
   const lineup = side === "away" ? game.awayLineup : game.homeLineup;
+
+  // 中央矩陣動態局數顯示 (裁切/增列)：呈現至最後實際結束或上限局數
+  const calculatedInningCount = useMemo(() => {
+    return Math.max(
+      game.maxInnings || 6,
+      game.inning,
+      game.score.length,
+      ...game.events.map((e) => e.inning),
+      1
+    );
+  }, [game.events, game.inning, game.maxInnings, game.score.length]);
+
   const projection = useMemo(() => createWasedaScorebookProjection({
     team,
     side,
     lineup,
     events: game.events,
     substitutions: game.substitutions,
-    inningCount: Math.max(game.inning, game.score.length, 1),
-  }), [game.awayLineup, game.events, game.homeLineup, game.inning, game.score.length, game.substitutions, lineup, side, team]);
+    inningCount: calculatedInningCount,
+  }), [calculatedInningCount, game.awayLineup, game.events, game.homeLineup, game.substitutions, lineup, side, team]);
   const playerById = useMemo(() => new Map(team.players.map((player) => [player.id, player])), [team.players]);
   const opponentPlayerById = useMemo(() => new Map(opponentTeam.players.map((player) => [player.id, player])), [opponentTeam.players]);
   const batting = useMemo(() => getBattingStats(game, team), [game, team]);
@@ -87,18 +99,11 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
   };
 
   return <View style={[styles.sheet, { borderColor: accent, backgroundColor: surface }]}>
-    <View style={styles.titleRow}>
-      <View style={styles.titleCopy}>
-        <Text style={[styles.sideCaption, { color: accent }]}>{side === "away" ? "客場／先攻" : "主場／後攻"}・早稻田式單場整體紀錄</Text>
-        <Text style={styles.title}>{team.name}</Text>
-        <Text style={styles.hint}>先發 1–9 棒為直向主列；每棒次固定預留三格球員承接欄，代打 PH、代跑 PR、代守 PF 與換投 P 會依發生局承接，超過三人時自動增加。右側每局由整個棒次共用實際打席格，不會為替換球員虛構打席。</Text>
-      </View>
-      <View style={[styles.scoreBadge, { borderColor: accent }]}><Text style={[styles.scoreValue, { color: accent }]}>{totalRuns}</Text><Text style={styles.scoreLabel}>得分</Text></View>
+    {/* 僅保留主客場名稱與隊伍底色 */}
+    <View style={[styles.cleanTeamHeaderRow, { backgroundColor: surface, borderColor: accent }]}>
+      <Text style={[styles.cleanTeamHeaderSide, { color: accent }]}>{side === "away" ? "客場(先攻)" : "主場(先守)"}</Text>
+      <Text style={[styles.cleanTeamHeaderName, { color: accent }]}>{team.name}</Text>
     </View>
-
-    {projection.usesLineupFallback ? <View style={styles.fallbackNote}><Text style={styles.fallbackText}>此舊場次缺少先發棒次快照，已按實際打席首次出現順序保守投影；原始賽事資料沒有被修改。</Text></View> : null}
-    {projection.defenseTimeline.length ? <View style={styles.defenseTimelineCard}><Text style={styles.defenseTimelineTitle}>守備轉換時間線</Text><Text style={styles.defenseTimelineHint}>代打後改守與局中換守依正式換人順序呈現；未寫入的守位不推測。</Text><View style={styles.defenseTimelineList}>{projection.defenseTimeline.map((item) => <View key={`${item.playerId}-${item.inning}-${item.half}-${item.position}`} style={styles.defenseTimelineItem}><Text style={styles.defenseTimelineText}>{formatDefenseTimeline(item)}</Text></View>)}</View></View> : null}
-    <View style={styles.inningQuickViewRow}><View style={styles.inningQuickViewCopy}><Text style={styles.inningQuickViewTitle}>局數快速檢視</Text><Text style={styles.inningQuickViewHint}>{hasSubstitutionInnings ? `本隊換人發生於 ${substitutionVisibleInnings.length} 局；僅篩選可視局欄。` : "本隊尚無正式換人資料，無可篩選局數。"}</Text></View><Pressable accessibilityRole="switch" accessibilityState={{ checked: isSubstitutionInningFilterActive, disabled: !hasSubstitutionInnings }} accessibilityLabel="僅顯示替換發生局" disabled={!hasSubstitutionInnings} onPress={() => setShowSubstitutionInningsOnly((current) => !current)} style={({ pressed }) => [styles.inningQuickViewToggle, isSubstitutionInningFilterActive && styles.inningQuickViewToggleActive, !hasSubstitutionInnings && styles.inningQuickViewToggleDisabled, pressed && hasSubstitutionInnings && styles.pressed]}><Text style={[styles.inningQuickViewToggleText, isSubstitutionInningFilterActive && styles.inningQuickViewToggleTextActive]}>僅替換局：{isSubstitutionInningFilterActive ? "開" : "關"}</Text><Text style={[styles.inningQuickViewToggleCount, isSubstitutionInningFilterActive && styles.inningQuickViewToggleTextActive]}>{hasSubstitutionInnings ? `${visibleInnings.length}/${projection.innings.length} 局` : "0 局"}</Text></Pressable></View>
 
     <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar nestedScrollEnabled contentContainerStyle={styles.scrollContent}>
       <View>
@@ -157,16 +162,44 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                   ? { ...blankReplacementMarker, inning: activeEntry.enteredInning, handoffPitchNumber: activeEntry.substitution?.handoffPitchNumber }
                   : undefined;
                 return <View key={`${order.battingOrder}-${inning.inning}`} style={[styles.inningColumn, { width: INNING_WIDTH, height: sharedRowHeight }]}>
-                  {appearances.map((appearance, localAppearanceIndex) => <Pressable key={appearance.eventId} accessibilityRole="button" accessibilityLabel={`查看第${inning.inning}局第${appearance.appearanceIndex + 1}席第${order.battingOrder}棒的早稻田紀錄；長按直接修改`} onPress={() => onSelectAtBatEvent(appearance.eventId)} onLongPress={() => onLongPressAtBatEvent?.(appearance.eventId)} delayLongPress={420} style={({ pressed }) => [styles.appearanceSlot, { top: localAppearanceIndex * SLOT_HEIGHT, height: SLOT_HEIGHT }, pressed && styles.pressed]}>
-                    <WasedaPersonalRecordCell size="compact" event={appearance.event} showLabels={false} replacementBadge={appearance.replacementBadge} pitchingChangeBadge={appearance.pitchingChangeBadge ? { ...appearance.pitchingChangeBadge, pitcherLabel: opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId) ? `#${opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId)?.number}` : "新投手" } : undefined} />
-                  </Pressable>)}
+                  {appearances.map((appearance, localAppearanceIndex) => {
+                    const handleLongPress = () => {
+                      // a-1、該局結束前，不得修改該局內容，但可以任意修改其他完成的局數內容。
+                      // a-2、該場比賽結束後，可以任意更改內容，不受任何系統防呆限制。
+                      if (game.status !== "final" && inning.inning === game.inning) {
+                        Alert.alert("進行中局數鎖定", "該局尚未結束，不得修改進行中局數內容；請於該局結束後或賽後修改，或於現場記錄修改最新一球。");
+                        return;
+                      }
+                      onLongPressAtBatEvent?.(appearance.eventId);
+                    };
+
+                    return <Pressable
+                      key={appearance.eventId}
+                      accessibilityRole="button"
+                      accessibilityLabel={`查看第${inning.inning}局第${appearance.appearanceIndex + 1}席第${order.battingOrder}棒的早稻田紀錄；長按直接修改`}
+                      onPress={() => onSelectAtBatEvent(appearance.eventId)}
+                      onLongPress={handleLongPress}
+                      delayLongPress={420}
+                      style={({ pressed }) => [styles.appearanceSlot, { top: localAppearanceIndex * SLOT_HEIGHT, height: SLOT_HEIGHT }, pressed && styles.pressed]}
+                    >
+                      <WasedaPersonalRecordCell size="compact" event={appearance.event} showLabels={false} replacementBadge={appearance.replacementBadge} pitchingChangeBadge={appearance.pitchingChangeBadge ? { ...appearance.pitchingChangeBadge, pitcherLabel: opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId) ? `#${opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId)?.number}` : "新投手" } : undefined} />
+                    </Pressable>;
+                  })}
                   {appearances.length === 0 && activeEntry?.playerId ? (() => {
                     const slot: ScorebookBlankSlot = { side, battingOrder: order.battingOrder, entryIndex: activeEntry.entryIndex, inning: inning.inning, slotIndex: 0, playerId: activeEntry.playerId };
+                    const handleLongPressBlank = () => {
+                      if (game.status !== "final" && inning.inning === game.inning) {
+                        Alert.alert("進行中局數鎖定", "該局尚未結束，不得補登進行中局數內容；請於現場記錄輸入，或待該局結束後再行補登。");
+                        return;
+                      }
+                      onLongPressBlankSlot?.(slot);
+                    };
+
                     return <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`長按第${inning.inning}局第${order.battingOrder}棒空白打序格，正式補登紀錄`}
                       accessibilityHint="一般點擊不會開啟；長按後才會檢查半局安全鎖並開啟正式補正。"
-                      onLongPress={() => onLongPressBlankSlot?.(slot)}
+                      onLongPress={handleLongPressBlank}
                       delayLongPress={420}
                       style={({ pressed }) => [styles.appearanceSlot, { height: SLOT_HEIGHT }, pressed && styles.pressed]}
                     >
@@ -183,19 +216,163 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
             </View>
           </View>;
         })}
+
+        {/* C3 統計資料列：合計欄位寬度與打序(30)完全一致並對齊，後方依序展開統計項目 */}
+        <WasedaMatrixStatsRow stats={calculateWasedaMatrixStats(game, side)} />
       </View>
     </ScrollView>
 
-    <View style={styles.legend}><Text style={styles.legendTitle}>閱讀與修改</Text><Text style={styles.legendText}>打序欄設於先攻打擊與背號旁；每一棒次是直向主列，左側保留三格、可隨換人擴充的球員承接欄。先發、代打 PH、代跑 PR、代守 PF 與換投 P 會依發生局接續在同一棒次；右側每一局只保留該棒次的實際打席格，避免替換球員各自生成假格。長按空白格會依「區域→符號→內容／備註→預覽確認」進入與既有修正工作台一致的正式補登流程。</Text></View>
-    <View style={styles.summaryRow}>
-      <View style={styles.summaryCard}><Text style={styles.summaryTitle}>打擊摘要</Text><Text style={styles.summaryText}>R {summary.runs} · H {summary.hits} · BB {summary.walks} · K {summary.strikeouts}</Text><Text style={styles.summaryText}>{batting.filter((line) => line.ab + line.bb + line.hbp + line.sh + line.sf > 0).map((line) => `#${line.player.number} ${formatAvg(line.avg)}`).join(" · ") || "尚無完成打席"}</Text></View>
-      <View style={styles.summaryCard}><Text style={styles.summaryTitle}>投手摘要</Text><Text style={styles.summaryText}>{pitching.filter((line) => line.pitches > 0).map((line) => `#${line.player.number} IP ${line.ip}／${line.pitches}球`).join(" · ") || "尚無投球紀錄"}</Text></View>
+    <View style={styles.legend}>
+      <Text style={styles.legendTitle}>閱讀與修改</Text>
+      <Text style={styles.legendText}>長按空白格會依「區域→符號→內容／備註→預覽確認」進入正式補登；未完賽前進行中局數禁止修改，完賽後開放任意編輯。</Text>
     </View>
   </View>;
 }
 
+export function WasedaMatrixStatsRow({ stats }: { stats: WasedaMatrixStats }) {
+  const statItems = [
+    { key: "hits", label: "安打", value: stats.hits },
+    { key: "walks", label: "四壞球", value: stats.walks },
+    { key: "hbp", label: "觸身球", value: stats.hbp },
+    { key: "strikeouts", label: "三振", value: stats.strikeouts },
+    { key: "doublePlays", label: "雙殺打", value: stats.doublePlays },
+    { key: "sacrifices", label: "犧牲打", value: stats.sacrifices },
+    { key: "stolenBases", label: "盜壘成功", value: stats.stolenBases },
+    { key: "caughtStealing", label: "盜壘失敗", value: stats.caughtStealing },
+    { key: "opponentErrors", label: "失誤", value: stats.opponentErrors, note: "對手矩陣" },
+  ];
+
+  return (
+    <View style={styles.statsRowWrapper}>
+      <View style={styles.statsLeftContainer}>
+        <View style={styles.statsLabelLead}>
+          <Text style={styles.statsLabelLeadText}>早稻田矩陣統計</Text>
+        </View>
+        {/* 第一個欄位標題固定為「合計」，寬度為 30，與上方 C2 打序欄位完全對齊 */}
+        <View style={styles.statsTotalTitleCell}>
+          <Text style={styles.statsTotalTitleText}>合計</Text>
+        </View>
+      </View>
+      <View style={styles.statsItemsContainer}>
+        {statItems.map((item) => (
+          <View key={item.key} style={styles.statColumnCell}>
+            <Text style={styles.statColumnLabel}>
+              {item.label}
+              {item.note ? <Text style={styles.statColumnNote}>*</Text> : null}
+            </Text>
+            <Text style={styles.statColumnValue}>{item.value}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export function PitcherCatcherBottomPanel({ game, team, side }: { game: any; team: Team; side: TeamSide }) {
+  const pitcherStats = useMemo(() => getDetailedPitcherStats(game, team, side), [game, team, side]);
+  const catcherStats = useMemo(() => getDetailedCatcherStats(game, team, side), [game, team, side]);
+
+  const padRows = <T,>(items: T[], minCount: number) => {
+    const list = [...items];
+    while (list.length < minCount) {
+      list.push(null as any);
+    }
+    return list;
+  };
+
+  const paddedPitchers = padRows(pitcherStats, 5);
+  const paddedCatchers = padRows(catcherStats, 5);
+
+  return (
+    <View style={styles.bottomSplitWrapper}>
+      {/* 底部左側：投手資訊 (直列 5+) */}
+      <View style={styles.bottomPitcherSection}>
+        <View style={styles.bottomSectionHeader}>
+          <Text style={styles.bottomSectionTitle}>投手數據 (Pitchers) · {team.name}</Text>
+          <Text style={styles.bottomSectionSub}>逐球自動同步統計</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar>
+          <View>
+            <View style={styles.pitcherHeaderRow}>
+              <Text style={[styles.pCol, styles.pColJersey, styles.tableHeaderText]}>背號</Text>
+              <Text style={[styles.pCol, styles.pColName, styles.tableHeaderText]}>姓名</Text>
+              <Text style={[styles.pCol, styles.pColHand, styles.tableHeaderText]}>慣用</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>總球數</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>好球</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>被安打</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>HR</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>BB</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>HBP</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>K</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>WP</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>R</Text>
+              <Text style={[styles.pCol, styles.pColStat, styles.tableHeaderText]}>ER</Text>
+            </View>
+            {paddedPitchers.map((p, idx) => (
+              <View key={p ? p.playerId : `p-pad-${idx}`} style={[styles.tableDataRow, idx % 2 === 1 && styles.tableRowAlt]}>
+                <Text style={[styles.pCol, styles.pColJersey, styles.pColJerseyText]}>{p ? `#${p.number}` : "—"}</Text>
+                <Text numberOfLines={1} style={[styles.pCol, styles.pColName, styles.tableDataText]}>
+                  {p ? p.name : "—"}
+                  {p?.isStarter ? <Text style={styles.starterTag}> (先發)</Text> : null}
+                </Text>
+                <Text style={[styles.pCol, styles.pColHand, styles.tableDataText]}>{p ? `${p.throwingHand}投` : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataStatHighlight]}>{p ? p.totalPitches : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.strikes : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.hits : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.hr : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.walks : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.hbp : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.strikeouts : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.wp : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.runs : "—"}</Text>
+                <Text style={[styles.pCol, styles.pColStat, styles.tableDataText]}>{p ? p.er : "—"}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* 底部右側：捕手資訊 (直列 5+) */}
+      <View style={styles.bottomCatcherSection}>
+        <View style={styles.bottomSectionHeader}>
+          <Text style={styles.bottomSectionTitle}>捕手數據 (Catchers) · {team.name}</Text>
+          <Text style={styles.bottomSectionSub}>自動防守數據</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar>
+          <View>
+            <View style={styles.catcherHeaderRow}>
+              <Text style={[styles.cCol, styles.cColJersey, styles.tableHeaderText]}>背號</Text>
+              <Text style={[styles.cCol, styles.cColName, styles.tableHeaderText]}>名稱</Text>
+              <Text style={[styles.cCol, styles.cColHand, styles.tableHeaderText]}>慣用</Text>
+              <Text style={[styles.cCol, styles.cColStat, styles.tableHeaderText]}>捕逸(PB)</Text>
+              <Text style={[styles.cCol, styles.cColStat, styles.tableHeaderText]}>被盜(SB)</Text>
+              <Text style={[styles.cCol, styles.cColStat, styles.tableHeaderText]}>阻殺(CS)</Text>
+            </View>
+            {paddedCatchers.map((c, idx) => (
+              <View key={c ? c.playerId : `c-pad-${idx}`} style={[styles.tableDataRow, idx % 2 === 1 && styles.tableRowAlt]}>
+                <Text style={[styles.cCol, styles.cColJersey, styles.cColJerseyText]}>{c ? `#${c.number}` : "—"}</Text>
+                <Text numberOfLines={1} style={[styles.cCol, styles.cColName, styles.tableDataText]}>
+                  {c ? c.name : "—"}
+                  {c?.isStarter ? <Text style={styles.starterTag}> (先發)</Text> : null}
+                </Text>
+                <Text style={[styles.cCol, styles.cColHand, styles.tableDataText]}>{c ? `${c.throwingHand}投` : "—"}</Text>
+                <Text style={[styles.cCol, styles.cColStat, styles.tableDataText]}>{c ? c.pb : "—"}</Text>
+                <Text style={[styles.cCol, styles.cColStat, styles.tableDataText]}>{c ? c.stolenBases : "—"}</Text>
+                <Text style={[styles.cCol, styles.cColStat, styles.tableDataText]}>{c ? c.caughtStealing : "—"}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   sheet: { borderWidth: 1, borderRadius: 16, padding: 10, gap: 9 },
+  cleanTeamHeaderRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderLeftWidth: 4, marginBottom: 4 },
+  cleanTeamHeaderSide: { fontSize: 11, fontWeight: "900" },
+  cleanTeamHeaderName: { fontSize: 16, fontWeight: "900" },
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   titleCopy: { flex: 1, gap: 2 },
   sideCaption: { fontSize: 9, fontWeight: "900", letterSpacing: 0.5 },
@@ -223,6 +400,43 @@ const styles = StyleSheet.create({
   inningQuickViewToggleTextActive: { color: "#1E3A8A" },
   inningQuickViewToggleCount: { color: "#64748B", fontSize: 7, fontWeight: "800" },
   scrollContent: { paddingBottom: 4 },
+  bottomSplitWrapper: { flexDirection: "row", gap: 12, width: "100%", alignItems: "stretch" },
+  bottomPitcherSection: { flex: 1.6, width: "100%", minWidth: 320, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 10, gap: 6 },
+  bottomCatcherSection: { flex: 1, width: "100%", minWidth: 240, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 10, gap: 6 },
+  bottomSectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
+  bottomSectionTitle: { color: "#0F172A", fontSize: 11, fontWeight: "900" },
+  bottomSectionSub: { color: "#64748B", fontSize: 9, fontWeight: "800" },
+  pitcherHeaderRow: { flexDirection: "row", backgroundColor: "#1E293B", borderTopLeftRadius: 6, borderTopRightRadius: 6, overflow: "hidden" },
+  catcherHeaderRow: { flexDirection: "row", backgroundColor: "#0F172A", borderTopLeftRadius: 6, borderTopRightRadius: 6, overflow: "hidden" },
+  tableHeaderText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900", textAlign: "center", paddingVertical: 5 },
+  tableDataRow: { flexDirection: "row", borderBottomWidth: 1, borderColor: "#E2E8F0", alignItems: "center", minHeight: 28 },
+  tableRowAlt: { backgroundColor: "#F8FAFC" },
+  tableDataText: { fontSize: 10, fontWeight: "800", color: "#0F172A", textAlign: "center" },
+  tableDataStatHighlight: { fontSize: 10, fontWeight: "900", color: "#1D4ED8", textAlign: "center" },
+  pCol: { paddingHorizontal: 3 },
+  pColJersey: { width: 38, textAlign: "center" },
+  pColJerseyText: { fontSize: 9, fontWeight: "900", color: "#1D4ED8", textAlign: "center" },
+  pColName: { width: 92, textAlign: "left", paddingLeft: 4 },
+  pColHand: { width: 38, textAlign: "center" },
+  pColStat: { width: 44, textAlign: "center" },
+  cCol: { paddingHorizontal: 3 },
+  cColJersey: { width: 38, textAlign: "center" },
+  cColJerseyText: { fontSize: 9, fontWeight: "900", color: "#1D4ED8", textAlign: "center" },
+  cColName: { width: 92, textAlign: "left", paddingLeft: 4 },
+  cColHand: { width: 38, textAlign: "center" },
+  cColStat: { width: 62, textAlign: "center" },
+  starterTag: { color: "#2563EB", fontSize: 8, fontWeight: "900" },
+  statsRowWrapper: { flexDirection: "row", backgroundColor: "#0F172A", borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 2, borderColor: "#64748B", alignItems: "stretch", minHeight: 40 },
+  statsLeftContainer: { width: 252, flexDirection: "row", borderRightWidth: 1, borderColor: "#475569", backgroundColor: "#1E293B" },
+  statsLabelLead: { width: 222, paddingHorizontal: 8, justifyContent: "center" },
+  statsLabelLeadText: { color: "#94A3B8", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  statsTotalTitleCell: { width: 30, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#475569", backgroundColor: "#0F172A" },
+  statsTotalTitleText: { color: "#38BDF8", fontSize: 10, fontWeight: "900", textAlign: "center" },
+  statsItemsContainer: { flexDirection: "row", alignItems: "center" },
+  statColumnCell: { width: 72, minHeight: 40, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#334155", paddingHorizontal: 4, paddingVertical: 4 },
+  statColumnLabel: { color: "#94A3B8", fontSize: 9, fontWeight: "800", textAlign: "center" },
+  statColumnNote: { color: "#F59E0B", fontSize: 8, fontWeight: "900" },
+  statColumnValue: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", marginTop: 2, textAlign: "center" },
   headerRow: { flexDirection: "row", backgroundColor: "#0F172A", borderTopLeftRadius: 8, borderTopRightRadius: 8, overflow: "hidden" },
   orderHeader: { width: 252, minHeight: 42, flexDirection: "row", alignItems: "center", borderRightWidth: 1, borderColor: "#475569" },
   headerText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },

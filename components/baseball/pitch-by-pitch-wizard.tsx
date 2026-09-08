@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
 import type { Game, PitchState, RecordColumn, AtBatResult, PitchOutcome, Player } from "@/lib/baseball/types";
-import { useScoringHistory, type GameSnapshot } from "@/lib/baseball/scoring-history-reducer";
+import { useScoringHistory, type GameSnapshot, deepCloneGame, deepCloneSnapshot } from "@/lib/baseball/scoring-history-reducer";
 import { buildStrictRunnerQueue, resolveForcedAdvances, checkTimePlayCondition } from "@/lib/baseball/runner-engine";
 
 export type PitchByPitchWizardProps = {
@@ -37,7 +37,114 @@ export function PitchByPitchWizard({
   const [runnerQueueIndex, setRunnerQueueIndex] = useState<number>(0);
   const [tempRunners, setTempRunners] = useState<Game["runners"]>({ ...present.game.runners });
   const [tempOuts, setTempOuts] = useState<number>(present.game.outs);
+  const [tempRuns, setTempRuns] = useState<number>(0); // 追蹤本打席跑者跑回本壘的得分數
   const [requireTimePlay, setRequireTimePlay] = useState<boolean>(false);
+
+  // 輔助函式：用強烈的不可變性建立全新快照物件
+  const createSnapshot = (
+    gameOverride?: Partial<Game>,
+    pitchDraftOverride?: Partial<PitchState>,
+    recordColumnDraftOverride?: Partial<RecordColumn>,
+    snapshotOverrides?: Partial<GameSnapshot>
+  ): GameSnapshot => {
+    const finalGame = deepCloneGame({
+      ...present.game,
+      ...gameOverride,
+    });
+
+    const finalPitchDraft = {
+      ...present.pitchDraft,
+      ...pitchDraftOverride,
+      locations: (pitchDraftOverride?.locations || present.pitchDraft.locations)?.map(l => ({ ...l })),
+    };
+
+    const finalRecordColumnDraft = {
+      ...present.recordColumnDraft,
+      ...recordColumnDraftOverride,
+      modifiers: (recordColumnDraftOverride?.modifiers || present.recordColumnDraft.modifiers)
+        ? [...(recordColumnDraftOverride?.modifiers || present.recordColumnDraft.modifiers || [])]
+        : undefined,
+    };
+
+    const currentBattedBallPosition = snapshotOverrides?.hasOwnProperty("wizardBattedBallPosition")
+      ? snapshotOverrides.wizardBattedBallPosition
+      : battedBallPosition;
+
+    return {
+      game: finalGame,
+      pitchDraft: finalPitchDraft,
+      selectedResult: snapshotOverrides?.hasOwnProperty("selectedResult")
+        ? (snapshotOverrides.selectedResult as AtBatResult | null)
+        : atBatResult,
+      fieldingPosition: String(currentBattedBallPosition || 1),
+      recordColumnDraft: finalRecordColumnDraft,
+      timestamp: new Date().toISOString(),
+      // 附加 wizard 的內部進度 state
+      wizardStep: snapshotOverrides?.wizardStep !== undefined ? snapshotOverrides.wizardStep : step,
+      wizardRunnerQueueIndex: snapshotOverrides?.wizardRunnerQueueIndex !== undefined ? snapshotOverrides.wizardRunnerQueueIndex : runnerQueueIndex,
+      wizardTempRunners: snapshotOverrides?.wizardTempRunners ? { ...snapshotOverrides.wizardTempRunners } : { ...tempRunners },
+      wizardTempOuts: snapshotOverrides?.wizardTempOuts !== undefined ? snapshotOverrides.wizardTempOuts : tempOuts,
+      wizardRequireTimePlay: snapshotOverrides?.wizardRequireTimePlay !== undefined ? snapshotOverrides.wizardRequireTimePlay : requireTimePlay,
+      wizardBattedBallType: snapshotOverrides?.wizardBattedBallType !== undefined ? snapshotOverrides.wizardBattedBallType : battedBallType,
+      wizardBattedBallPosition: currentBattedBallPosition,
+      wizardRunnerQueue: snapshotOverrides?.wizardRunnerQueue ? snapshotOverrides.wizardRunnerQueue.map(q => ({ ...q })) : runnerQueue.map(q => ({ ...q })),
+      wizardTempRuns: snapshotOverrides?.wizardTempRuns !== undefined ? snapshotOverrides.wizardTempRuns : tempRuns,
+    };
+  };
+
+  // 3. 監聽歷史堆疊中的當前快照 present，當點擊 Undo 時自動同步還原本地 UI 所有暫存狀態
+  useEffect(() => {
+    if (present.wizardStep !== undefined) {
+      setStep(present.wizardStep);
+    } else {
+      setStep(1);
+    }
+    if (present.wizardRunnerQueueIndex !== undefined) {
+      setRunnerQueueIndex(present.wizardRunnerQueueIndex);
+    } else {
+      setRunnerQueueIndex(0);
+    }
+    if (present.wizardTempRunners !== undefined) {
+      setTempRunners({ ...present.wizardTempRunners });
+    } else {
+      setTempRunners({ ...present.game.runners });
+    }
+    if (present.wizardTempOuts !== undefined) {
+      setTempOuts(present.wizardTempOuts);
+    } else {
+      setTempOuts(present.game.outs);
+    }
+    if (present.wizardRequireTimePlay !== undefined) {
+      setRequireTimePlay(present.wizardRequireTimePlay);
+    } else {
+      setRequireTimePlay(false);
+    }
+    if (present.wizardBattedBallType !== undefined) {
+      setBattedBallType(present.wizardBattedBallType);
+    } else {
+      setBattedBallType("");
+    }
+    if (present.wizardBattedBallPosition !== undefined) {
+      setBattedBallPosition(present.wizardBattedBallPosition);
+    } else {
+      setBattedBallPosition(null);
+    }
+    if (present.wizardRunnerQueue !== undefined) {
+      setRunnerQueue(present.wizardRunnerQueue.map(q => ({ ...q })));
+    } else {
+      setRunnerQueue([]);
+    }
+    if (present.selectedResult !== undefined) {
+      setAtBatResult(present.selectedResult);
+    } else {
+      setAtBatResult(null);
+    }
+    if (present.wizardTempRuns !== undefined) {
+      setTempRuns(present.wizardTempRuns);
+    } else {
+      setTempRuns(0);
+    }
+  }, [present]);
 
   // 當前正在清算的跑者
   const currentResolvingRunner = useMemo(() => {
@@ -58,38 +165,93 @@ export function PitchByPitchWizard({
     setCurrentPitchOutcome(outcome);
 
     if (outcome === "inPlay" || outcome === "bunt") {
-      // 進入 Step 2 擊球判定
-      setStep(2);
+      const updatedPitchDraft: PitchState = {
+        ...present.pitchDraft,
+        total: present.pitchDraft.total + 1,
+        locations: [
+          ...(present.pitchDraft.locations || []),
+          { zone: 5, type: "fastball", outcome },
+        ],
+      };
+      // 更新投球結果，將 step 推進至 2 並發送快照歷史
+      const nextSnapshot = createSnapshot(
+        undefined,
+        updatedPitchDraft,
+        undefined,
+        {
+          wizardStep: 2,
+          wizardBattedBallType: outcome === "bunt" ? "bunt" : battedBallType,
+        }
+      );
+      pushSnapshot(nextSnapshot);
     } else {
       // 純投球紀錄 (好球、壞球、界外等)
       // 若達 3 好球 (K) 或 4 壞球 (BB) -> 觸發結果並進入清算階段
       const newStrikes = outcome === "strike" || outcome === "swingingStrike" ? present.pitchDraft.strikes + 1 : present.pitchDraft.strikes;
       const newBalls = outcome === "ball" ? present.pitchDraft.balls + 1 : present.pitchDraft.balls;
 
+      const updatedPitchDraft: PitchState = {
+        ...present.pitchDraft,
+        balls: newBalls,
+        strikes: newStrikes,
+        total: present.pitchDraft.total + 1,
+        locations: [
+          ...(present.pitchDraft.locations || []),
+          { zone: 5, type: "fastball", outcome },
+        ],
+      };
+
       if (newBalls >= 4) {
-        setAtBatResult("BB");
-        startRunnerClearing("BB");
+        // 四壞保送自動擠回分數
+        const batterId = present.game.half === "away"
+          ? present.game.awayRegisteredPlayerIds?.[present.game.awayBatterIndex]
+          : present.game.homeRegisteredPlayerIds?.[present.game.homeBatterIndex];
+
+        let finalRunners = { ...present.game.runners };
+        let walkRuns = 0;
+        if (batterId) {
+          const { runners: resolvedRunners, advances } = resolveForcedAdvances(present.game.runners, batterId);
+          finalRunners = resolvedRunners;
+          walkRuns = advances.filter(adv => adv.isScore).length;
+        }
+
+        const nextSnapshot = createSnapshot(
+          undefined,
+          updatedPitchDraft,
+          undefined,
+          {
+            selectedResult: "BB",
+            wizardStep: 4,
+            wizardTempRunners: finalRunners,
+            wizardTempOuts: tempOuts,
+            wizardTempRuns: walkRuns,
+          }
+        );
+        pushSnapshot(nextSnapshot);
       } else if (newStrikes >= 3) {
-        setAtBatResult("K");
-        setTempOuts((o) => o + 1);
-        startRunnerClearing("K");
+        // 三振出局
+        const nextSnapshot = createSnapshot(
+          undefined,
+          updatedPitchDraft,
+          undefined,
+          {
+            selectedResult: "K",
+            wizardStep: 4,
+            wizardTempOuts: tempOuts + 1,
+            wizardTempRuns: 0,
+          }
+        );
+        pushSnapshot(nextSnapshot);
       } else {
-        // 純球數累積，單球快照寫入
-        const updatedPitchDraft: PitchState = {
-          ...present.pitchDraft,
-          balls: newBalls,
-          strikes: newStrikes,
-          total: present.pitchDraft.total + 1,
-          locations: [
-            ...(present.pitchDraft.locations || []),
-            { zone: 5, type: "fastball", outcome },
-          ],
-        };
-        const nextSnapshot: GameSnapshot = {
-          ...present,
-          pitchDraft: updatedPitchDraft,
-          timestamp: new Date().toISOString(),
-        };
+        // 純球數累積，單球快照寫入歷史堆疊中
+        const nextSnapshot = createSnapshot(
+          undefined,
+          updatedPitchDraft,
+          undefined,
+          {
+            wizardStep: 1,
+          }
+        );
         pushSnapshot(nextSnapshot);
         // 重置選取的投球並維持在 Step 1
         setCurrentPitchOutcome(null);
@@ -98,40 +260,83 @@ export function PitchByPitchWizard({
   };
 
   // --- Step 2 處理方法 ---
-  const handleBattedBallCommit = (result: AtBatResult) => {
-    setAtBatResult(result);
-    if (result === "E" || result === "G") {
-      setTempOuts((o) => o + 1);
-    }
-    startRunnerClearing(result);
+  const handleSelectBattedBallType = (type: "fly" | "ground" | "line" | "bunt" | "") => {
+    setBattedBallType(type);
+    const nextSnapshot = createSnapshot(
+      undefined,
+      undefined,
+      { trajectory: type && type !== "bunt" ? type as RecordColumn["trajectory"] : undefined },
+      {
+        wizardBattedBallType: type,
+      }
+    );
+    pushSnapshot(nextSnapshot);
   };
 
-  // --- Step 3 跑者清算啟動器 (整合階段三引擎) ---
-  const startRunnerClearing = (result: AtBatResult) => {
+  const handleSelectBattedBallPosition = (num: number) => {
+    setBattedBallPosition(num);
+    const nextSnapshot = createSnapshot(
+      undefined,
+      undefined,
+      { battedBallPosition: String(num) },
+      {
+        fieldingPosition: String(num),
+        wizardBattedBallPosition: num,
+      }
+    );
+    pushSnapshot(nextSnapshot);
+  };
+
+  const handleBattedBallCommit = (result: AtBatResult) => {
+    setAtBatResult(result);
+    let nextOuts = tempOuts;
+    if (result === "E" || result === "G") {
+      nextOuts += 1;
+    }
+
     const isWalk = result === "BB" || result === "HBP";
     const batterId = present.game.half === "away"
       ? present.game.awayRegisteredPlayerIds?.[present.game.awayBatterIndex]
       : present.game.homeRegisteredPlayerIds?.[present.game.homeBatterIndex];
-    
+
+    let nextRunners = { ...present.game.runners };
+    let nextStep: 1 | 2 | 3 | 4 = 4;
+    let queue: Array<{ base: 3 | 2 | 1; runnerId: string }> = [];
+    let walkRuns = 0;
+
     if (isWalk && batterId) {
-      // Poka-yoke: 僅四壞/觸身保送自動推進判定，安打絕不自動推進原壘上跑者
-      const { runners: resolvedRunners } = resolveForcedAdvances(present.game.runners, batterId);
-      setTempRunners(resolvedRunners);
-      // 保送不增加出局數，直接前進至 Step 4 預覽確認
-      setStep(4);
+      // Poka-yoke: 僅四壞/觸身保送自動推進判定
+      const { runners: resolvedRunners, advances } = resolveForcedAdvances(present.game.runners, batterId);
+      nextRunners = resolvedRunners;
+      walkRuns = advances.filter(adv => adv.isScore).length;
+      nextStep = 4;
     } else {
       // 壘上有人非自動推進 -> 建構 3B -> 2B -> 1B 嚴格清算佇列
-      const queue = buildStrictRunnerQueue(present.game.runners);
-      if (queue.length > 0) {
-        setRunnerQueue(queue);
-        setRunnerQueueIndex(0);
-        setTempRunners({ ...present.game.runners });
-        setStep(3);
+      const buildQueue = buildStrictRunnerQueue(present.game.runners);
+      if (buildQueue.length > 0) {
+        queue = buildQueue;
+        nextRunners = { ...present.game.runners };
+        nextStep = 3;
       } else {
-        // 壘上無人直接進入 Step 4
-        setStep(4);
+        nextStep = 4;
       }
     }
+
+    const nextSnapshot = createSnapshot(
+      undefined,
+      undefined,
+      undefined,
+      {
+        selectedResult: result,
+        wizardStep: nextStep,
+        wizardTempRunners: nextRunners,
+        wizardTempOuts: nextOuts,
+        wizardRunnerQueue: queue,
+        wizardRunnerQueueIndex: 0,
+        wizardTempRuns: walkRuns,
+      }
+    );
+    pushSnapshot(nextSnapshot);
   };
 
   // --- Step 3 跑者抉擇卡片事件 ---
@@ -139,18 +344,18 @@ export function PitchByPitchWizard({
     if (!currentResolvingRunner) return;
 
     let nextOuts = tempOuts;
+    let nextRuns = tempRuns;
     const currentBase = currentResolvingRunner.base;
     const runnerId = currentResolvingRunner.runnerId;
 
     const newRunners = { ...tempRunners };
 
     if (action === "HOLD") {
-      // 嚴格確保跑者停留在原壘 (toBase 等於 fromBase)，絕不自動 +1 進壘
+      // 嚴格確保跑者停留在原壘，絕不自動 +1 進壘
       newRunners[getBaseKey(currentBase)] = runnerId;
     } else if (action === "OUT") {
       // 跑者出局
       nextOuts += 1;
-      setTempOuts(nextOuts);
       newRunners[getBaseKey(currentBase)] = null;
 
       // 階段三防呆：第 3 出局與 Time Play 判定
@@ -162,35 +367,79 @@ export function PitchByPitchWizard({
       });
 
       if (nextOuts >= 3) {
-        if (timePlayCheck.requireTimePlayConfirmation) {
-          setRequireTimePlay(true);
+        let requireTp = false;
+        if (timePlayCheck.requireTimePlayConfirmation && nextRuns > 0) {
+          requireTp = true;
         }
-        // Poka-yoke: 一旦 3 出局，立即硬截斷後續跑者清算，直接進入結算
-        setStep(4);
+
+        // Poka-yoke: 一旦 3 出局，立即硬截斷後續跑者清算，直接進入結算，並推入快照
+        const nextSnapshot = createSnapshot(
+          undefined,
+          undefined,
+          undefined,
+          {
+            wizardStep: 4,
+            wizardTempRunners: newRunners,
+            wizardTempOuts: nextOuts,
+            wizardRequireTimePlay: requireTp,
+            wizardTempRuns: nextRuns,
+          }
+        );
+        pushSnapshot(nextSnapshot);
         return;
       }
     } else if (action === "SCORE") {
       // 得分
       newRunners[getBaseKey(currentBase)] = null;
+      nextRuns += 1;
     } else if (action === "ADVANCE" && targetBase) {
       // 推進
       newRunners[getBaseKey(currentBase)] = null;
       newRunners[getBaseKey(targetBase as 1 | 2 | 3)] = runnerId;
     }
 
-    setTempRunners(newRunners);
+    // 檢查非出局狀況下是否需要前進下一個跑者
+    const nextQueueIndex = runnerQueueIndex + 1;
+    const isFinished = nextQueueIndex >= runnerQueue.length || nextOuts >= 3;
+    const nextStepVal = isFinished ? 4 : 3;
 
-    // 前進下一個跑者
-    if (runnerQueueIndex + 1 < runnerQueue.length && nextOuts < 3) {
-      setRunnerQueueIndex((prev) => prev + 1);
-    } else {
-      // 全員清算完畢或已滿 3 出局
-      setStep(4);
-    }
+    const nextSnapshot = createSnapshot(
+      undefined,
+      undefined,
+      undefined,
+      {
+        wizardStep: nextStepVal,
+        wizardTempRunners: newRunners,
+        wizardTempOuts: nextOuts,
+        wizardRunnerQueueIndex: isFinished ? 0 : nextQueueIndex,
+        wizardTempRuns: nextRuns,
+      }
+    );
+    pushSnapshot(nextSnapshot);
   };
 
   const getBaseKey = (base: 1 | 2 | 3): "first" | "second" | "third" => {
     return base === 1 ? "first" : base === 2 ? "second" : "third";
+  };
+
+  // --- Step 4 Time Play 得分確認事件 ---
+  const handleTimePlayDecision = (isAllowed: boolean) => {
+    // 跑者得分是否早於出局發生？
+    // 如果「否」，不採計本打席累計的所有跑者跑回本壘得分 (tempRuns 重設為 0)
+    const nextRuns = isAllowed ? tempRuns : 0;
+    setTempRuns(nextRuns);
+    setRequireTimePlay(false);
+
+    const nextSnapshot = createSnapshot(
+      undefined,
+      undefined,
+      undefined,
+      {
+        wizardRequireTimePlay: false,
+        wizardTempRuns: nextRuns,
+      }
+    );
+    pushSnapshot(nextSnapshot);
   };
 
   // --- Step 4 最終寫入 ---
@@ -221,8 +470,29 @@ export function PitchByPitchWizard({
       }
     }
 
+    // 採計得分，並更新至 game.score 中
+    let finalScore = present.game.score.map(row => ({ ...row }));
+    if (tempRuns > 0) {
+      const currentInning = present.game.inning;
+      const currentHalf = present.game.half;
+      const rowIdx = finalScore.findIndex(row => row.inning === currentInning);
+      if (rowIdx !== -1) {
+        finalScore[rowIdx] = {
+          ...finalScore[rowIdx],
+          [currentHalf]: finalScore[rowIdx][currentHalf] + tempRuns,
+        };
+      } else {
+        finalScore.push({
+          inning: currentInning,
+          away: currentHalf === "away" ? tempRuns : 0,
+          home: currentHalf === "home" ? tempRuns : 0,
+        });
+      }
+    }
+
     const finalGame: Game = {
       ...present.game,
+      score: finalScore,
       runners: tempOuts >= 3 ? { first: null, second: null, third: null } : nextRunnersWithBatter,
       outs: tempOuts >= 3 ? 0 : tempOuts,
       inning: tempOuts >= 3 ? present.game.inning + (present.game.half === "home" ? 1 : 0) : present.game.inning,
@@ -230,11 +500,14 @@ export function PitchByPitchWizard({
     };
 
     const finalSnapshot: GameSnapshot = {
-      game: finalGame,
+      game: deepCloneGame(finalGame),
       pitchDraft: { balls: 0, strikes: 0, total: 0, locations: [] },
       selectedResult: atBatResult,
       fieldingPosition: String(battedBallPosition || 1),
-      recordColumnDraft: finalRecordColumn,
+      recordColumnDraft: {
+        ...finalRecordColumn,
+        modifiers: finalRecordColumn.modifiers ? [...finalRecordColumn.modifiers] : undefined,
+      },
       timestamp: new Date().toISOString(),
     };
 
@@ -308,7 +581,7 @@ export function PitchByPitchWizard({
               {(["fly", "ground", "line", "bunt"] as const).map((t) => (
                 <Pressable
                   key={t}
-                  onPress={() => setBattedBallType(t)}
+                  onPress={() => handleSelectBattedBallType(t)}
                   style={[styles.optionButton, battedBallType === t && styles.optionButtonActive]}
                 >
                   <Text style={battedBallType === t ? styles.optionTextActive : styles.optionText}>
@@ -323,7 +596,7 @@ export function PitchByPitchWizard({
               {Array.from({ length: 9 }, (_, i) => i + 1).map((num) => (
                 <Pressable
                   key={num}
-                  onPress={() => setBattedBallPosition(num)}
+                  onPress={() => handleSelectBattedBallPosition(num)}
                   style={[styles.numberButton, battedBallPosition === num && styles.numberButtonActive]}
                 >
                   <Text style={battedBallPosition === num ? styles.numberTextActive : styles.numberText}>
@@ -391,13 +664,13 @@ export function PitchByPitchWizard({
               <View style={styles.timePlayAlert}>
                 <Text style={styles.timePlayAlertTitle}>⚠️ Time Play 得分確認需求</Text>
                 <Text style={styles.timePlayAlertText}>
-                  第三出局非封殺狀態下發生，請判定領先跑者回本壘是否早於該出局發生？
+                  跑者得分是否早於出局發生？
                 </Text>
                 <View style={styles.rowGrid}>
-                  <Pressable onPress={() => setRequireTimePlay(false)} style={styles.timePlayConfirmBtn}>
+                  <Pressable onPress={() => handleTimePlayDecision(true)} style={styles.timePlayConfirmBtn}>
                     <Text style={styles.timePlayConfirmText}>是，得分算數</Text>
                   </Pressable>
-                  <Pressable onPress={() => setRequireTimePlay(false)} style={styles.timePlayDenyBtn}>
+                  <Pressable onPress={() => handleTimePlayDecision(false)} style={styles.timePlayDenyBtn}>
                     <Text style={styles.timePlayConfirmText}>否，得分不算</Text>
                   </Pressable>
                 </View>
@@ -407,11 +680,16 @@ export function PitchByPitchWizard({
             <View style={styles.previewSummary}>
               <Text style={styles.previewTitle}>寫入狀態預覽：</Text>
               <Text style={styles.previewText}>· 擊球結果：{atBatResult || "純球數累積"}</Text>
+              <Text style={styles.previewText}>· 累計得分：{tempRuns} 分</Text>
               <Text style={styles.previewText}>· 累計出局：{tempOuts >= 3 ? "3 出局 (攻守交換)" : `${tempOuts} 出局`}</Text>
               <Text style={styles.previewText}>· 壘包狀態：{tempOuts >= 3 ? "空壘" : `一壘: ${tempRunners.first ? "有人" : "空"}, 二壘: ${tempRunners.second ? "有人" : "空"}, 三壘: ${tempRunners.third ? "有人" : "空"}`}</Text>
             </View>
 
-            <Pressable onPress={handleFinalCommit} style={[styles.gridButton, styles.commitButton]}>
+            <Pressable
+              disabled={requireTimePlay}
+              onPress={handleFinalCommit}
+              style={[styles.gridButton, styles.commitButton, requireTimePlay && styles.disabledButton]}
+            >
               <Text style={styles.commitButtonText}>確認並完成打席紀錄 ✓</Text>
             </Pressable>
           </View>

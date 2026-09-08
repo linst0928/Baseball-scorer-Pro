@@ -8,6 +8,16 @@ export type GameSnapshot = {
   fieldingPosition: string;
   recordColumnDraft: RecordColumn;
   timestamp: string;
+  // 現場紀錄精靈專用 wizard 狀態 (用於全能完美 Undo/Redo)
+  wizardStep?: 1 | 2 | 3 | 4;
+  wizardRunnerQueueIndex?: number;
+  wizardTempRunners?: Game["runners"];
+  wizardTempOuts?: number;
+  wizardRequireTimePlay?: boolean;
+  wizardBattedBallType?: "fly" | "ground" | "line" | "bunt" | "";
+  wizardBattedBallPosition?: number | null;
+  wizardRunnerQueue?: Array<{ base: 3 | 2 | 1; runnerId: string }>;
+  wizardTempRuns?: number;
 };
 
 export type HistoryState = {
@@ -115,6 +125,15 @@ export function deepCloneSnapshot(snapshot: GameSnapshot): GameSnapshot {
       modifiers: snapshot.recordColumnDraft.modifiers ? [...snapshot.recordColumnDraft.modifiers] : undefined,
     },
     timestamp: snapshot.timestamp,
+    wizardStep: snapshot.wizardStep,
+    wizardRunnerQueueIndex: snapshot.wizardRunnerQueueIndex,
+    wizardTempRunners: snapshot.wizardTempRunners ? { ...snapshot.wizardTempRunners } : undefined,
+    wizardTempOuts: snapshot.wizardTempOuts,
+    wizardRequireTimePlay: snapshot.wizardRequireTimePlay,
+    wizardBattedBallType: snapshot.wizardBattedBallType,
+    wizardBattedBallPosition: snapshot.wizardBattedBallPosition,
+    wizardRunnerQueue: snapshot.wizardRunnerQueue ? snapshot.wizardRunnerQueue.map(q => ({ ...q })) : undefined,
+    wizardTempRuns: snapshot.wizardTempRuns,
   };
 }
 
