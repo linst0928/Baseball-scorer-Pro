@@ -36,6 +36,8 @@ import { DatePicker, TimePicker, getSystemLocalDateString } from "@/components/u
 import { WasedaPersonalRecordCell } from "@/components/baseball/waseda-personal-record-cell";
 import { PitcherCatcherBottomPanel, WasedaMatrixStatsRow, WasedaScorebookTeamSheet } from "@/components/baseball/waseda-scorebook-team-sheet";
 import { ScorebookDisplayEditor, ScorebookGameSelector } from "@/components/baseball/scorebook-workbench-controls";
+import { DiamondFieldPositionPicker, LiveInfieldDiamondBackground } from "@/components/baseball/diamond-field-position-picker";
+import { formatPreferredPositionsShort } from "@/lib/baseball/diamond-field-positions";
 import { HOME_DEFENSE_FIELD_IMAGE } from "@/constants/baseball-assets";
 import { INTERFACE_COLOR_MODES, resolveInterfacePalette, useThemeContext, type InterfaceColorMode, type InterfacePalette } from "@/lib/theme-provider";
 import { loadScenarioState, createScenarioTeams } from "@/lib/baseball/test-scenarios";
@@ -1999,6 +2001,10 @@ function DynamicScoreboardCard({
   onStart: () => void;
 }) {
   const { interfacePalette } = useThemeContext();
+
+  // 1-1-1 局數動態顯示：依據建立場次時設定的賽事層級自動擴增/縮減欄位
+  // 例1：原設定6局的比賽，提早結束比賽，一樣顯示至6局。
+  // 例2：原設定6局的比賽，延長至8局的比賽，自動增列後方進行至8局數欄位，並顯示於畫面上。
   const maxInningsConfig = activeGame.maxInnings ?? 6;
   const actualMaxInningPlayed = activeGame.events.reduce((max, ev) => Math.max(max, ev.inning), 1);
   const totalInnings = Math.max(maxInningsConfig, activeGame.score.length, actualMaxInningPlayed);
@@ -2006,145 +2012,529 @@ function DynamicScoreboardCard({
 
   const awayTotal = activeGame.score.reduce((sum, s) => sum + (s.away ?? 0), 0);
   const homeTotal = activeGame.score.reduce((sum, s) => sum + (s.home ?? 0), 0);
+  const awayHits = activeGame.events.filter((ev) => ev.half === "away" && ["1B", "2B", "3B", "HR"].includes(ev.result)).length;
+  const homeHits = activeGame.events.filter((ev) => ev.half === "home" && ["1B", "2B", "3B", "HR"].includes(ev.result)).length;
+  const awayErrors = activeGame.events.filter((ev) => ev.half === "home" && ev.result === "E").length;
+  const homeErrors = activeGame.events.filter((ev) => ev.half === "away" && ev.result === "E").length;
 
   return (
     <View style={[styles.heroCard, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border }]}>
-      <View style={styles.heroAccent} />
-      <View style={styles.heroTop}>
-        <View>
-          <Text style={styles.heroEyebrow}>目前進行中的比賽 · 動態記分板</Text>
-          <Text style={[styles.heroTitle, { color: interfacePalette.foreground }]}>{activeGame.name}</Text>
-          <Text style={[styles.heroMeta, { color: interfacePalette.muted }]}>{activeGame.venue} · {formatGameDateTime(activeGame)}</Text>
-        </View>
-        <Text style={styles.heroBaseball}>⚾</Text>
+      {/* 頂部 Title */}
+      <View style={{ marginBottom: 6 }}>
+        <Text style={{ fontSize: 13, fontWeight: "900", color: interfacePalette.foreground }}>目前進行中比賽</Text>
       </View>
 
-      {/* 各局制動態記分板 */}
+      {/* 「上」：主隊 VS 客隊大比分顯示 */}
+      <View style={styles.liveGameHeaderScoreRow}>
+        <View style={[styles.liveGameTeamScoreBox, { backgroundColor: teamSurfaceColor(awayTeam, "away"), padding: 8, borderRadius: 8 }]}>
+          <View style={[styles.sideBadgePill, { backgroundColor: BRAND.sky }]}>
+            <Text style={styles.sideBadgePillText}>客</Text>
+          </View>
+          <Text numberOfLines={1} style={[styles.liveGameTeamNameText, { color: interfacePalette.foreground, fontSize: 16, fontWeight: "900" }]}>
+            {awayTeam.name}
+          </Text>
+        </View>
+
+        <Text style={styles.liveGameBigScore}>{awayTotal}</Text>
+
+        <View style={styles.liveGameBaseballGraphic}>
+          <Image source={require("../../assets/images/baseball-scorecard-logo.png")} style={{ width: 28, height: 28 }} resizeMode="contain" />
+        </View>
+
+        <Text style={styles.liveGameBigScore}>{homeTotal}</Text>
+
+        <View style={[styles.liveGameTeamScoreBox, { backgroundColor: teamSurfaceColor(homeTeam, "home"), padding: 8, borderRadius: 8, justifyContent: "flex-end" }]}>
+          <Text numberOfLines={1} style={[styles.liveGameTeamNameText, { color: interfacePalette.foreground, fontSize: 16, fontWeight: "900", textAlign: "right" }]}>
+            {homeTeam.name}
+          </Text>
+          <View style={[styles.sideBadgePill, { backgroundColor: "#FFF7ED" }]}>
+            <Text style={[styles.sideBadgePillText, { color: "#D97706" }]}>主</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 「中」：各局制動態記分板 + BSO */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scoreboardTableWrap}>
         <View style={[styles.scoreboardTable, { borderColor: interfacePalette.border }]}>
           {/* Header Row */}
           <View style={[styles.scoreboardRow, { borderBottomColor: interfacePalette.border }]}>
-            <Text style={[styles.scoreboardHeaderCell, styles.teamNameCell, { backgroundColor: interfacePalette.background, color: interfacePalette.muted }]}>隊伍</Text>
+            <Text style={[styles.scoreboardHeaderCell, styles.teamNameCell, { backgroundColor: interfacePalette.background, color: interfacePalette.muted }]}>局數</Text>
             {innings.map((inn) => (
               <Text key={inn} style={[styles.scoreboardHeaderCell, { backgroundColor: interfacePalette.background, color: interfacePalette.muted }]}>{inn}</Text>
             ))}
             <Text style={[styles.scoreboardHeaderCell, styles.totalRunHeaderCell]}>R</Text>
+            <Text style={[styles.scoreboardHeaderCell, styles.totalRunHeaderCell]}>H</Text>
+            <Text style={[styles.scoreboardHeaderCell, styles.totalRunHeaderCell]}>E</Text>
           </View>
 
           {/* Away Row */}
-          <View style={[styles.scoreboardRow, { borderBottomColor: interfacePalette.border }]}>
+          <View style={[styles.scoreboardRow, { borderBottomColor: interfacePalette.border, backgroundColor: teamSurfaceColor(awayTeam, "away") }]}>
             <View style={styles.teamNameCell}>
-              <TeamLogoName team={awayTeam} textStyle={styles.scoreboardTeamText} logoSize={14} />
+              <Text style={styles.scoreboardTeamShortText}>客</Text>
             </View>
             {innings.map((inn, idx) => {
               const scoreObj = activeGame.score[idx];
-              const displayVal = scoreObj !== undefined ? scoreObj.away : "-";
+              const displayVal = scoreObj !== undefined && scoreObj.away !== undefined ? scoreObj.away : "-";
               return (
                 <Text key={inn} style={[styles.scoreboardCell, { color: interfacePalette.foreground }]}>{displayVal}</Text>
               );
             })}
             <Text style={[styles.scoreboardCell, styles.totalRunCell]}>{awayTotal}</Text>
+            <Text style={[styles.scoreboardCell, styles.totalRunCell]}>{awayHits}</Text>
+            <Text style={[styles.scoreboardCell, styles.totalRunCell]}>{awayErrors}</Text>
           </View>
 
           {/* Home Row */}
-          <View style={[styles.scoreboardRow, { borderBottomWidth: 0 }]}>
+          <View style={[styles.scoreboardRow, { borderBottomWidth: 0, backgroundColor: teamSurfaceColor(homeTeam, "home") }]}>
             <View style={styles.teamNameCell}>
-              <TeamLogoName team={homeTeam} textStyle={styles.scoreboardTeamText} logoSize={14} />
+              <Text style={styles.scoreboardTeamShortText}>主</Text>
             </View>
             {innings.map((inn, idx) => {
               const scoreObj = activeGame.score[idx];
-              const displayVal = scoreObj !== undefined ? scoreObj.home : "-";
+              const displayVal = scoreObj !== undefined && scoreObj.home !== undefined ? scoreObj.home : "-";
               return (
                 <Text key={inn} style={[styles.scoreboardCell, { color: interfacePalette.foreground }]}>{displayVal}</Text>
               );
             })}
             <Text style={[styles.scoreboardCell, styles.totalRunCell]}>{homeTotal}</Text>
+            <Text style={[styles.scoreboardCell, styles.totalRunCell]}>{homeHits}</Text>
+            <Text style={[styles.scoreboardCell, styles.totalRunCell]}>{homeErrors}</Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* BSO (好壞球與出局數) 與 投打對決 */}
-      <View style={[styles.liveDetailsRow, { backgroundColor: interfacePalette.background }]}>
-        <View style={styles.bsoPanel}>
-          <View style={styles.bsoItem}>
-            <Text style={[styles.scoreboardBsoLabel, { color: interfacePalette.foreground }]}>B</Text>
-            <View style={styles.bsoDotRow}>
-              {[0, 1, 2].map((idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.scoreboardBsoDot,
-                    idx < pitchDraft.balls ? styles.bsoDotBall : styles.bsoDotInactive,
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.bsoItem}>
-            <Text style={[styles.scoreboardBsoLabel, { color: interfacePalette.foreground }]}>S</Text>
-            <View style={styles.bsoDotRow}>
-              {[0, 1].map((idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.scoreboardBsoDot,
-                    idx < pitchDraft.strikes ? styles.bsoDotStrike : styles.bsoDotInactive,
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.bsoItem}>
-            <Text style={[styles.scoreboardBsoLabel, { color: interfacePalette.foreground }]}>O</Text>
-            <View style={styles.bsoDotRow}>
-              {[0, 1].map((idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.scoreboardBsoDot,
-                    idx < activeGame.outs ? styles.bsoDotOut : styles.bsoDotInactive,
-                  ]}
-                />
-              ))}
-            </View>
+      {/* BSO (好壞球與出局數) */}
+      <View style={[styles.bsoPanelRow, { backgroundColor: interfacePalette.background }]}>
+        <View style={styles.bsoItem}>
+          <Text style={styles.bsoLabelLetter}>B</Text>
+          <View style={styles.bsoDotRow}>
+            {[0, 1, 2].map((idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.bsoDotCircle,
+                  idx < pitchDraft.balls ? styles.bsoDotBall : styles.bsoDotInactive,
+                ]}
+              />
+            ))}
           </View>
         </View>
 
-        <View style={styles.matchupBox}>
-          <Text numberOfLines={1} style={[styles.matchupText, { color: interfacePalette.primary }]}>
-            {pitcher && batter
-              ? `投 #${pitcher.number} ${pitcher.name} (${pitcher.throwingHand ?? "R"}投) vs 打 #${batter.number} ${batter.name} (${batter.battingHand ?? "R"}打)`
-              : "投打名單準備中"}
+        <View style={styles.bsoItem}>
+          <Text style={styles.bsoLabelLetter}>S</Text>
+          <View style={styles.bsoDotRow}>
+            {[0, 1].map((idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.bsoDotCircle,
+                  idx < pitchDraft.strikes ? styles.bsoDotStrike : styles.bsoDotInactive,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.bsoItem}>
+          <Text style={styles.bsoLabelLetter}>O</Text>
+          <View style={styles.bsoDotRow}>
+            {[0, 1, 2].map((idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.bsoDotCircle,
+                  idx < activeGame.outs ? styles.bsoDotOut : styles.bsoDotInactive,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+      </View>
+
+      {/* 「下」：隊伍名稱以及當下的投打名單對決，保留「繼續記錄」按鈕 */}
+      <View style={styles.matchupVsRow}>
+        <View style={[styles.matchupRoleBox, { backgroundColor: teamSurfaceColor(homeTeam, "home"), borderColor: interfacePalette.border }]}>
+          <Text style={styles.matchupRoleLabel}>投手 (主隊)</Text>
+          <Text numberOfLines={1} style={[styles.matchupRoleName, { color: interfacePalette.foreground }]}>
+            {pitcher ? `#${pitcher.number} ${pitcher.name}` : "未指派"}
+          </Text>
+          <Text style={{ fontSize: 9, color: interfacePalette.muted, marginTop: 1 }}>
+            學校：{homeTeam.school ?? homeTeam.name}
+          </Text>
+          <Text style={styles.matchupRoleDetail}>
+            {pitcher?.throwingHand === "L" ? "左投" : "右投"}
+          </Text>
+        </View>
+
+        <Text style={styles.matchupVsBadge}>VS</Text>
+
+        <View style={[styles.matchupRoleBox, { backgroundColor: teamSurfaceColor(awayTeam, "away"), borderColor: interfacePalette.border }]}>
+          <Text style={styles.matchupRoleLabel}>打者 (客隊)</Text>
+          <Text numberOfLines={1} style={[styles.matchupRoleName, { color: interfacePalette.foreground }]}>
+            {batter ? `#${batter.number} ${batter.name}` : "未指派"}
+          </Text>
+          <Text style={{ fontSize: 9, color: interfacePalette.muted, marginTop: 1 }}>
+            學校：{awayTeam.school ?? awayTeam.name}
+          </Text>
+          <Text style={styles.matchupRoleDetail}>
+            {batter?.battingHand === "L" ? "左打" : "右打"}
           </Text>
         </View>
       </View>
 
-      <View style={styles.heroFooter}>
-        <View>
-          <Text style={[styles.heroFooterLabel, { color: interfacePalette.foreground }]}>
-            {activeGame.status === "setup" ? "尚未開賽" : `第 ${activeGame.inning} 局 ${activeGame.half === "away" ? "上" : "下"}`}
-          </Text>
-          <Text style={[styles.heroFooterValue, { color: interfacePalette.muted }]}>{activeGame.events.length} 個打席 · 共 {awayTotal + homeTotal} 分</Text>
-        </View>
-        <Button label={activeGame.status === "setup" ? "開始記錄" : "繼續記錄"} onPress={onStart} compact />
+      <View style={{ marginTop: 6 }}>
+        <Button label={activeGame.status === "setup" ? "開始記錄" : "繼續記錄"} onPress={onStart} fluid />
       </View>
     </View>
   );
 }
 
-function NewGameWizardCard({ onCreate }: { onCreate: () => void }) {
+function IntegratedManagementCard({
+  teams,
+  schools,
+  selectedTeamId,
+  onCreateGame,
+  onCreatePrimaryTeam,
+  onSelectTeam,
+  onManageSchools,
+  onUpdateTeam,
+  onAddPlayer,
+  onUpdatePlayer,
+  onDeletePlayer,
+}: {
+  teams: Team[];
+  schools: School[];
+  selectedTeamId: string;
+  onCreateGame: () => void;
+  onCreatePrimaryTeam: () => void;
+  onSelectTeam: (id: string) => void;
+  onManageSchools: () => void;
+  onUpdateTeam: (teamId: string, patch: Partial<Pick<Team, "logoUri" | "customColor">>) => void;
+  onAddPlayer: (teamId: string, player: Player) => void;
+  onUpdatePlayer: (teamId: string, playerId: string, patch: Partial<Player>) => void;
+  onDeletePlayer: (teamId: string, playerId: string) => void;
+}) {
   const { interfacePalette } = useThemeContext();
+  const selected = teams.find((t) => t.id === selectedTeamId) ?? teams[0];
+
+  // Wizard state: "default" | "logo" | "addPlayer" | "playerList" | "editPlayer"
+  const [subView, setSubView] = useState<"default" | "logo" | "addPlayer" | "playerList" | "editPlayer">("default");
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+
+  // Form states for adding/editing a player
+  const [pNumber, setPNumber] = useState("");
+  const [pName, setPName] = useState("");
+  const [pThrow, setPThrow] = useState<"R" | "L">("R");
+  const [pBat, setPBat] = useState<"R" | "L">("R");
+  const [pPositions, setPPositions] = useState<string[]>([]);
+
+  const chooseTeamLogo = async () => {
+    if (!selected) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.9, base64: Platform.OS === "web" });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const sourceUri = Platform.OS === "web" && asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+    const cropSize = Math.min(asset.width || 512, asset.height || 512);
+    const prepared = await ImageManipulator.manipulateAsync(sourceUri, [{ crop: { originX: Math.max(0, Math.round(((asset.width || cropSize) - cropSize) / 2)), originY: Math.max(0, Math.round(((asset.height || cropSize) - cropSize) / 2)), width: cropSize, height: cropSize } }, { resize: { width: 512, height: 512 } }], { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG, base64: true });
+    const logoUri = prepared.base64 ? `data:image/jpeg;base64,${prepared.base64}` : prepared.uri;
+    onUpdateTeam(selected.id, { logoUri });
+  };
+
+  const removeTeamLogo = () => {
+    if (!selected?.logoUri) return;
+    Alert.alert("移除隊徽", "確定要移除目前的隊徽嗎？", [
+      { text: "取消", style: "cancel" },
+      { text: "移除", style: "destructive", onPress: () => onUpdateTeam(selected.id, { logoUri: undefined }) },
+    ]);
+  };
+
+  const handleAddPlayer = () => {
+    const num = Number(pNumber);
+    if (!pName.trim() || isNaN(num) || num < 1 || num > 99) {
+      Alert.alert("請輸入正確球員資料", "背號須為 1-99，姓名不可空白。");
+      return;
+    }
+    if (selected.players.some((p) => p.number === num)) {
+      Alert.alert("背號重複", "此背號已存在於隊伍名單中。");
+      return;
+    }
+    onAddPlayer(selected.id, {
+      id: `player-${Date.now()}`,
+      name: pName.trim(),
+      number: num,
+      throwingHand: pThrow,
+      battingHand: pBat,
+      bats: pBat,
+      preferredPositions: pPositions,
+      position: pPositions[0] || "後備",
+    });
+    setSubView("default");
+  };
+
+  const handleStartEdit = (player: Player) => {
+    setEditingPlayerId(player.id);
+    setPNumber(String(player.number));
+    setPName(player.name);
+    setPThrow(player.throwingHand || "R");
+    setPBat(player.battingHand || "R");
+    const currentPreferred = Array.isArray(player.preferredPositions) && player.preferredPositions.length > 0
+      ? player.preferredPositions
+      : (player.position && player.position !== "後備" ? [player.position] : []);
+    setPPositions(currentPreferred);
+    setSubView("editPlayer");
+  };
+
+  const handleSaveEdit = () => {
+    const num = Number(pNumber);
+    if (!pName.trim() || isNaN(num) || num < 1 || num > 99 || !editingPlayerId) {
+      Alert.alert("請輸入正確球員資料", "背號須為 1-99，姓名不可空白。");
+      return;
+    }
+    if (selected.players.some((p) => p.id !== editingPlayerId && p.number === num)) {
+      Alert.alert("背號重複", "此背號已存在於隊伍名單中。");
+      return;
+    }
+    onUpdatePlayer(selected.id, editingPlayerId, {
+      name: pName.trim(),
+      number: num,
+      throwingHand: pThrow,
+      battingHand: pBat,
+      bats: pBat,
+      preferredPositions: pPositions,
+      position: pPositions[0] || "後備",
+    });
+    setSubView("playerList");
+  };
+
   return (
-    <View style={[styles.card, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border, padding: 12, gap: 6 }]}>
-      <Text style={[styles.cardTitle, { color: interfacePalette.foreground }]}>新增場次精靈</Text>
-      <Text style={{ fontSize: 11, color: interfacePalette.muted, lineHeight: 16 }}>
-        逐步引導建立新比賽，包含賽事層級、隊伍登錄與投球門檻（預設 25球 / 45球 / 85球）。
+    <View style={[styles.card, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border, padding: 12, gap: 10 }]}>
+      <Text style={[styles.cardTitle, { color: interfacePalette.foreground, fontSize: 13 }]}>
+        場次、球隊與球員新增 / 維護
       </Text>
-      <View style={{ marginTop: 4 }}>
-        <Button label="＋ 新增場次" onPress={onCreate} />
-      </View>
+
+      {subView === "default" && (
+        <>
+          {/* 中段左上側「+ 新增場次」 */}
+          <Pressable
+            onPress={onCreateGame}
+            style={({ pressed }) => [
+              styles.actionTileCard,
+              { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.actionTileIcon, { color: interfacePalette.primary }]}>＋</Text>
+            <Text style={[styles.actionTileText, { color: interfacePalette.foreground }]}>新增場次</Text>
+          </Pressable>
+
+          {/* 中段左上側「+ 新增球隊」 */}
+          <Pressable
+            onPress={onCreatePrimaryTeam}
+            style={({ pressed }) => [
+              styles.actionTileCard,
+              { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.actionTileIcon, { color: interfacePalette.primary }]}>👥</Text>
+            <Text style={[styles.actionTileText, { color: interfacePalette.foreground }]}>新增球隊</Text>
+          </Pressable>
+
+          {/* 中段左下側「球隊管理」 */}
+          <View style={[styles.teamManagementBox, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <Text style={{ fontSize: 14, color: interfacePalette.primary, fontWeight: "900" }}>≡</Text>
+              <Text style={{ fontSize: 13, fontWeight: "900", color: interfacePalette.foreground }}>球隊管理</Text>
+            </View>
+
+            {/* 快速隊伍切換（點選學校） */}
+            <Text style={[styles.inputLabel, { color: interfacePalette.muted, marginBottom: 4 }]}>快速隊伍切換（點選學校）</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 8 }}>
+              {schools.map((school) => {
+                const team = teams.find((t) => t.schoolId === school.id);
+                const active = selected?.schoolId === school.id;
+                return (
+                  <Pressable
+                    key={school.id}
+                    onPress={() => team && onSelectTeam(team.id)}
+                    style={({ pressed }) => [
+                      styles.schoolChip,
+                      active && styles.schoolChipActive,
+                      pressed && { opacity: 0.8 },
+                    ]}
+                  >
+                    <Text style={[styles.schoolChipText, active && styles.schoolChipTextActive]}>{school.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {selected ? (
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 0.5, borderBottomColor: interfacePalette.border, paddingBottom: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {selected.logoUri ? (
+                      <Image source={{ uri: selected.logoUri }} style={{ width: 24, height: 24, borderRadius: 5 }} />
+                    ) : (
+                      <View style={{ width: 24, height: 24, borderRadius: 5, backgroundColor: BRAND.sky, alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ fontSize: 11, fontWeight: "900", color: BRAND.blue }}>{selected.name.slice(0, 1)}</Text>
+                      </View>
+                    )}
+                    <Text style={{ fontSize: 12, fontWeight: "900", color: interfacePalette.foreground }}>{selected.name}</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                  <Button label="隊徽管理" onPress={() => setSubView("logo")} variant="secondary" compact />
+                  <Button label="＋新增球員" onPress={() => { setPNumber(""); setPName(""); setPThrow("R"); setPBat("R"); setPPositions([]); setSubView("addPlayer"); }} variant="secondary" compact />
+                  <Button label="球員管理" onPress={() => setSubView("playerList")} variant="secondary" compact />
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </>
+      )}
+
+      {/* A 1: 隊徽管理 */}
+      {subView === "logo" && selected && (
+        <View style={[styles.teamManagementBox, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border, gap: 10 }]}>
+          <Text style={{ fontSize: 13, fontWeight: "900", color: interfacePalette.foreground }}>隊徽管理：{selected.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            {selected.logoUri ? (
+              <Image source={{ uri: selected.logoUri }} style={{ width: 64, height: 64, borderRadius: 10 }} />
+            ) : (
+              <View style={{ width: 64, height: 64, borderRadius: 10, backgroundColor: BRAND.sky, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 24, fontWeight: "900", color: BRAND.blue }}>{selected.name.slice(0, 1)}</Text>
+              </View>
+            )}
+            <View style={{ gap: 6 }}>
+              <Button label="選擇隊徽圖示" onPress={chooseTeamLogo} compact />
+              {selected.logoUri ? <Button label="移除隊徽" onPress={removeTeamLogo} variant="danger" compact /> : null}
+            </View>
+          </View>
+          <View style={{ borderTopWidth: 0.5, borderTopColor: interfacePalette.border, paddingTop: 8 }}>
+            <Button label="上一步" onPress={() => setSubView("default")} variant="ghost" compact />
+          </View>
+        </View>
+      )}
+
+      {/* A 2: + 新增球員 */}
+      {subView === "addPlayer" && selected && (
+        <View style={[styles.teamManagementBox, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border, gap: 8 }]}>
+          <Text style={{ fontSize: 13, fontWeight: "900", color: interfacePalette.foreground }}>新增球員：{selected.name}</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: interfacePalette.muted, marginBottom: 2 }}>姓名</Text>
+              <TextInput value={pName} onChangeText={setPName} placeholder="球員姓名" style={[styles.formInput, { height: 32, fontSize: 11, paddingHorizontal: 6 }]} />
+            </View>
+            <View style={{ width: 60 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: interfacePalette.muted, marginBottom: 2 }}>背號</Text>
+              <TextInput value={pNumber} onChangeText={p => setPNumber(p.replace(/[^0-9]/g, ""))} keyboardType="number-pad" placeholder="背號" style={[styles.formInput, { height: 32, fontSize: 11, paddingHorizontal: 6 }]} />
+            </View>
+          </View>
+          <View>
+            <Text style={{ fontSize: 10, fontWeight: "700", color: interfacePalette.muted, marginBottom: 2 }}>慣用投打手</Text>
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              <Button label={pThrow === "R" ? "✓ 右投" : "右投"} onPress={() => setPThrow("R")} variant={pThrow === "R" ? "primary" : "secondary"} compact />
+              <Button label={pThrow === "L" ? "✓ 左投" : "左投"} onPress={() => setPThrow("L")} variant={pThrow === "L" ? "primary" : "secondary"} compact />
+              <Button label={pBat === "R" ? "✓ 右打" : "右打"} onPress={() => setPBat("R")} variant={pBat === "R" ? "primary" : "secondary"} compact />
+              <Button label={pBat === "L" ? "✓ 左打" : "左打"} onPress={() => setPBat("L")} variant={pBat === "L" ? "primary" : "secondary"} compact />
+            </View>
+          </View>
+          
+          {/* 棒球場菱形圖常用守備位置指派 */}
+          <DiamondFieldPositionPicker
+            selectedPositions={pPositions}
+            onChange={setPPositions}
+            maxCount={4}
+            interfacePalette={interfacePalette}
+          />
+
+          <View style={{ flexDirection: "row", gap: 6, borderTopWidth: 0.5, borderTopColor: interfacePalette.border, paddingTop: 8, marginTop: 4 }}>
+            <Button label="上一步" onPress={() => setSubView("default")} variant="ghost" compact />
+            <Button label="確認新增" onPress={handleAddPlayer} compact />
+          </View>
+        </View>
+      )}
+
+      {/* A 3: 球員管理 (Player List) */}
+      {subView === "playerList" && selected && (
+        <View style={[styles.teamManagementBox, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border, gap: 8 }]}>
+          <Text style={{ fontSize: 13, fontWeight: "900", color: interfacePalette.foreground }}>球員管理：{selected.name}</Text>
+          <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+            <View style={{ gap: 4 }}>
+              {selected.players.map((player) => {
+                const positions = Array.isArray(player.preferredPositions) && player.preferredPositions.length > 0
+                  ? player.preferredPositions
+                  : (player.position && player.position !== "後備" ? [player.position] : []);
+                const shortDisplay = formatPreferredPositionsShort(positions);
+                return (
+                  <View key={player.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: interfacePalette.surface, padding: 6, borderRadius: 6, borderWidth: 0.5, borderColor: interfacePalette.border }}>
+                    <View style={{ flex: 1, marginRight: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "bold", color: interfacePalette.foreground }}>
+                        #{player.number} {player.name} ({player.throwingHand || "R"}{player.battingHand || "R"})
+                      </Text>
+                      <Text style={{ fontSize: 10, color: shortDisplay !== "後備" ? interfacePalette.primary : interfacePalette.muted, marginTop: 1 }}>
+                        常用：{shortDisplay}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 4 }}>
+                      <Button label="修改" onPress={() => handleStartEdit(player)} variant="secondary" compact />
+                      <Button label="刪除" onPress={() => {
+                        Alert.alert("確認刪除", `確定要刪除球員 ${player.name} 嗎？`, [
+                          { text: "取消", style: "cancel" },
+                          { text: "刪除", style: "destructive", onPress: () => onDeletePlayer(selected.id, player.id) }
+                        ]);
+                      }} variant="danger" compact />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
+          <View style={{ borderTopWidth: 0.5, borderTopColor: interfacePalette.border, paddingTop: 8 }}>
+            <Button label="上一步" onPress={() => setSubView("default")} variant="ghost" compact />
+          </View>
+        </View>
+      )}
+
+      {/* A 3 edit: 修改球員 */}
+      {subView === "editPlayer" && selected && (
+        <View style={[styles.teamManagementBox, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border, gap: 8 }]}>
+          <Text style={{ fontSize: 13, fontWeight: "900", color: interfacePalette.foreground }}>修改球員資料：{selected.name}</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: interfacePalette.muted, marginBottom: 2 }}>姓名</Text>
+              <TextInput value={pName} onChangeText={setPName} placeholder="球員姓名" style={[styles.formInput, { height: 32, fontSize: 11, paddingHorizontal: 6 }]} />
+            </View>
+            <View style={{ width: 60 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: interfacePalette.muted, marginBottom: 2 }}>背號</Text>
+              <TextInput value={pNumber} onChangeText={p => setPNumber(p.replace(/[^0-9]/g, ""))} keyboardType="number-pad" placeholder="背號" style={[styles.formInput, { height: 32, fontSize: 11, paddingHorizontal: 6 }]} />
+            </View>
+          </View>
+          <View>
+            <Text style={{ fontSize: 10, fontWeight: "700", color: interfacePalette.muted, marginBottom: 2 }}>慣用投打手</Text>
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              <Button label={pThrow === "R" ? "✓ 右投" : "右投"} onPress={() => setPThrow("R")} variant={pThrow === "R" ? "primary" : "secondary"} compact />
+              <Button label={pThrow === "L" ? "✓ 左投" : "左投"} onPress={() => setPThrow("L")} variant={pThrow === "L" ? "primary" : "secondary"} compact />
+              <Button label={pBat === "R" ? "✓ 右打" : "右打"} onPress={() => setPBat("R")} variant={pBat === "R" ? "primary" : "secondary"} compact />
+              <Button label={pBat === "L" ? "✓ 左打" : "左打"} onPress={() => setPBat("L")} variant={pBat === "L" ? "primary" : "secondary"} compact />
+            </View>
+          </View>
+
+          {/* 棒球場菱形圖常用守備位置指派 */}
+          <DiamondFieldPositionPicker
+            selectedPositions={pPositions}
+            onChange={setPPositions}
+            maxCount={4}
+            interfacePalette={interfacePalette}
+          />
+
+          <View style={{ flexDirection: "row", gap: 6, borderTopWidth: 0.5, borderTopColor: interfacePalette.border, paddingTop: 8, marginTop: 4 }}>
+            <Button label="上一步" onPress={() => setSubView("playerList")} variant="ghost" compact />
+            <Button label="確認修改" onPress={handleSaveEdit} compact />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -2258,143 +2648,16 @@ function AddPlayerWizardModal({
   );
 }
 
-function TeamManagerCard({
-  teams,
-  schools,
-  selectedTeamId,
-  onSelectTeam,
-  onManageSchools,
-  onCreatePrimaryTeam,
-  onUpdateTeam,
-  onAddPlayer,
-  onUpdatePlayer,
-  onDeletePlayer,
-}: {
-  teams: Team[];
-  schools: School[];
-  selectedTeamId: string;
-  onSelectTeam: (id: string) => void;
-  onManageSchools: () => void;
-  onCreatePrimaryTeam: () => void;
-  onUpdateTeam: (teamId: string, patch: Partial<Pick<Team, "logoUri" | "customColor">>) => void;
-  onAddPlayer: (teamId: string, player: Player) => void;
-  onUpdatePlayer: (teamId: string, playerId: string, patch: Partial<Player>) => void;
-  onDeletePlayer: (teamId: string, playerId: string) => void;
-}) {
-  const { interfacePalette } = useThemeContext();
-  const selected = teams.find((t) => t.id === selectedTeamId) ?? teams[0];
-  const [showAddPlayerWizard, setShowAddPlayerWizard] = useState(false);
-
-  const chooseTeamLogo = async () => {
-    if (!selected) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.9, base64: Platform.OS === "web" });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    const sourceUri = Platform.OS === "web" && asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
-    const cropSize = Math.min(asset.width || 512, asset.height || 512);
-    const prepared = await ImageManipulator.manipulateAsync(sourceUri, [{ crop: { originX: Math.max(0, Math.round(((asset.width || cropSize) - cropSize) / 2)), originY: Math.max(0, Math.round(((asset.height || cropSize) - cropSize) / 2)), width: cropSize, height: cropSize } }, { resize: { width: 512, height: 512 } }], { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG, base64: true });
-    const logoUri = prepared.base64 ? `data:image/jpeg;base64,${prepared.base64}` : prepared.uri;
-    onUpdateTeam(selected.id, { logoUri });
-  };
-
-  const removeTeamLogo = () => {
-    if (!selected?.logoUri) return;
-    Alert.alert("移除隊徽", "確定要移除目前的隊徽嗎？", [
-      { text: "取消", style: "cancel" },
-      { text: "移除", style: "destructive", onPress: () => onUpdateTeam(selected.id, { logoUri: undefined }) },
-    ]);
-  };
-
-  return (
-    <View style={[styles.card, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border, gap: 10, padding: 12 }]}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={[styles.cardTitle, { color: interfacePalette.foreground }]}>球隊管理視窗精靈</Text>
-        <Button label="＋ 新增球隊" onPress={onCreatePrimaryTeam} compact />
-      </View>
-
-      {/* 快速隊伍切換 -> 點選學校 */}
-      <View>
-        <Text style={[styles.inputLabel, { color: interfacePalette.muted, marginBottom: 4 }]}>快速隊伍切換（點選學校）</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-          {schools.map((school) => {
-            const team = teams.find((t) => t.schoolId === school.id);
-            const active = selected?.schoolId === school.id;
-            return (
-              <Pressable
-                key={school.id}
-                onPress={() => team && onSelectTeam(team.id)}
-                style={({ pressed }) => [
-                  styles.schoolChip,
-                  active && styles.schoolChipActive,
-                  pressed && { opacity: 0.8 },
-                ]}
-              >
-                <Text style={[styles.schoolChipText, active && styles.schoolChipTextActive]}>{school.name}</Text>
-              </Pressable>
-            );
-          })}
-          <Button label="管理學校" onPress={onManageSchools} variant="ghost" compact />
-        </ScrollView>
-      </View>
-
-      {/* 目前選擇球隊之 隊徽管理、+新增球員 及 球員管理 */}
-      {selected ? (
-        <View style={{ gap: 8, marginTop: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: interfacePalette.background, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: interfacePalette.border }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {selected.logoUri ? (
-                <Image source={{ uri: selected.logoUri }} style={{ width: 32, height: 32, borderRadius: 6 }} />
-              ) : (
-                <View style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: BRAND.sky, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 14, fontWeight: "900", color: BRAND.blue }}>{selected.name.slice(0, 1)}</Text>
-                </View>
-              )}
-              <View>
-                <Text style={{ fontWeight: "900", color: interfacePalette.foreground, fontSize: 13 }}>{selected.name}</Text>
-                <Text style={{ fontSize: 10, color: interfacePalette.muted }}>{selected.school}</Text>
-              </View>
-            </View>
-            <View style={{ flexDirection: "row", gap: 4 }}>
-              <Button label={selected.logoUri ? "換隊徽" : "隊徽管理"} onPress={chooseTeamLogo} variant="secondary" compact />
-              {selected.logoUri ? <Button label="移除" onPress={removeTeamLogo} variant="ghost" compact /> : null}
-            </View>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 6 }}>
-            <View style={{ flex: 1 }}>
-              <Button label="＋ 新增球員" onPress={() => setShowAddPlayerWizard(true)} compact />
-            </View>
-          </View>
-        </View>
-      ) : null}
-
-      {showAddPlayerWizard && selected ? (
-        <AddPlayerWizardModal
-          visible={showAddPlayerWizard}
-          team={selected}
-          onClose={() => setShowAddPlayerWizard(false)}
-          onSubmit={(newPlayer) => {
-            onAddPlayer(selected.id, newPlayer);
-            setShowAddPlayerWizard(false);
-          }}
-        />
-      ) : null}
-    </View>
-  );
-}
-
 function PrimaryTeamRosterCard({
   teams,
   selectedTeamId,
   games,
   onSelectTeam,
-  onUpdatePlayer,
 }: {
   teams: Team[];
   selectedTeamId: string;
   games: Game[];
   onSelectTeam: (id: string) => void;
-  onUpdatePlayer: (teamId: string, playerId: string, patch: Partial<Player>) => void;
 }) {
   const { interfacePalette } = useThemeContext();
   const selected = teams.find((t) => t.id === selectedTeamId) ?? teams[0];
@@ -2409,90 +2672,138 @@ function PrimaryTeamRosterCard({
 
   return (
     <View style={[styles.card, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border, padding: 12, gap: 8, flex: 1 }]}>
-      {/* 中段右上方：所屬球隊選擇 (快速隊伍切換) */}
-      <View>
-        <Text style={[styles.cardTitle, { color: interfacePalette.foreground, fontSize: 13, marginBottom: 4 }]}>
-          所屬球隊選擇（快速切換）
+      {/* 標題與人數 */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <Text style={[styles.cardTitle, { color: interfacePalette.foreground, fontSize: 14 }]}>所屬球隊</Text>
+        <Text style={{ fontSize: 12, fontWeight: "900", color: interfacePalette.success }}>
+          {selected?.players.length ?? 0}/25 人
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-          {teams.map((t) => {
-            const active = t.id === selected?.id;
-            return (
-              <Pressable
-                key={t.id}
-                onPress={() => onSelectTeam(t.id)}
-                style={({ pressed }) => [
-                  styles.teamSelectorItem,
-                  active && styles.teamSelectorItemActive,
-                  { borderColor: t.customColor ?? BRAND.line, paddingHorizontal: 8, paddingVertical: 4 },
-                  pressed && { opacity: 0.8 },
-                ]}
-              >
-                <TeamLogoName team={t} textStyle={{ fontSize: 11, fontWeight: active ? "900" : "700" }} logoSize={14} />
-              </Pressable>
-            );
-          })}
-        </ScrollView>
       </View>
 
-      <View style={[styles.rosterHeader, { borderBottomColor: interfacePalette.border, paddingBottom: 4, marginBottom: 4 }]}>
-        <View>
-          <Text style={[styles.rosterTitle, { color: interfacePalette.foreground, fontSize: 14 }]}>{selected?.name ?? "所屬球隊"}</Text>
-          <Text style={[styles.rosterMeta, { color: interfacePalette.muted, fontSize: 10 }]}>{selected?.school} · 全體球員清單（預設依背號排序）</Text>
+      {/* 中段右上方：提供「所屬球隊選擇」(快速隊伍切換) */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+        {teams.map((t) => {
+          const active = t.id === selected?.id;
+          return (
+            <Pressable
+              key={t.id}
+              onPress={() => onSelectTeam(t.id)}
+              style={({ pressed }) => [
+                styles.teamSelectorItem,
+                active && styles.teamSelectorItemActive,
+                { borderColor: t.customColor ?? BRAND.line, paddingHorizontal: 10, paddingVertical: 5 },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <TeamLogoName team={t} textStyle={{ fontSize: 12, fontWeight: active ? "900" : "700" }} logoSize={16} />
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* 中段右下方：條列呈現該隊全體球員資料（預設依背號排序） */}
+      <View style={{ marginTop: 4 }}>
+        <Text style={{ fontSize: 12, fontWeight: "900", color: interfacePalette.foreground, marginBottom: 4 }}>完整球員名單</Text>
+        <View style={[styles.rosterTableHeaderRow, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border }]}>
+          <Text style={[styles.rosterHeaderCellText, { width: 36 }]}>背號</Text>
+          <Text style={[styles.rosterHeaderCellText, { flex: 1 }]}>姓名</Text>
+          <Text style={[styles.rosterHeaderCellText, { width: 60 }]}>慣用手</Text>
+          <Text style={[styles.rosterHeaderCellText, { flex: 1.2 }]}>常用守備位置</Text>
+          <Text style={[styles.rosterHeaderCellText, { width: 52, textAlign: "right" }]}>近期10場</Text>
+          <Text style={[styles.rosterHeaderCellText, { width: 50, textAlign: "right" }]}>OPS</Text>
         </View>
-        <Text style={[styles.rosterBadge, { backgroundColor: interfacePalette.background, color: interfacePalette.success }]}>
-          {selected?.players.length ?? 0} 人
-        </Text>
       </View>
 
-      {/* 中段右下方：條列呈現全體球員資料 */}
-      <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-        <View style={{ gap: 6 }}>
+      <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+        <View style={{ gap: 2 }}>
           {rosterPlayers.map((player) => {
             const stat = recent10StatsMap.get(player.id);
             const avgStr = stat && stat.ab > 0 ? formatAvg(stat.avg) : ".000";
             const opsStr = stat && stat.ab > 0 ? stat.ops.toFixed(3) : ".000";
-            const positionsStr = player.preferredPositions && player.preferredPositions.length > 0
-              ? player.preferredPositions.join(" / ")
-              : (player.position ?? "後備");
+            const positionsStr = formatPreferredPositionsShort(
+              player.preferredPositions && player.preferredPositions.length > 0
+                ? player.preferredPositions
+                : (player.position && player.position !== "後備" ? [player.position] : [])
+            );
+
+            const handStr = playerHandAbbr(player) === "RR" ? "右投右打" : playerHandAbbr(player) === "LL" ? "左投左打" : playerHandAbbr(player) === "RL" ? "右投左打" : playerHandAbbr(player) === "LR" ? "左投右打" : playerHandAbbr(player);
 
             return (
               <View
                 key={player.id}
                 style={[
-                  styles.playerStatRow,
-                  { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border },
+                  styles.rosterTableCellRow,
+                  { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border },
                 ]}
               >
-                <View style={styles.playerStatMainInfo}>
-                  <View style={styles.numberBadgeCompact}>
-                    <Text style={styles.numberBadgeTextCompact}>#{player.number}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Text style={[styles.playerStatName, { color: interfacePalette.foreground }]}>{player.name}</Text>
-                      <Text style={[styles.playerHandText, { color: interfacePalette.muted }]}>{playerHandAbbr(player)}</Text>
-                    </View>
-                    <Text numberOfLines={1} style={[styles.playerPosText, { color: interfacePalette.muted }]}>守位：{positionsStr}</Text>
-                  </View>
-                </View>
-
-                {/* 近 10 場進階指標 */}
-                <View style={styles.playerStatMetrics}>
-                  <View style={styles.metricPill}>
-                    <Text style={styles.metricLabel}>近10場 AVG</Text>
-                    <Text style={styles.metricValueAvg}>{avgStr}</Text>
-                  </View>
-                  <View style={styles.metricPill}>
-                    <Text style={styles.metricLabel}>OPS</Text>
-                    <Text style={styles.metricValueOps}>{opsStr}</Text>
-                  </View>
-                </View>
+                <Text style={[styles.rosterTableCellText, { width: 36, fontWeight: "900" }]}>{player.number}</Text>
+                <Text numberOfLines={1} style={[styles.rosterTableCellText, { flex: 1, fontWeight: "700", color: interfacePalette.foreground }]}>{player.name}</Text>
+                <Text style={[styles.rosterTableCellText, { width: 60, color: interfacePalette.muted }]}>{handStr}</Text>
+                <Text numberOfLines={1} style={[styles.rosterTableCellText, { flex: 1.2, color: interfacePalette.muted }]}>{positionsStr}</Text>
+                <Text style={[styles.rosterTableCellText, { width: 52, textAlign: "right", fontWeight: "900", color: interfacePalette.primary }]}>{avgStr}</Text>
+                <Text style={[styles.rosterTableCellText, { width: 50, textAlign: "right", fontWeight: "900", color: interfacePalette.foreground }]}>{opsStr}</Text>
               </View>
             );
           })}
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+function LearnTheScorecardCard({
+  onOpenSymbolReference,
+  onOpenTutorial,
+}: {
+  onOpenSymbolReference: () => void;
+  onOpenTutorial: () => void;
+}) {
+  const { interfacePalette } = useThemeContext();
+
+  const symbolList = [
+    { code: "1B", label: "安打" },
+    { code: "2B", label: "二壘安打" },
+    { code: "3B", label: "三壘安打" },
+    { code: "HR", label: "全壘打" },
+    { code: "BB", label: "四壞球" },
+    { code: "K", label: "三振" },
+    { code: "HP", label: "觸身球" },
+    { code: "E", label: "失誤" },
+    { code: "SB", label: "盜壘" },
+    { code: "CS", label: "刺殺" },
+  ];
+
+  return (
+    <View style={[styles.card, { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border, padding: 12, gap: 10 }]}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <Text style={[styles.learningEyebrow, { color: interfacePalette.primary }]}>LEARN THE SCORECARD  早稻田符號學習工具</Text>
+      </View>
+
+      <Text style={{ fontSize: 11, fontWeight: "700", color: interfacePalette.muted }}>符號速查表</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {symbolList.map((item) => (
+          <Pressable
+            key={item.code}
+            onPress={onOpenSymbolReference}
+            style={({ pressed }) => [
+              styles.symbolQuickBadge,
+              { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.symbolQuickCode, { color: interfacePalette.foreground }]}>{item.code}</Text>
+            <Text style={[styles.symbolQuickLabel, { color: interfacePalette.muted }]}>{item.label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      <Text style={{ fontSize: 11, fontWeight: "700", color: interfacePalette.muted, marginTop: 4 }}>新手教學</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        <Button label="早稻田記分法教學" onPress={onOpenTutorial} variant="secondary" compact />
+        <Button label="跑壘與事件判定" onPress={onOpenTutorial} variant="secondary" compact />
+        <Button label="投球與球數記錄" onPress={onOpenTutorial} variant="secondary" compact />
+        <Button label="記分冊範例" onPress={onOpenSymbolReference} variant="secondary" compact />
+      </View>
     </View>
   );
 }
@@ -2655,18 +2966,15 @@ function HomeView({
       {/* 2. 中段面板 (左右分割) */}
       <View style={styles.homeSplitRow}>
         {/* 中段左側：場次、球隊與球員新增/維護 */}
-        <View style={[styles.homeSplitCol, { gap: 10 }]}>
-          {/* 中段左上側「+ 新增場次」 */}
-          <NewGameWizardCard onCreate={onCreate} />
-
-          {/* 中段左下側「球隊管理」 */}
-          <TeamManagerCard
+        <View style={styles.homeSplitCol}>
+          <IntegratedManagementCard
             teams={teams}
             schools={schools}
             selectedTeamId={selectedTeamId}
+            onCreateGame={onCreate}
+            onCreatePrimaryTeam={onCreatePrimaryTeam}
             onSelectTeam={onSelectTeam}
             onManageSchools={onManageSchools}
-            onCreatePrimaryTeam={onCreatePrimaryTeam}
             onUpdateTeam={onUpdateTeam}
             onAddPlayer={onAddPlayer}
             onUpdatePlayer={onUpdatePlayer}
@@ -2681,23 +2989,15 @@ function HomeView({
             selectedTeamId={selectedTeamId}
             games={data.games}
             onSelectTeam={onSelectTeam}
-            onUpdatePlayer={onUpdatePlayer}
           />
         </View>
       </View>
 
       {/* 3. 底部面板 (全幅 - 學習與輔助工具) */}
-      <View style={styles.learningCard}>
-        <View style={styles.learningCopy}>
-          <Text style={styles.learningEyebrow}>LEARN THE SCORECARD</Text>
-          <Text style={styles.learningTitle}>早稻田符號學習工具</Text>
-          <Text style={styles.learningText}>查閱球數欄、外圈與內圈的完整寫法，或重新播放三步新手教學。</Text>
-        </View>
-        <View style={styles.learningActions}>
-          <Button label="符號速查表" onPress={onOpenSymbolReference} compact />
-          <Button label="新手教學" onPress={onOpenTutorial} variant="secondary" compact />
-        </View>
-      </View>
+      <LearnTheScorecardCard
+        onOpenSymbolReference={onOpenSymbolReference}
+        onOpenTutorial={onOpenTutorial}
+      />
     </View>
   );
 }
@@ -2994,6 +3294,29 @@ function LiveLineupPanel({ away, home, game, batter, pitcher }: { away: Team; ho
   );
 }
 
+function formatChinesePosition(pos?: string): string {
+  if (!pos) return "替";
+  if (pos === "1" || pos === "投手") return "投";
+  if (pos === "2" || pos === "捕手") return "捕";
+  if (pos === "3" || pos === "一壘" || pos === "一壘手") return "一";
+  if (pos === "4" || pos === "二壘" || pos === "二壘手") return "二";
+  if (pos === "5" || pos === "三壘" || pos === "三壘手") return "三";
+  if (pos === "6" || pos === "游擊" || pos === "游擊手") return "游";
+  if (pos === "7" || pos === "左外" || pos === "左外野手" || pos === "左外野") return "左";
+  if (pos === "8" || pos === "中外" || pos === "中外野手" || pos === "中外野") return "中";
+  if (pos === "9" || pos === "右外" || pos === "右外野手" || pos === "右外野") return "右";
+  if (pos === "DH" || pos === "指" || pos === "指定打擊") return "指";
+  return pos.slice(0, 1) || "替";
+}
+
+function formatPlayerHand(player?: Player): string {
+  if (!player) return "右";
+  const bat = player.battingHand ?? "R";
+  const throwHand = player.throwingHand ?? "R";
+  if (bat === "L" || throwHand === "L") return "左";
+  return "右";
+}
+
 function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: TeamSide; game: Game; batter?: Player }) {
   const getLineup = (team: Team, side: TeamSide) => {
     const lineup = side === "away" ? game.awayLineup : game.homeLineup;
@@ -3044,14 +3367,15 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
         <Text style={[styles.lineupOrderText, isCurrent && styles.lineupOrderTextActive]}>{index + 1}</Text>
         <Text style={[styles.lineupNumberText, isCurrent && styles.lineupNumberTextActive]}>#{player.number}</Text>
         <Text numberOfLines={1} style={[styles.lineupNameText, isCurrent && styles.lineupNameTextActive]}>{player.name}</Text>
-        <Text style={[styles.lineupPosText, isCurrent && styles.lineupPosTextActive]}>{player.position?.slice(0, 1) || "替"}</Text>
+        <Text style={[styles.lineupHandText, isCurrent && styles.lineupHandTextActive]}>{formatPlayerHand(player)}</Text>
+        <Text style={[styles.lineupPosText, isCurrent && styles.lineupPosTextActive]}>{formatChinesePosition(player.position)}</Text>
       </View>
     );
   };
 
   return (
     <View style={[styles.liveLineupColumn, { backgroundColor: teamSurfaceColor(team, side), borderColor: accentColor }]}>
-      <Text style={[styles.liveLineupColumnTitle, { color: accentColor }]}>{team.name.slice(0, 8)} ({side === "away" ? "客" : "主"})</Text>
+      <Text style={[styles.liveLineupColumnTitle, { color: accentColor }]}>{team.name} ({side === "away" ? "客" : "主"})</Text>
       <View style={styles.lineupListWrap}>
         {lineup.map((p, idx) => renderPlayerRow(p, idx, game.half === side && batter?.id === p?.id))}
       </View>
@@ -3119,95 +3443,50 @@ function LiveCentralDuelPanel({
     <View style={styles.centralDuelPanel}>
       <LivePanelTitle number="2" title="中央投打對決資訊" subtitle="早稻田打席格最大化｜投手與打者主客場配色綁定" />
 
-      {/* 投打資訊與早稻田打席格等比例並列 */}
-      <View style={styles.centralDuelContent}>
-        {/* 左側：投手與打者卡片資訊（綁定主客場顏色變數） */}
-        <View style={styles.centralDuelInfoCol}>
-          {/* 投手區塊 */}
-          <View style={[styles.centralDuelPitcherCard, { backgroundColor: teamSurfaceColor(pitchingTeam, pitchingSide), borderColor: teamAccentColor(pitchingTeam, pitchingSide) }]}>
-            <View style={styles.pitcherSectionHeader}>
-              <View style={styles.pitcherTitleGroup}>
-                <Text style={[styles.pitcherHeaderLabel, { backgroundColor: teamAccentColor(pitchingTeam, pitchingSide) }]}>投手</Text>
-                <View style={styles.pitcherMetaGroup}>
-                  <Text style={[styles.pitcherTeamName, { color: teamAccentColor(pitchingTeam, pitchingSide) }]}>{pitchingTeam.name} ({pitchingSide === "away" ? "客" : "主"})</Text>
-                  <Text style={styles.pitcherNameText}>{playerIdentityLabel(pitcher, "#— 尚未設定")}</Text>
-                </View>
-              </View>
-              <View style={[styles.pitcherLimitBox, pitchWarningStyle, pitchWarningPulse && pitchLimitWarning.level !== "none" && styles.pitchLimitPulse]}>
-                <Text numberOfLines={1} style={[styles.pitcherLimitPitches, pitchWarningTextStyle]}>P {currentPitcherPitches} 球</Text>
-                <Text numberOfLines={1} style={[styles.pitcherLimitDesc, pitchWarningTextStyle]}>
-                  {pitchLimitWarning.nextThreshold ? `下一檻 ${pitchLimitWarning.nextThreshold}` : "已達上限"}
-                </Text>
-              </View>
-            </View>
-            {pitcherHistories.length > 0 && (
-              <View style={styles.pitcherHistoriesRow}>
-                {pitcherHistories.slice(0, 3).map((history) => {
-                  const player = playerById.get(history.pitcherId);
-                  return (
-                    <Text key={history.pitcherId} numberOfLines={1} style={[styles.pitcherHistoryChipText, history.pitcherId === pitcher?.id && { color: teamAccentColor(pitchingTeam, pitchingSide), fontWeight: "900" }]}>
-                      #{player?.number} {player?.name}：{history.pitches}球
-                    </Text>
-                  );
-                })}
-              </View>
-            )}
+      {/* 上側：中央投打對決資訊（投手 VS 打者） */}
+      <View style={styles.centralDuelMatchupHeader}>
+        {/* 投手卡片 */}
+        <View style={[styles.centralDuelPitcherCard, { backgroundColor: teamSurfaceColor(pitchingTeam, pitchingSide), borderColor: teamAccentColor(pitchingTeam, pitchingSide) }]}>
+          <View style={styles.pitcherHeaderRow}>
+            <Text style={[styles.pitcherHeaderBadge, { backgroundColor: teamAccentColor(pitchingTeam, pitchingSide) }]}>投手</Text>
+            <Text style={[styles.pitcherTeamName, { color: teamAccentColor(pitchingTeam, pitchingSide) }]}>{pitchingTeam.name} ({pitchingSide === "away" ? "客" : "主"})</Text>
           </View>
-
-          {/* 打者區塊與 BSO */}
-          <View style={[styles.centralDuelBatterCard, { backgroundColor: teamSurfaceColor(battingTeam, game.half), borderColor: teamAccentColor(battingTeam, battingSide) }]}>
-            <View style={styles.batterHeaderRow}>
-              <Text style={[styles.batterHeaderLabel, { borderColor: teamAccentColor(battingTeam, battingSide), color: teamAccentColor(battingTeam, battingSide) }]}>打者</Text>
-              <Text style={[styles.batterTeamName, { color: teamAccentColor(battingTeam, battingSide) }]}>{battingTeam.name} ({battingSide === "away" ? "客" : "主"}) - 第 {atBatOrder} 棒 - {(batter?.throwingHand || "R")}{(batter?.battingHand || "R")}</Text>
-            </View>
-            
-            <Text numberOfLines={1} style={styles.batterLargeName}>
-              {batter ? `#${batter.number} ${batter.name}` : "#— 尚未設定"}
+          <View style={styles.pitcherMainRow}>
+            <Text numberOfLines={1} style={styles.pitcherLargeName}>{playerIdentityLabel(pitcher, "#— 尚未設定")}</Text>
+            <Text style={styles.pitcherHandText}>{(pitcher?.throwingHand || "R") === "L" ? "左投" : "右投"}</Text>
+          </View>
+          <View style={[styles.pitcherLimitBox, pitchWarningStyle, pitchWarningPulse && pitchLimitWarning.level !== "none" && styles.pitchLimitPulse]}>
+            <Text numberOfLines={1} style={[styles.pitcherLimitPitches, pitchWarningTextStyle]}>P {currentPitcherPitches} 球</Text>
+            <Text numberOfLines={1} style={[styles.pitcherLimitDesc, pitchWarningTextStyle]}>
+              {pitchLimitWarning.nextThreshold ? `下一檻 ${pitchLimitWarning.nextThreshold}` : "已達上限"}
             </Text>
-
-            {/* BSO 燈號 */}
-            <View style={styles.bsoContainer}>
-              <View style={styles.bsoRow}>
-                <Text style={[styles.bsoLabel, { color: BRAND.blue }]}>B</Text>
-                <View style={styles.bsoDots}>
-                  {[1, 2, 3].map((dot) => {
-                    const active = pitchDraft.balls >= dot && pitchDraft.balls < 4;
-                    return (
-                      <View
-                        key={`b-${dot}`}
-                        style={[
-                          styles.bsoDot,
-                          active ? { backgroundColor: BRAND.green, borderColor: BRAND.green } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-              </View>
-              
-              <View style={styles.bsoRow}>
-                <Text style={[styles.bsoLabel, { color: "#EA580C" }]}>S</Text>
-                <View style={styles.bsoDots}>
-                  {[1, 2].map((dot) => {
-                    const active = pitchDraft.strikes >= dot && pitchDraft.strikes < 3;
-                    return (
-                      <View
-                        key={`s-${dot}`}
-                        style={[
-                          styles.bsoDot,
-                          active ? { backgroundColor: "#FBBF24", borderColor: "#FBBF24" } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
           </View>
         </View>
 
-        {/* 右側：最大化早稻田打席格 (等比例放大顯示) */}
-        <View style={styles.centralDuelWasedaCol}>
+        {/* VS 標誌 */}
+        <View style={styles.centralDuelVsBadge}>
+          <Text style={styles.centralDuelVsText}>VS</Text>
+        </View>
+
+        {/* 打者卡片 */}
+        <View style={[styles.centralDuelBatterCard, { backgroundColor: teamSurfaceColor(battingTeam, game.half), borderColor: teamAccentColor(battingTeam, battingSide) }]}>
+          <View style={styles.batterHeaderRow}>
+            <Text style={[styles.batterHeaderBadge, { borderColor: teamAccentColor(battingTeam, battingSide), color: teamAccentColor(battingTeam, battingSide) }]}>打者</Text>
+            <Text style={[styles.batterTeamName, { color: teamAccentColor(battingTeam, battingSide) }]}>{battingTeam.name} ({battingSide === "away" ? "客" : "主"}) - 第 {atBatOrder} 棒</Text>
+          </View>
+          <View style={styles.batterMainRow}>
+            <Text numberOfLines={1} style={styles.batterLargeName}>
+              {batter ? `#${batter.number} ${batter.name}` : "#— 尚未設定"}
+            </Text>
+            <Text style={styles.batterHandText}>{(batter?.battingHand || "R") === "L" ? "左打" : "右打"}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 中側：早稻田打席格 (最大化) + BSO 燈號 */}
+      <View style={styles.centralDuelMiddleRow}>
+        {/* 左半：早稻田打席格等比例放大 */}
+        <View style={styles.centralDuelWasedaBox}>
           <CurrentAtBatPanel
             game={game}
             pitchDraft={pitchDraft}
@@ -3218,6 +3497,63 @@ function LiveCentralDuelPanel({
             fieldingPosition={fieldingPosition}
             recordColumn={recordColumnDraft}
           />
+        </View>
+
+        {/* 右半：BSO (好壞球與出局數) 字體加大加粗 */}
+        <View style={styles.centralDuelBsoBox}>
+          <View style={styles.bsoLargeRow}>
+            <Text style={[styles.bsoLargeLabel, { color: BRAND.green }]}>B</Text>
+            <View style={styles.bsoLargeDots}>
+              {[1, 2, 3].map((dot) => {
+                const active = pitchDraft.balls >= dot && pitchDraft.balls < 4;
+                return (
+                  <View
+                    key={`b-${dot}`}
+                    style={[
+                      styles.bsoLargeDot,
+                      active ? { backgroundColor: BRAND.green, borderColor: BRAND.green } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                    ]}
+                  />
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.bsoLargeRow}>
+            <Text style={[styles.bsoLargeLabel, { color: "#F59E0B" }]}>S</Text>
+            <View style={styles.bsoLargeDots}>
+              {[1, 2].map((dot) => {
+                const active = pitchDraft.strikes >= dot && pitchDraft.strikes < 3;
+                return (
+                  <View
+                    key={`s-${dot}`}
+                    style={[
+                      styles.bsoLargeDot,
+                      active ? { backgroundColor: "#FBBF24", borderColor: "#FBBF24" } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                    ]}
+                  />
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.bsoLargeRow}>
+            <Text style={[styles.bsoLargeLabel, { color: BRAND.red }]}>O</Text>
+            <View style={styles.bsoLargeDots}>
+              {[1, 2].map((dot) => {
+                const active = game.outs >= dot && game.outs < 3;
+                return (
+                  <View
+                    key={`o-${dot}`}
+                    style={[
+                      styles.bsoLargeDot,
+                      active ? { backgroundColor: BRAND.red, borderColor: BRAND.red } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                    ]}
+                  />
+                );
+              })}
+            </View>
+          </View>
         </View>
       </View>
     </View>
@@ -3382,7 +3718,6 @@ function LiveRealtimeLogger({
 
 function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, selectedResult, fieldingPosition, recordColumn, runnerActionRail }: { game: Game; pitchDraft: PitchDraft; batter?: Player; pitcher?: Player; battingPlayers: Player[]; selectedResult: AtBatResult | null; fieldingPosition: string; recordColumn: RecordColumn; runnerActionRail: ReactNode }) {
   const quadrants = getLiveWasedaQuadrants(game, pitchDraft, selectedResult, fieldingPosition, recordColumn);
-  const [showBaseZoom, setShowBaseZoom] = useState(false);
   const runnerLabel = (runnerId: string | null, base: string) => {
     const runner = battingPlayers.find((player) => player.id === runnerId);
     return runner ? `${runner.battingOrder ?? "—"}棒 #${runner.number} ${runner.name}` : `${base}空壘`;
@@ -3392,14 +3727,15 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
   const third = runnerLabel(game.runners.third, "三壘");
   const batterLabel = `${batter?.battingOrder ?? "—"}棒 #${batter?.number ?? "—"} ${batter?.name ?? "待選打者"}`;
   return <View style={styles.liveInfieldGrid}>
-    <View style={styles.liveRunnerDefenseRow}><View style={styles.liveRunnerDefenseCopy}><Text style={styles.liveRunnerDefenseDot}>◉</Text><Text style={styles.liveRunnerDefenseText}>守備：{playerIdentityLabel(pitcher, "#— 尚未設定")}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="放大檢視壘包紀錄格" onPress={() => setShowBaseZoom(true)} style={({ pressed }) => [styles.liveRunnerZoomButton, pressed && styles.pressed]}><Text style={styles.liveRunnerZoomIcon}>⊕</Text><Text style={styles.liveRunnerZoomText}>放大</Text></Pressable></View>
+    <View style={styles.liveRunnerDefenseRow}>
+      <View style={styles.liveRunnerDefenseCopy}>
+        <Text style={styles.liveRunnerDefenseDot}>◉</Text>
+        <Text style={styles.liveRunnerDefenseText}>守備：{playerIdentityLabel(pitcher, "#— 尚未設定")}</Text>
+      </View>
+    </View>
     <View style={styles.liveInfieldWorkRow}>
       <View style={styles.liveRunnerCrossContainer}>
-        <Image
-          source={require("../../assets/images/live-infield-background.jpg")}
-          resizeMode="contain"
-          style={styles.liveRunnerCrossBackgroundImage}
-        />
+        <LiveInfieldDiamondBackground themeMode="dark" />
         
         {/* 二壘 (Top Center) */}
         <View style={[styles.liveRunnerAbsoluteSlot, { top: "5%", left: "50%", transform: [{ translateX: -46 }] }]}>
@@ -3452,12 +3788,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
       </View>
       {runnerActionRail}
     </View>
-    <BaseCellZoomModal visible={showBaseZoom} quadrants={quadrants} onClose={() => setShowBaseZoom(false)} />
   </View>;
-}
-
-function BaseCellZoomModal({ visible, quadrants, onClose }: { visible: boolean; quadrants: LiveWasedaQuadrant[]; onClose: () => void }) {
-  return <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}><View style={styles.baseZoomBackdrop}><View style={styles.baseZoomSheet}><View style={styles.modalHandle} /><View style={styles.modalHeader}><View><Text style={styles.modalTitle}>壘包格放大檢視</Text><Text style={styles.modalSubtitle}>唯讀模式；內容與現場早稻田紀錄即時同步</Text></View><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="關閉壘包格放大檢視"><Text style={styles.modalClose}>關閉</Text></Pressable></View><View style={styles.baseZoomGrid}>{quadrants.map((quadrant) => <View key={quadrant.label} style={styles.baseZoomCell}><Text style={styles.baseZoomCellLabel}>{quadrant.label}</Text><WasedaBaseCell {...quadrant} size="regular" /></View>)}</View><Text style={styles.baseZoomHint}>放大檢視僅供確認球數、外圈、內圈與跑壘推進，不會改變壘包或打席資料。</Text></View></View></Modal>;
 }
 
 function CurrentAtBatPanel({ game, pitchDraft, batter, completedAtBat, completedBatter, selectedResult, fieldingPosition, recordColumn }: { game: Game; pitchDraft: PitchDraft; batter?: Player; completedAtBat?: Game["events"][number]; completedBatter?: Player; selectedResult: AtBatResult | null; fieldingPosition: string; recordColumn: RecordColumn }) {
@@ -3722,7 +4053,28 @@ function FieldingSequenceButtonEditor({ value, suggestions, hitDirection, onChan
 }
 
 function BatterQueuePreview({ players, events }: { players: Player[]; events: Game["events"] }) {
-  return <View style={styles.batterQueueSection}><Text style={styles.batterQueueTitle}>後面 2 棒次</Text><View style={styles.batterQueueRow}>{players.map((player, index) => { const latest = [...events].reverse().find((event) => event.batterId === player.id); return <View key={player.id} style={styles.batterQueueCard}><View style={styles.batterQueueIdentity}><Text style={styles.batterQueueOrder}>NEXT {index + 1}</Text><Text numberOfLines={1} style={styles.batterQueueName}>#{player.number} {player.name}</Text></View><WasedaPersonalRecordCell size="compact" event={latest} label="上次打席" showLabels={false} /></View>; })}</View></View>;
+  return (
+    <View style={styles.batterQueueSection}>
+      <View style={styles.batterQueueRow}>
+        {players.map((player, index) => {
+          const latest = [...events].reverse().find((event) => event.batterId === player.id);
+          return (
+            <View key={player.id} style={styles.batterQueueCard}>
+              <View style={styles.batterQueueIdentity}>
+                <Text style={styles.batterQueueOrder}>NEXT {index + 1}</Text>
+                <Text numberOfLines={1} style={styles.batterQueueName}>#{player.number} {player.name}</Text>
+                <Text style={styles.batterQueueHand}>{(player.battingHand ?? "R") === "L" ? "左打" : "右打"}</Text>
+              </View>
+              <View style={styles.batterQueueAtBatWrap}>
+                <Text style={styles.batterQueueAtBatTitle}>前次打席</Text>
+                <WasedaPersonalRecordCell size="compact" event={latest} label="前次打席" showLabels={false} />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 function InningAtBatRail({ events, players }: { events: Game["events"]; players: Player[] }) {
@@ -4516,173 +4868,159 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
 
   return <View style={styles.statsSection}>
     <View style={styles.gameLogFivePanelWrap}>
-      {/* 頂部列：左側主客場視角切換，右側工具列與狀態區 */}
+      {/* 3-1 頂部區塊 (左右分割) */}
       <View style={styles.gameLogTopRow}>
-        {/* 頂部左側：主客場視角切換 */}
+        {/* 頂部左側：主客場視角切換 (配合隊伍顏色識別) */}
         <View style={styles.gameLogTopLeft}>
-          <View style={styles.gameLogPanelHeaderRow}>
-            <Text style={styles.gameLogPanelLabel}>主客場視角切換</Text>
-            <Text style={styles.gameLogActiveSideBadge}>目前檢視：{selectedScorebookSide === "away" ? "客場(先攻)" : "主場(先守)"}</Text>
-          </View>
+          <Text style={styles.gameLogPanelLabel}>視角切換</Text>
           <View style={styles.gameLogTeamPair}>
             <Pressable
               onPress={() => setSelectedScorebookSide("away")}
               accessibilityRole="button"
               accessibilityLabel={`切換客場視角：${away.name}`}
               style={({ pressed }) => [
-                styles.gameLogTopTeam,
-                selectedScorebookSide === "away" ? styles.gameLogTopTeamActive : styles.gameLogTopTeamDim,
-                {
-                  backgroundColor: selectedScorebookSide === "away" ? teamAccentColor(away, "away") : teamSurfaceColor(away, "away"),
-                  borderColor: teamAccentColor(away, "away"),
-                },
+                styles.gameLogTopTeamButton,
+                selectedScorebookSide === "away"
+                  ? { backgroundColor: teamAccentColor(away, "away"), borderColor: teamAccentColor(away, "away") }
+                  : { backgroundColor: teamSurfaceColor(away, "away"), borderColor: teamAccentColor(away, "away") },
                 pressed && styles.pressed,
               ]}
             >
-              <View style={styles.gameLogTopTeamHeader}>
-                <Text style={[styles.gameLogTopTeamSide, { color: selectedScorebookSide === "away" ? readableTextOn(teamAccentColor(away, "away")) : teamAccentColor(away, "away") }]}>客場(先攻)</Text>
-                {selectedScorebookSide === "away" ? <View style={[styles.gameLogPerspectiveDot, { backgroundColor: readableTextOn(teamAccentColor(away, "away")) }]} /> : null}
-              </View>
-              <TeamLogoName team={away} textStyle={[styles.gameLogTopTeamName, { color: selectedScorebookSide === "away" ? readableTextOn(teamAccentColor(away, "away")) : teamAccentColor(away, "away") }]} logoSize={20} />
-              <Text style={[styles.gameLogTopTeamScore, { color: selectedScorebookSide === "away" ? readableTextOn(teamAccentColor(away, "away")) : teamAccentColor(away, "away") }]}>{game.score.reduce((sum, inning) => sum + inning.away, 0)}</Text>
+              <Text style={[
+                styles.gameLogTopTeamButtonText,
+                { color: selectedScorebookSide === "away" ? readableTextOn(teamAccentColor(away, "away")) : teamAccentColor(away, "away") }
+              ]}>
+                客隊視角  {away.name}
+              </Text>
             </Pressable>
-            <View style={styles.gameLogVersusContainer}>
-              <Text style={styles.gameLogVersus}>VS</Text>
-            </View>
+
             <Pressable
               onPress={() => setSelectedScorebookSide("home")}
               accessibilityRole="button"
               accessibilityLabel={`切換主場視角：${home.name}`}
               style={({ pressed }) => [
-                styles.gameLogTopTeam,
-                selectedScorebookSide === "home" ? styles.gameLogTopTeamActive : styles.gameLogTopTeamDim,
-                {
-                  backgroundColor: selectedScorebookSide === "home" ? teamAccentColor(home, "home") : teamSurfaceColor(home, "home"),
-                  borderColor: teamAccentColor(home, "home"),
-                },
+                styles.gameLogTopTeamButton,
+                selectedScorebookSide === "home"
+                  ? { backgroundColor: teamAccentColor(home, "home"), borderColor: teamAccentColor(home, "home") }
+                  : { backgroundColor: teamSurfaceColor(home, "home"), borderColor: teamAccentColor(home, "home") },
                 pressed && styles.pressed,
               ]}
             >
-              <View style={styles.gameLogTopTeamHeader}>
-                <Text style={[styles.gameLogTopTeamSide, { color: selectedScorebookSide === "home" ? readableTextOn(teamAccentColor(home, "home")) : teamAccentColor(home, "home") }]}>主場(先守)</Text>
-                {selectedScorebookSide === "home" ? <View style={[styles.gameLogPerspectiveDot, { backgroundColor: readableTextOn(teamAccentColor(home, "home")) }]} /> : null}
-              </View>
-              <TeamLogoName team={home} textStyle={[styles.gameLogTopTeamName, { color: selectedScorebookSide === "home" ? readableTextOn(teamAccentColor(home, "home")) : teamAccentColor(home, "home") }]} logoSize={20} align="right" />
-              <Text style={[styles.gameLogTopTeamScore, { color: selectedScorebookSide === "home" ? readableTextOn(teamAccentColor(home, "home")) : teamAccentColor(home, "home") }]}>{game.score.reduce((sum, inning) => sum + inning.home, 0)}</Text>
+              <Text style={[
+                styles.gameLogTopTeamButtonText,
+                { color: selectedScorebookSide === "home" ? readableTextOn(teamAccentColor(home, "home")) : teamAccentColor(home, "home") }
+              ]}>
+                主隊視角  {home.name}
+              </Text>
             </Pressable>
           </View>
         </View>
 
-        {/* 頂部右側：工具列與狀態區 */}
-        <View style={styles.gameLogTopRight}>
-          <View style={styles.gameLogToolbarSection}>
-            <Text style={styles.gameLogPanelLabel}>工具列</Text>
-            <View style={styles.gameRecordActionRow}>
-              <Button label={refreshing ? "整理中…" : "重新整理"} onPress={() => { void onRefresh(); }} disabled={isReadOnly || refreshing} variant="secondary" compact />
-              <Button label={`自動更新：${autoRefresh ? "開" : "關"}`} onPress={onToggleAutoRefresh} disabled={isReadOnly} variant={autoRefresh ? "primary" : "secondary"} compact />
-              <Button label="匯出 PDF／圖片" onPress={onOpenExportRange} disabled={isReadOnly} compact />
-            </View>
-          </View>
-
-          <View style={styles.gameLogStatusSection}>
-            <Text style={styles.gameLogPanelLabel}>狀態區</Text>
-            <View style={styles.gameRecordSyncRow}>
-              <Button label="復原上一筆" onPress={onUndo} disabled={isReadOnly || !canUndo} variant="secondary" compact />
-              <View style={[styles.gameRecordSyncBadge, isReadOnly ? styles.gameRecordSyncBadgePending : syncState === "synced" ? styles.gameRecordSyncBadgeSynced : syncState === "refreshing" ? styles.gameRecordSyncBadgeRefreshing : styles.gameRecordSyncBadgePending]}>
-                <View style={[styles.gameRecordSyncDot, isReadOnly ? styles.gameRecordSyncDotPending : syncState === "refreshing" ? styles.gameRecordSyncDotRefreshing : syncState === "pending" ? styles.gameRecordSyncDotPending : styles.gameRecordSyncDotSynced]} />
-                <Text style={styles.gameRecordSyncText}>{isReadOnly ? "唯讀展示資料" : syncState === "synced" ? "資料已同步" : syncState === "refreshing" ? "同步檢查中" : "待同步"}</Text>
-              </View>
-              <Text numberOfLines={2} style={styles.gameRecordSyncHint}>{isReadOnly ? "展示投影不會加入本機保存、現場逐球、統計或匯出範圍，唯讀且不寫入本機資料。" : canUndo ? "可復原最近一次正式打席、換人或特殊註記；復原後會回到寫入前的壘包、比分與名單狀態。" : "格內三區依序為球數欄、外圈格、內圈格；長按已完成打席格可做顯示補正。"}</Text>
+        {/* 頂部右側：配置工具列與狀態區 */}
+        <View style={styles.gameLogTopRightHorizontal}>
+          <View style={styles.gameRecordActionRowHorizontal}>
+            <Button label={refreshing ? "整理中…" : "重新整理"} onPress={() => { void onRefresh(); }} disabled={isReadOnly || refreshing} variant="secondary" compact />
+            <Button label={`自動更新：${autoRefresh ? "開" : "關"}`} onPress={onToggleAutoRefresh} disabled={isReadOnly} variant={autoRefresh ? "primary" : "secondary"} compact />
+            <Button label="匯出 PDF／圖片" onPress={onOpenExportRange} disabled={isReadOnly} compact />
+            <Button label="復原上一筆" onPress={onUndo} disabled={isReadOnly || !canUndo} variant="secondary" compact />
+            <View style={[styles.gameRecordSyncBadgeHorizontal, isReadOnly ? styles.gameRecordSyncBadgePending : syncState === "synced" ? styles.gameRecordSyncBadgeSynced : syncState === "refreshing" ? styles.gameRecordSyncBadgeRefreshing : styles.gameRecordSyncBadgePending]}>
+              <View style={[styles.gameRecordSyncDot, isReadOnly ? styles.gameRecordSyncDotPending : syncState === "refreshing" ? styles.gameRecordSyncDotRefreshing : syncState === "pending" ? styles.gameRecordSyncDotPending : styles.gameRecordSyncDotSynced]} />
+              <Text style={styles.gameRecordSyncText}>{isReadOnly ? "唯讀 (不寫入本機資料)" : syncState === "synced" ? "資料已同步" : syncState === "refreshing" ? "檢查中" : "待同步"}</Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* 中間面板：C1 / C2 / C3 */}
-      <View style={styles.gameLogMiddleRow}>
-        {/* C1 面板：左中右三分割 (動態各局制記分板 / 當日賽況文字概述與儲存 / 賽事資訊與天氣) */}
-        <View style={styles.gameLogC1Panel}>
-          {/* 左側：動態各局制記分板 */}
-          <View style={styles.gameLogC1LeftCol}>
-            <View style={styles.gameLogC1SectionHeader}>
-              <Text style={styles.gameLogC1SectionTitle}>動態各局制記分板</Text>
-              <Text style={styles.gameLogC1SectionSub}>{game.status === "final" ? "FINAL" : `第 ${game.inning} 局${game.half === "away" ? "上" : "下"}`}</Text>
-            </View>
-            <ScoreBoard game={game} away={away} home={home} />
+      {/* 3-2 中間面板 (C1 / C2 / C3 三分格) */}
+      <View style={styles.gameLogC1Panel}>
+        {/* C1：左側（占比40%）：動態各局制記分板 */}
+        <View style={styles.gameLogC1LeftCol}>
+          <View style={styles.gameLogC1SectionHeader}>
+            <Text style={styles.gameLogC1SectionTitle}>主客場比分</Text>
+            <Text style={styles.gameLogC1SectionSub}>{game.status === "final" ? "FINAL · 預定 6 局" : `LIVE · 第 ${game.inning} 局${game.half === "away" ? "上" : "下"}`}</Text>
           </View>
-
-          {/* 中間：當日賽況文字概述 (儲存按鈕上移至標題行右側，文字框最大化) */}
-          <View style={styles.gameLogC1CenterCol}>
-            <View style={styles.gameLogC1SectionHeader}>
-              <Text style={styles.gameLogC1SectionTitle}>當日賽況文字概述</Text>
-              <View style={styles.gameLogNotesHeaderRight}>
-                {notesSaved ? <Text style={styles.gameLogC1SavedBadge}>✓ 賽況已儲存</Text> : null}
-                <Button
-                  label={notesSaved ? "✓ 已儲存" : "儲存賽況"}
-                  onPress={handleSaveMatchNotes}
-                  disabled={isReadOnly}
-                  variant={notesSaved ? "secondary" : "primary"}
-                  compact
-                />
-              </View>
-            </View>
-            <TextInput
-              value={matchNotes}
-              onChangeText={setMatchNotes}
-              placeholder="請在此輸入當日賽況重點、特殊戰術或戰報摘要…"
-              placeholderTextColor={BRAND.muted}
-              multiline
-              editable={!isReadOnly}
-              style={styles.gameLogNotesInputLarge}
-            />
-          </View>
-
-          {/* 右側：賽事資訊與天氣 */}
-          <View style={styles.gameLogC1RightCol}>
-            <View style={styles.gameLogC1SectionHeader}>
-              <Text style={styles.gameLogC1SectionTitle}>賽事資訊與環境</Text>
-              <View style={[styles.gameLogStatusBadge, game.status === "final" ? styles.gameLogStatusBadgeFinal : styles.gameLogStatusBadgeLive]}>
-                <Text style={styles.gameLogStatusBadgeText}>{game.status === "final" ? "比賽完成" : "現場進行中"}</Text>
-              </View>
-            </View>
-            <View style={styles.gameLogMetaGrid}>
-              <View style={styles.gameLogMetaItem}>
-                <Text style={styles.gameLogMetaLabel}>賽事</Text>
-                <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.name || "未命名比賽"}</Text>
-              </View>
-              <View style={styles.gameLogMetaItem}>
-                <Text style={styles.gameLogMetaLabel}>盃賽</Text>
-                <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.competition || "未分類賽事"}</Text>
-              </View>
-              <View style={styles.gameLogMetaItem}>
-                <Text style={styles.gameLogMetaLabel}>地點</Text>
-                <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.venue || "未填寫地點"}</Text>
-              </View>
-              <View style={styles.gameLogMetaItem}>
-                <Text style={styles.gameLogMetaLabel}>時間</Text>
-                <Text numberOfLines={1} style={styles.gameLogMetaValue}>{formatGameDateTime(game)}</Text>
-              </View>
-              <View style={styles.gameLogMetaItem}>
-                <Text style={styles.gameLogMetaLabel}>天氣</Text>
-                <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.weather || "晴朗"}</Text>
-              </View>
-            </View>
-            <View style={styles.gameLogC1SelectorRow}>
-              <ScorebookGameSelector activeGameId={game.id} games={games} onSelect={onSelectGame} />
-            </View>
-          </View>
+          <ScoreBoard game={game} away={away} home={home} />
         </View>
 
-        {/* C2 面板：早稻田單場紀錄表主表 (簡化標頭，僅保留球隊與代表底色) */}
-        <View style={[styles.gameLogC2Panel, { backgroundColor: teamSurfaceColor(selectedScorebook.team, selectedScorebook.side), borderColor: teamAccentColor(selectedScorebook.team, selectedScorebook.side) }]}>
+        {/* C2：中間（占比40%）：當日賽況文字概述 + 儲存按鈕 */}
+        <View style={styles.gameLogC1CenterCol}>
+          <View style={styles.gameLogC1SectionHeader}>
+            <Text style={styles.gameLogC1SectionTitle}>當日賽況文字概述</Text>
+            <View style={styles.gameLogNotesHeaderRight}>
+              {notesSaved ? <Text style={styles.gameLogC1SavedBadge}>✓ 已儲存</Text> : null}
+              <Button
+                label={notesSaved ? "✓ 已儲存" : "儲存賽況"}
+                onPress={handleSaveMatchNotes}
+                disabled={isReadOnly}
+                variant={notesSaved ? "secondary" : "primary"}
+                compact
+              />
+            </View>
+          </View>
+          <TextInput
+            value={matchNotes}
+            onChangeText={setMatchNotes}
+            placeholder="請在此輸入當日賽況重點、特殊戰術或戰報摘要…"
+            placeholderTextColor={BRAND.muted}
+            multiline
+            editable={!isReadOnly}
+            style={styles.gameLogNotesInputLarge}
+          />
+        </View>
+
+        {/* C3：右側（占比20%）：賽事資訊 */}
+        <View style={styles.gameLogC1RightCol}>
+          <View style={styles.gameLogC1SectionHeader}>
+            <Text style={styles.gameLogC1SectionTitle}>賽事資訊與環境</Text>
+            <View style={[styles.gameLogStatusBadge, game.status === "final" ? styles.gameLogStatusBadgeFinal : styles.gameLogStatusBadgeLive]}>
+              <Text style={styles.gameLogStatusBadgeText}>{game.status === "final" ? "比賽完成" : "現場進行中"}</Text>
+            </View>
+          </View>
+          <View style={styles.gameLogMetaGrid}>
+            <View style={styles.gameLogMetaItem}>
+              <Text style={styles.gameLogMetaLabel}>賽事</Text>
+              <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.name || "未命名比賽"}</Text>
+            </View>
+            <View style={styles.gameLogMetaItem}>
+              <Text style={styles.gameLogMetaLabel}>盃賽</Text>
+              <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.competition || "未分類賽事"}</Text>
+            </View>
+            <View style={styles.gameLogMetaItem}>
+              <Text style={styles.gameLogMetaLabel}>地點</Text>
+              <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.venue || "未填寫地點"}</Text>
+            </View>
+            <View style={styles.gameLogMetaItem}>
+              <Text style={styles.gameLogMetaLabel}>時間</Text>
+              <Text numberOfLines={1} style={styles.gameLogMetaValue}>{formatGameDateTime(game)}</Text>
+            </View>
+            <View style={styles.gameLogMetaItem}>
+              <Text style={styles.gameLogMetaLabel}>天氣</Text>
+              <Text numberOfLines={1} style={styles.gameLogMetaValue}>{game.weather || "晴朗"}</Text>
+            </View>
+          </View>
+          <View style={styles.gameLogC1SelectorRow}>
+            <ScorebookGameSelector activeGameId={game.id} games={games} onSelect={onSelectGame} />
+          </View>
+        </View>
+      </View>
+
+      {/* 3-2 底間區塊 (上下分割)：底色需配合主客場顏色進行識別 */}
+      <View style={[
+        styles.gameLogDSectionContainer,
+        {
+          backgroundColor: teamSurfaceColor(selectedScorebook.team, selectedScorebook.side),
+          borderColor: teamAccentColor(selectedScorebook.team, selectedScorebook.side),
+        }
+      ]}>
+        {/* 3-2-1 上：早稻田式單場整體紀錄表 */}
+        <View style={styles.gameLogDTopSubPanel}>
           {renderTeamSheet(selectedScorebook.team, selectedScorebook.side, selectedScorebook.batting, selectedScorebook.pitching, selectedScorebook.summary)}
         </View>
 
-      </View>
-
-      {/* 底部面板：左右分割 - 投捕數據自動統計 */}
-      <View style={styles.gameLogBottomPanel}>
-        <PitcherCatcherBottomPanel game={game} team={selectedScorebook.team} side={selectedScorebook.side} />
+        {/* 3-2-2 下：投手及捕手資料統計 */}
+        <View style={styles.gameLogDBottomSubPanel}>
+          <PitcherCatcherBottomPanel game={game} team={selectedScorebook.team} side={selectedScorebook.side} />
+        </View>
       </View>
     </View>
   </View>;
@@ -6276,6 +6614,8 @@ const styles = StyleSheet.create({
   lineupNumberTextActive: { color: BRAND.blue, fontWeight: "900" },
   lineupNameText: { color: BRAND.ink, fontSize: 9, flex: 1, fontWeight: "700" },
   lineupNameTextActive: { color: BRAND.blue, fontWeight: "900" },
+  lineupHandText: { color: BRAND.muted, fontSize: 7, fontWeight: "800", width: 12, textAlign: "center" },
+  lineupHandTextActive: { color: BRAND.blue, fontWeight: "900" },
   lineupPosText: { color: BRAND.muted, fontSize: 7, fontWeight: "900" },
   lineupPosTextActive: { color: BRAND.blue },
 
@@ -6298,8 +6638,8 @@ const styles = StyleSheet.create({
   batterTwoColumnLayout: { flexDirection: "row", gap: 12, alignItems: "stretch", flex: 1, minHeight: 140 },
   batterLeftCol: { flex: 1.1, gap: 6, justifyContent: "space-between" },
   batterRightCol: { flex: 1.5, minWidth: 0 },
-  batterHeaderRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  batterLargeName: { color: BRAND.ink, fontSize: 18, fontWeight: "900", marginVertical: 2 },
+  legacyBatterHeaderRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  legacyBatterLargeName: { color: BRAND.ink, fontSize: 18, fontWeight: "900", marginVertical: 2 },
   bsoContainer: { gap: 6, marginTop: 4, alignSelf: "flex-start" },
   bsoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   bsoLabel: { fontSize: 12, fontWeight: "900", width: 12, textAlign: "center" },
@@ -7304,6 +7644,14 @@ const styles = StyleSheet.create({
   gameLogTopRow: { flexDirection: "row", width: "100%", justifyContent: "space-between", alignItems: "stretch", gap: 12 },
   gameLogTopLeft: { flex: 1, minWidth: 320, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 16, padding: 12, gap: 10, shadowColor: "#0F172A", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
   gameLogTopRight: { flex: 1, minWidth: 380, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 16, padding: 12, gap: 10, justifyContent: "space-between", shadowColor: "#0F172A", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
+  gameLogTopRightHorizontal: { flex: 1, minWidth: 380, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 16, padding: 12, justifyContent: "center", alignItems: "flex-end", shadowColor: "#0F172A", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
+  gameRecordActionRowHorizontal: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" },
+  gameRecordSyncBadgeHorizontal: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  gameLogTopTeamButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  gameLogTopTeamButtonText: { fontSize: 13, fontWeight: "900" },
+  gameLogDSectionContainer: { borderWidth: 1.5, borderRadius: 16, padding: 12, gap: 12, width: "100%" },
+  gameLogDTopSubPanel: { width: "100%" },
+  gameLogDBottomSubPanel: { width: "100%" },
   gameLogPanelHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   gameLogActiveSideBadge: { fontSize: 10, fontWeight: "900", color: BRAND.blue, backgroundColor: "#EFF6FF", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: "#BFDBFE" },
   gameLogPanelLabel: { color: BRAND.muted, fontSize: 10, fontWeight: "900", letterSpacing: 0.6, textTransform: "uppercase" },
@@ -7414,14 +7762,14 @@ const styles = StyleSheet.create({
   // 垂直布局：頂部面板（客隊打線 / 動態比分 / 主隊打線）
   recordTopPanel: { flexDirection: "row", gap: 8, alignItems: "stretch" },
   recordTopPanelCol: { flex: 1, minWidth: 0, gap: 6 },
-  recordTopPanelCenter: { flex: 1.2, minWidth: 0, gap: 6 },
+  recordTopPanelCenter: { flex: 2, minWidth: 0, gap: 6 },
 
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
   recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "stretch" },
   recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6 },
-  recordMiddleBlock1Right: { flex: 1.2, minWidth: 0, gap: 6 },
-  recordMatchupTop: { flex: 1, gap: 6 },
-  recordMatchupBottom: { flex: 1, gap: 6 },
+  recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8 },
+  recordMatchupTop: { gap: 6 },
+  recordMatchupBottom: { gap: 6 },
 
   // 垂直布局：中間區塊 2（投球落點追蹤 + 擊出/觸擊後事件與換人）
   recordMiddleBlock2: { gap: 8 },
@@ -7430,15 +7778,47 @@ const styles = StyleSheet.create({
   recordBottomPanel: { flexDirection: "row", gap: 8, alignItems: "stretch" },
   recordBottomPanelLeft: { flex: 1, minWidth: 0, gap: 6 },
   recordBottomPanelRight: { flex: 1, minWidth: 0, gap: 6 },
-  inningRailScroll: { flex: 1 },
+  inningRailScroll: { maxHeight: 180 },
 
   // 中央投打對決資訊
-  centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 8, gap: 8, alignSelf: "stretch", flex: 1 },
-  centralDuelContent: { flexDirection: "row", gap: 8, alignItems: "stretch", flex: 1 },
-  centralDuelInfoCol: { flex: 1, gap: 6, justifyContent: "space-between" },
-  centralDuelWasedaCol: { flex: 2, alignItems: "center", justifyContent: "center", minWidth: 150 },
-  centralDuelPitcherCard: { borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4 },
-  centralDuelBatterCard: { borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4 },
+  centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch" },
+  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  centralDuelPitcherCard: { flex: 1, borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4 },
+  pitcherHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  pitcherHeaderBadge: { color: BRAND.white, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  pitcherMainRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
+  pitcherLargeName: { color: BRAND.ink, fontSize: 15, fontWeight: "900", flex: 1 },
+  pitcherHandText: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
+
+  centralDuelVsBadge: { backgroundColor: BRAND.navy, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
+  centralDuelVsText: { color: BRAND.white, fontSize: 12, fontWeight: "900" },
+
+  centralDuelBatterCard: { flex: 1, borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4 },
+  batterHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  batterHeaderBadge: { backgroundColor: BRAND.white, borderWidth: 1, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  batterMainRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
+  batterLargeName: { color: BRAND.ink, fontSize: 15, fontWeight: "900", flex: 1 },
+  batterHandText: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
+
+  centralDuelMiddleRow: { flexDirection: "row", gap: 12, alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8 },
+  centralDuelWasedaBox: { flex: 1.2, alignItems: "center", justifyContent: "center" },
+  centralDuelBsoBox: { flex: 0.8, gap: 8, paddingHorizontal: 8, justifyContent: "center" },
+  bsoLargeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bsoLargeLabel: { fontSize: 18, fontWeight: "900", width: 20, textAlign: "center" },
+  bsoLargeDots: { flexDirection: "row", gap: 8 },
+  bsoLargeDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2 },
+
+  // 後續棒次待打擊區
+  batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6 },
+  batterQueueTitle: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
+  batterQueueRow: { flexDirection: "row", gap: 8 },
+  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 8 },
+  batterQueueIdentity: { gap: 3, flex: 1 },
+  batterQueueOrder: { color: BRAND.blue, fontSize: 11, fontWeight: "900" },
+  batterQueueName: { color: BRAND.ink, fontSize: 13, fontWeight: "900" },
+  batterQueueHand: { color: BRAND.muted, fontSize: 10, fontWeight: "800" },
+  batterQueueAtBatWrap: { alignItems: "center", gap: 2 },
+  batterQueueAtBatTitle: { color: BRAND.muted, fontSize: 9, fontWeight: "800" },
 
   // 賽況及時紀錄父層組件
   realtimeLoggerContainer: { backgroundColor: BRAND.white, borderWidth: 1.5, borderColor: BRAND.blue, borderRadius: 12, padding: 10, gap: 8 },
@@ -7677,13 +8057,6 @@ const styles = StyleSheet.create({
   resultPreviewValue: { color: BRAND.navy, flex: 1, fontSize: 18, fontWeight: "900" },
   quadrantUtilityRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   substitutionQuickRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
-  batterQueueSection: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 5, gap: 4 },
-  batterQueueTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900" },
-  batterQueueRow: { flexDirection: "row", gap: 4 },
-  batterQueueCard: { flex: 1, minWidth: 0, minHeight: 78, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: BRAND.white, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 7, padding: 4, gap: 4 },
-  batterQueueIdentity: { flex: 1, minWidth: 0, gap: 2 },
-  batterQueueOrder: { color: BRAND.blue, fontSize: 8, fontWeight: "900" },
-  batterQueueName: { color: BRAND.navy, fontSize: 9, fontWeight: "900" },
   batterQueueCell: { borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 6, padding: 5, alignItems: "center", gap: 2 },
   batterQueueCellLabel: { color: BRAND.muted, fontSize: 7, fontWeight: "900" },
   batterQueueNotation: { color: BRAND.navy, fontSize: 12, fontWeight: "900" },
@@ -7899,6 +8272,44 @@ const styles = StyleSheet.create({
   schoolChipTextActive: { color: BRAND.white, fontWeight: "900" },
   card: { borderWidth: 1, borderColor: BRAND.line, borderRadius: 14, backgroundColor: BRAND.white, padding: 12, gap: 10 },
   cardTitle: { color: BRAND.ink, fontSize: 14, fontWeight: "900" },
+
+  /* 1-1-1 左側：目前進行中比賽樣式 */
+  liveGameHeaderScoreRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 4 },
+  liveGameTeamScoreBox: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minWidth: 0 },
+  sideBadgePill: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  sideBadgePillText: { fontSize: 11, fontWeight: "900", color: BRAND.blue },
+  liveGameTeamNameText: { fontSize: 14, fontWeight: "900", flex: 1 },
+  liveGameBigScore: { fontSize: 32, fontWeight: "900", color: BRAND.navy, paddingHorizontal: 8 },
+  liveGameBaseballGraphic: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  scoreboardTeamShortText: { fontSize: 11, fontWeight: "900", color: BRAND.navy, textAlign: "center" },
+
+  bsoPanelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, marginVertical: 6 },
+  bsoLabelLetter: { fontSize: 13, fontWeight: "900", color: BRAND.navy, width: 14 },
+  bsoDotCircle: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: BRAND.line },
+
+  matchupVsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginVertical: 4 },
+  matchupRoleBox: { flex: 1, borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 6, alignItems: "center" },
+  matchupRoleLabel: { fontSize: 9, fontWeight: "800", color: BRAND.muted },
+  matchupRoleName: { fontSize: 12, fontWeight: "900", marginTop: 2 },
+  matchupRoleDetail: { fontSize: 9, color: BRAND.muted, marginTop: 1 },
+  matchupVsBadge: { fontSize: 12, fontWeight: "900", color: BRAND.red, paddingHorizontal: 4 },
+
+  /* 1-2-1 中段左側 */
+  actionTileCard: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 12 },
+  actionTileIcon: { fontSize: 18, fontWeight: "900" },
+  actionTileText: { fontSize: 14, fontWeight: "900" },
+  teamManagementBox: { borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 10 },
+
+  /* 1-2-2 中段右側 所屬球隊 */
+  rosterTableHeaderRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5, paddingHorizontal: 6, borderRadius: 6, borderWidth: 1, borderColor: BRAND.line, marginVertical: 2 },
+  rosterHeaderCellText: { fontSize: 10, fontWeight: "900", color: BRAND.muted },
+  rosterTableCellRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6, paddingHorizontal: 6, borderRadius: 6, borderWidth: 1, borderColor: BRAND.line },
+  rosterTableCellText: { fontSize: 11, color: BRAND.ink },
+
+  /* 1-3 底部全幅 LEARN THE SCORECARD */
+  symbolQuickBadge: { alignItems: "center", justifyContent: "center", width: 56, height: 48, borderRadius: 8, borderWidth: 1, borderColor: BRAND.line, padding: 2 },
+  symbolQuickCode: { fontSize: 12, fontWeight: "900" },
+  symbolQuickLabel: { fontSize: 8, marginTop: 2 },
 });
 
 export default App;

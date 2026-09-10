@@ -64,6 +64,50 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
   const isSubstitutionInningFilterActive = showSubstitutionInningsOnly && hasSubstitutionInnings;
   const visibleInnings = isSubstitutionInningFilterActive ? substitutionVisibleInnings : projection.innings;
 
+  // 計算各打序(1-9)對應守備位置在此場比賽發生的失誤次數
+  const battingOrderErrors = useMemo(() => {
+    const errorsByOrder = new Map<number, number>();
+    for (let order = 1; order <= 9; order++) {
+      errorsByOrder.set(order, 0);
+    }
+
+    const defenseEvents = game.events.filter((e) => e.half !== side);
+    const playerPositions = new Map<string, string>();
+    if (lineup?.defensivePositions) {
+      Object.entries(lineup.defensivePositions).forEach(([playerId, pos]) => {
+        playerPositions.set(playerId, pos);
+      });
+    }
+
+    defenseEvents.forEach((event) => {
+      const isError = event.result === "E" || /\bE[1-9]?\b/.test(event.notation || "") || /\b[1-9]E\b/.test(event.notation || "");
+      if (!isError) return;
+
+      let errorPos: string | undefined;
+      const posMatch = (event.notation || "").match(/E([1-9])|([1-9])E/);
+      if (posMatch) {
+        errorPos = posMatch[1] || posMatch[2];
+      }
+
+      projection.battingOrders.forEach((order) => {
+        const orderPlayerIds = new Set(order.entries.map((e) => e.playerId).filter(Boolean));
+        let match = false;
+        if (errorPos) {
+          orderPlayerIds.forEach((pId) => {
+            if (pId && playerPositions.get(pId) === errorPos) {
+              match = true;
+            }
+          });
+        }
+        if (match) {
+          errorsByOrder.set(order.battingOrder, (errorsByOrder.get(order.battingOrder) || 0) + 1);
+        }
+      });
+    });
+
+    return errorsByOrder;
+  }, [game.events, lineup?.defensivePositions, projection.battingOrders, side]);
+
   const entryDescription = (entry: WasedaScorebookEntry, battingOrder: number) => {
     const overrideKey = getScorebookDisplayOverrideKey(side, battingOrder, entry.entryIndex);
     const displayOverride: ScorebookDisplayOverride | undefined = game.scorebookDisplayOverrides?.[overrideKey];
@@ -110,6 +154,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
         <View style={styles.headerRow}>
           <View style={styles.orderHeader}><Text style={[styles.headerText, styles.headerDefense]}>守備</Text><Text style={[styles.headerText, styles.headerBatter]}>先攻打擊</Text><Text style={[styles.headerText, styles.headerNumber]}>背號</Text><Text style={[styles.headerText, styles.headerOrder]}>打序</Text></View>
           {visibleInnings.map((inning) => <View key={inning.inning} style={[styles.inningHeader, { width: INNING_WIDTH }]}><Text style={styles.inningNumber}>{inning.inning}</Text><Text style={styles.inningSub}>局 · {inning.appearances.length} 人次</Text></View>)}
+          <View style={styles.errorHeader}><Text style={styles.headerText}>守備失誤</Text></View>
         </View>
 
         {projection.battingOrders.map((order) => {
@@ -213,6 +258,9 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                   })() : null}
                 </View>;
               })}
+              <View style={[styles.errorColumn, { height: sharedRowHeight }]}>
+                <Text style={styles.errorColumnValue}>{battingOrderErrors.get(order.battingOrder) || 0}</Text>
+              </View>
             </View>
           </View>;
         })}
@@ -263,6 +311,10 @@ export function WasedaMatrixStatsRow({ stats }: { stats: WasedaMatrixStats }) {
             <Text style={styles.statColumnValue}>{item.value}</Text>
           </View>
         ))}
+      </View>
+      <View style={styles.statsErrorTotalCell}>
+        <Text style={styles.statColumnLabel}>隊伍失誤</Text>
+        <Text style={styles.statColumnValue}>{stats.opponentErrors}</Text>
       </View>
     </View>
   );
@@ -445,6 +497,10 @@ const styles = StyleSheet.create({
   headerNumber: { width: 30, textAlign: "center" },
   headerOrder: { width: 30, textAlign: "center" },
   inningHeader: { minHeight: 42, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
+  errorHeader: { width: 70, minHeight: 42, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#475569", backgroundColor: "#0F172A" },
+  errorColumn: { width: 70, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#CBD5E1", backgroundColor: "#FFFFFF" },
+  errorColumnValue: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
+  statsErrorTotalCell: { width: 70, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#475569", backgroundColor: "#0F172A", paddingHorizontal: 4 },
   inningNumber: { color: "#FFFFFF", fontSize: 14, fontWeight: "900", lineHeight: 16 },
   inningSub: { color: "#CBD5E1", fontSize: 8, fontWeight: "800" },
   orderGroup: { borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 2, borderColor: "#64748B", backgroundColor: "#FFFFFF" },
