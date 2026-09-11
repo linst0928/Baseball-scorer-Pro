@@ -1486,4 +1486,16 @@ describe("單場早稻田紀錄表資料投影", () => {
     expect(source).toContain("setRunnerTarget3");
     expect(source).toContain("customRunnerAdvances");
   });
+
+  it("新增比賽精靈第13步主客先發確認支援打線格式統一[打序>守備簡稱>名稱>背號>慣用手]、球場圖放大消白與守備節點簡化純姓名", () => {
+    const source = readFileSync(resolve(process.cwd(), "app/(tabs)/index.tsx"), "utf8");
+
+    expect(source).toContain("wizardConfirmationOrderText");
+    expect(source).toContain("wizardConfirmationPosText");
+    expect(source).toContain("wizardConfirmationNameText");
+    expect(source).toContain("wizardConfirmationNumberText");
+    expect(source).toContain("wizardConfirmationHandText");
+    expect(source).toContain("wizardConfirmationFieldImage");
+    expect(source).toContain("nodeText = conflicted ? \"重複\" : players.length ? players.map((player) => player.name).join(\"/\") : spot.number");
+  });
 });

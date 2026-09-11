@@ -19,6 +19,8 @@ import {
   useColorScheme as useNativeColorScheme,
   useWindowDimensions,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
@@ -2469,15 +2471,15 @@ function IntegratedManagementCard({
                 const shortDisplay = formatPreferredPositionsShort(positions);
                 return (
                   <View key={player.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: interfacePalette.surface, padding: 6, borderRadius: 6, borderWidth: 0.5, borderColor: interfacePalette.border }}>
-                    <View style={{ flex: 1, marginRight: 6 }}>
-                      <Text style={{ fontSize: 11, fontWeight: "bold", color: interfacePalette.foreground }}>
+                    <View style={{ flex: 1, marginRight: 8, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: "bold", color: interfacePalette.foreground }}>
                         #{player.number} {player.name} ({player.throwingHand || "R"}{player.battingHand || "R"})
                       </Text>
-                      <Text style={{ fontSize: 10, color: shortDisplay !== "後備" ? interfacePalette.primary : interfacePalette.muted, marginTop: 1 }}>
+                      <Text numberOfLines={1} style={{ fontSize: 10, color: shortDisplay !== "後備" ? interfacePalette.primary : interfacePalette.muted, marginTop: 1 }}>
                         常用：{shortDisplay}
                       </Text>
                     </View>
-                    <View style={{ flexDirection: "row", gap: 4 }}>
+                    <View style={{ flexDirection: "row", gap: 4, flexShrink: 0 }}>
                       <Button label="修改" onPress={() => handleStartEdit(player)} variant="secondary" compact />
                       <Button label="刪除" onPress={() => {
                         Alert.alert("確認刪除", `確定要刪除球員 ${player.name} 嗎？`, [
@@ -2681,7 +2683,7 @@ function PrimaryTeamRosterCard({
       </View>
 
       {/* 中段右上方：提供「所屬球隊選擇」(快速隊伍切換) */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
         {teams.map((t) => {
           const active = t.id === selected?.id;
           return (
@@ -2705,12 +2707,12 @@ function PrimaryTeamRosterCard({
       <View style={{ marginTop: 4 }}>
         <Text style={{ fontSize: 12, fontWeight: "900", color: interfacePalette.foreground, marginBottom: 4 }}>完整球員名單</Text>
         <View style={[styles.rosterTableHeaderRow, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border }]}>
-          <Text style={[styles.rosterHeaderCellText, { width: 36 }]}>背號</Text>
-          <Text style={[styles.rosterHeaderCellText, { flex: 1 }]}>姓名</Text>
-          <Text style={[styles.rosterHeaderCellText, { width: 60 }]}>慣用手</Text>
-          <Text style={[styles.rosterHeaderCellText, { flex: 1.2 }]}>常用守備位置</Text>
-          <Text style={[styles.rosterHeaderCellText, { width: 52, textAlign: "right" }]}>近期10場</Text>
-          <Text style={[styles.rosterHeaderCellText, { width: 50, textAlign: "right" }]}>OPS</Text>
+          <Text style={[styles.rosterHeaderCellText, { width: 32 }]}>背號</Text>
+          <Text style={[styles.rosterHeaderCellText, { flex: 0.9, minWidth: 48 }]}>姓名</Text>
+          <Text style={[styles.rosterHeaderCellText, { width: 54 }]}>慣用手</Text>
+          <Text style={[styles.rosterHeaderCellText, { flex: 1.6, minWidth: 100 }]}>常用守備位置</Text>
+          <Text style={[styles.rosterHeaderCellText, { width: 48, textAlign: "right" }]}>近期10場</Text>
+          <Text style={[styles.rosterHeaderCellText, { width: 46, textAlign: "right" }]}>OPS</Text>
         </View>
       </View>
 
@@ -2736,12 +2738,12 @@ function PrimaryTeamRosterCard({
                   { backgroundColor: interfacePalette.surface, borderColor: interfacePalette.border },
                 ]}
               >
-                <Text style={[styles.rosterTableCellText, { width: 36, fontWeight: "900" }]}>{player.number}</Text>
-                <Text numberOfLines={1} style={[styles.rosterTableCellText, { flex: 1, fontWeight: "700", color: interfacePalette.foreground }]}>{player.name}</Text>
-                <Text style={[styles.rosterTableCellText, { width: 60, color: interfacePalette.muted }]}>{handStr}</Text>
-                <Text numberOfLines={1} style={[styles.rosterTableCellText, { flex: 1.2, color: interfacePalette.muted }]}>{positionsStr}</Text>
-                <Text style={[styles.rosterTableCellText, { width: 52, textAlign: "right", fontWeight: "900", color: interfacePalette.primary }]}>{avgStr}</Text>
-                <Text style={[styles.rosterTableCellText, { width: 50, textAlign: "right", fontWeight: "900", color: interfacePalette.foreground }]}>{opsStr}</Text>
+                <Text style={[styles.rosterTableCellText, { width: 32, fontWeight: "900" }]}>{player.number}</Text>
+                <Text numberOfLines={1} style={[styles.rosterTableCellText, { flex: 0.9, minWidth: 48, fontWeight: "700", color: interfacePalette.foreground }]}>{player.name}</Text>
+                <Text style={[styles.rosterTableCellText, { width: 54, color: interfacePalette.muted }]}>{handStr}</Text>
+                <Text numberOfLines={1} style={[styles.rosterTableCellText, { flex: 1.6, minWidth: 100, color: interfacePalette.muted }]}>{positionsStr}</Text>
+                <Text style={[styles.rosterTableCellText, { width: 48, textAlign: "right", fontWeight: "900", color: interfacePalette.primary }]}>{avgStr}</Text>
+                <Text style={[styles.rosterTableCellText, { width: 46, textAlign: "right", fontWeight: "900", color: interfacePalette.foreground }]}>{opsStr}</Text>
               </View>
             );
           })}
@@ -3067,7 +3069,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
           <LiveLineupColumn team={away} side="away" game={game} batter={batter} />
         </View>
         <View style={styles.recordTopPanelCenter}>
-          <View style={styles.liveTeamIdentityRow}><View style={[styles.liveTeamIdentityCard, { backgroundColor: teamSurfaceColor(away, "away") }]}><Text style={styles.liveTeamIdentitySide}>客場(先攻)／先攻</Text><TeamLogoName team={away} textStyle={styles.liveTeamIdentityName} logoSize={19} /></View><View style={[styles.liveTeamIdentityCard, styles.liveTeamIdentityCardHome, { backgroundColor: teamSurfaceColor(home, "home") }]}><Text style={styles.liveTeamIdentitySide}>主場(先守)／後攻</Text><TeamLogoName team={home} textStyle={styles.liveTeamIdentityName} logoSize={19} align="right" /></View></View>
+          <View style={styles.liveTeamIdentityRow}><View style={[styles.liveTeamIdentityCard, { backgroundColor: teamSurfaceColor(away, "away") }]}><Text style={styles.liveTeamIdentitySide}>客場(先攻)／先攻</Text><TeamLogoName team={away} textStyle={styles.liveTeamIdentityName} logoSize={22} /></View><View style={[styles.liveTeamIdentityCard, styles.liveTeamIdentityCardHome, { backgroundColor: teamSurfaceColor(home, "home") }]}><Text style={styles.liveTeamIdentitySide}>主場(先守)／後攻</Text><TeamLogoName team={home} textStyle={styles.liveTeamIdentityName} logoSize={22} align="right" /></View></View>
           <ScoreBoard game={game} away={away} home={home} />
           {game.status === "setup" ? <View style={styles.setupCard}><Text style={styles.setupTitle}>球員名單與比賽資訊已就緒</Text><Text style={styles.setupText}>客場(先攻)先攻，記錄員可以從第一球開始建立完整比賽紀錄。</Text><Button label="開始第一局" onPress={onStart} /></View> : null}
         </View>
@@ -3362,13 +3364,26 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
 
   const renderPlayerRow = (player: Player | undefined, index: number, isCurrent: boolean) => {
     if (!player) return null;
+    const isAway = side === "away";
+    
+    // 客場 vs 主場的 active 底色與邊框
+    const activeStyle = isCurrent ? {
+      backgroundColor: isAway ? "#DBEAFE" : "#FFEDD5",
+      borderWidth: 0.5,
+      borderColor: isAway ? "#93C5FD" : "#FDBA74",
+    } : null;
+
+    // 客場使用藍色，主場使用橘色
+    const activeTextCol = isAway ? BRAND.blue : "#C2410C";
+    const activeTextStyle = isCurrent ? { color: activeTextCol, fontWeight: "900" as const } : null;
+
     return (
-      <View key={player.id || `${side}-${index}`} style={[styles.lineupRowItem, isCurrent && styles.lineupRowItemActive]}>
-        <Text style={[styles.lineupOrderText, isCurrent && styles.lineupOrderTextActive]}>{index + 1}</Text>
-        <Text style={[styles.lineupNumberText, isCurrent && styles.lineupNumberTextActive]}>#{player.number}</Text>
-        <Text numberOfLines={1} style={[styles.lineupNameText, isCurrent && styles.lineupNameTextActive]}>{player.name}</Text>
-        <Text style={[styles.lineupHandText, isCurrent && styles.lineupHandTextActive]}>{formatPlayerHand(player)}</Text>
-        <Text style={[styles.lineupPosText, isCurrent && styles.lineupPosTextActive]}>{formatChinesePosition(player.position)}</Text>
+      <View key={player.id || `${side}-${index}`} style={[styles.lineupRowItem, activeStyle]}>
+        <Text style={[styles.lineupOrderText, activeTextStyle]}>{index + 1}</Text>
+        <Text style={[styles.lineupPosText, activeTextStyle]}>{formatChinesePosition(player.position)}</Text>
+        <Text numberOfLines={1} style={[styles.lineupNameText, activeTextStyle]}>{player.name}</Text>
+        <Text style={[styles.lineupNumberText, activeTextStyle]}>#{player.number}</Text>
+        <Text style={[styles.lineupHandText, activeTextStyle]}>{formatPlayerHand(player)}</Text>
       </View>
     );
   };
@@ -4067,7 +4082,7 @@ function BatterQueuePreview({ players, events }: { players: Player[]; events: Ga
               </View>
               <View style={styles.batterQueueAtBatWrap}>
                 <Text style={styles.batterQueueAtBatTitle}>前次打席</Text>
-                <WasedaPersonalRecordCell size="compact" event={latest} label="前次打席" showLabels={false} />
+                <WasedaPersonalRecordCell size="rail" event={latest} showLabels={false} />
               </View>
             </View>
           );
@@ -5636,21 +5651,20 @@ function OnboardingTutorialModal({ visible, step, onChangeStep, onOpenSymbols, o
   return <Modal visible={visible} animationType="fade" transparent onRequestClose={onComplete}><View style={styles.tutorialBackdrop}><View style={styles.tutorialSheet}><View style={styles.tutorialHeader}><View><Text style={styles.tutorialEyebrow}>FIRST TIME GUIDE</Text><Text style={styles.tutorialHeaderTitle}>五步完成早稻田紀錄</Text></View><Pressable accessibilityRole="button" accessibilityLabel="略過新手教學" onPress={onComplete}><Text style={styles.tutorialSkip}>略過</Text></Pressable></View><View style={styles.tutorialProgress}>{ONBOARDING_STEPS.map((_, index) => <View key={index} style={[styles.tutorialProgressDot, index <= step && styles.tutorialProgressDotActive]} />)}</View><View style={styles.tutorialBody}><View style={styles.tutorialMark}><Text style={styles.tutorialMarkText}>{current.mark}</Text></View><View style={styles.tutorialCopy}><Text style={styles.tutorialStep}>步驟 {step + 1}／{ONBOARDING_STEPS.length}</Text><Text style={styles.tutorialTitle}>{current.title}</Text><Text style={styles.tutorialText}>{current.text}</Text><View style={styles.tutorialNote}><Text style={styles.tutorialNoteText}>{current.note}</Text></View></View></View><View style={styles.tutorialActions}>{step > 0 ? <View style={styles.tutorialActionFlex}><Button label="上一步" variant="secondary" onPress={() => onChangeStep(step - 1)} /></View> : <View style={styles.tutorialActionFlex} />}{finalStep ? <View style={styles.tutorialActionFlex}><Button label="開啟速查表" onPress={onOpenSymbols} /></View> : <View style={styles.tutorialActionFlex}><Button label="下一步" onPress={() => onChangeStep(step + 1)} /></View>}</View>{finalStep ? <Pressable accessibilityRole="button" onPress={onComplete} style={styles.tutorialFinishLink}><Text style={styles.tutorialFinishText}>直接開始記錄</Text></Pressable> : null}</View></View></Modal>;
 }
 
-function TopDownLineupField({ team, lineup, conflictedPositions = [], highlightedPositions = [] }: { team: Team; lineup: GameLineup; conflictedPositions?: string[]; highlightedPositions?: string[] }) {
+function TopDownLineupField({ team, lineup, conflictedPositions = [], highlightedPositions = [], style }: { team: Team; lineup: GameLineup; conflictedPositions?: string[]; highlightedPositions?: string[]; style?: StyleProp<ViewStyle> }) {
   const playersForPosition = (number: string) => Object.entries(lineup.defensivePositions)
     .filter(([, position]) => FIELD_POSITIONS.find((fieldPosition) => fieldPosition.number === position || fieldPosition.label === position)?.number === number)
     .map(([playerId]) => team.players.find((player) => player.id === playerId))
     .filter((player): player is Player => Boolean(player));
 
-  return <ImageBackground source={HOME_DEFENSE_FIELD_IMAGE} resizeMode="contain" style={styles.topDownField} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（使用者指定棒球場俯視圖）`}>
+  return <ImageBackground source={HOME_DEFENSE_FIELD_IMAGE} resizeMode="contain" style={[styles.topDownField, style]} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（使用者指定棒球場俯視圖）`}>
     {FIELD_POSITION_LAYOUT.map((spot) => {
-      const fieldPosition = FIELD_POSITIONS.find((candidate) => candidate.number === spot.number);
       const players = playersForPosition(spot.number);
       const conflicted = conflictedPositions.includes(spot.number);
       const highlighted = highlightedPositions.includes(spot.number);
+      const nodeText = conflicted ? "重複" : players.length ? players.map((player) => player.name).join("/") : spot.number;
       return <View key={spot.number} style={[styles.topDownFieldMarker, players.length ? styles.topDownFieldMarkerFilled : styles.topDownFieldMarkerEmpty, highlighted && styles.topDownFieldMarkerChanged, conflicted && styles.topDownFieldMarkerConflict, { top: `${spot.top}%`, left: `${spot.left}%` }]}>
-        <Text style={[styles.topDownFieldMarkerText, !players.length && styles.topDownFieldMarkerTextEmpty]}>{players.length ? players.map((player) => `#${player.number}`).join("/") : spot.number}</Text>
-        <Text style={[styles.topDownFieldMarkerLabel, conflicted && styles.topDownFieldMarkerLabelConflict]}>{conflicted ? "重複" : fieldPosition?.label ?? spot.number}</Text>
+        <Text numberOfLines={1} style={[styles.topDownFieldMarkerText, !players.length && styles.topDownFieldMarkerTextEmpty]}>{nodeText}</Text>
       </View>;
     })}
   </ImageBackground>;
@@ -6032,11 +6046,29 @@ function NewGameModal({ visible, form, teams, games, onChange, onCreateTeam, onC
     const defenseWorkspace = <View style={styles.wizardDefenseWorkspace}><View style={styles.wizardDefenseActionRow}><View style={styles.wizardDefenseActionCopy}><Text style={styles.wizardDefenseActionTitle}>主客守備互換</Text><Text style={styles.wizardDefenseActionHint}>{selectedDefensiveSwapPositions.length ? `已勾選 ${selectedDefensiveSwapPositions.length} 個守位；若對應配置不同，請同時勾選要交換的兩個守位。` : "未勾選守位時，會交換全隊守備配置。"}</Text></View><View style={styles.wizardDefenseSwapControls}><Pressable accessibilityRole="button" accessibilityLabel="全選所有守備位置" onPress={() => setSelectedDefensiveSwapPositions(FIELD_POSITIONS.map((position) => position.number))} style={({ pressed }) => [styles.wizardDefenseSwapAction, styles.wizardDefenseSelectionAction, pressed && styles.pressed]}><Text style={styles.wizardDefenseSelectionActionText}>全選</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="清除所有已選守備位置" disabled={!selectedDefensiveSwapPositions.length} onPress={() => setSelectedDefensiveSwapPositions([])} style={({ pressed }) => [styles.wizardDefenseSwapAction, styles.wizardDefenseClearAction, !selectedDefensiveSwapPositions.length && styles.wizardDefenseSwapActionDisabled, pressed && selectedDefensiveSwapPositions.length > 0 && styles.pressed]}><Text style={styles.wizardDefenseClearActionText}>清除</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="互換已勾選守備位置" disabled={!selectedDefensiveSwapPositions.length} onPress={() => swapHomeAwayDefensiveConfigurations(selectedDefensiveSwapPositions)} style={({ pressed }) => [styles.wizardDefenseSwapAction, styles.wizardDefensePartialSwapAction, !selectedDefensiveSwapPositions.length && styles.wizardDefenseSwapActionDisabled, pressed && selectedDefensiveSwapPositions.length > 0 && styles.pressed]}><Text style={styles.wizardDefenseSwapActionText}>⇄ 已選</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="一鍵互換主客守備配置" onPress={() => swapHomeAwayDefensiveConfigurations()} style={({ pressed }) => [styles.wizardDefenseSwapAction, pressed && styles.pressed]}><Text style={styles.wizardDefenseSwapActionText}>⇄ 全隊</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="復原上次守備互換" disabled={!lastDefensiveSwap} onPress={restoreLastDefensiveSwap} style={({ pressed }) => [styles.wizardDefenseSwapAction, styles.wizardDefenseRestoreAction, !lastDefensiveSwap && styles.wizardDefenseSwapActionDisabled, pressed && Boolean(lastDefensiveSwap) && styles.pressed]}><Text style={[styles.wizardDefenseSwapActionText, styles.wizardDefenseRestoreActionText]}>↶ 復原</Text></Pressable></View></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wizardDefensePositionChoices}>{FIELD_POSITIONS.map((position) => { const selected = selectedDefensiveSwapPositions.includes(position.number); const changed = changedSwapPositions.includes(position.number); return <Pressable key={`wizard-swap-position-${position.number}`} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => toggleDefensiveSwapPosition(position.number)} style={({ pressed }) => [styles.wizardDefensePositionChoice, selected && styles.wizardDefensePositionChoiceActive, changed && styles.wizardDefensePositionChoiceChanged, pressed && styles.pressed]}><Text style={[styles.wizardDefensePositionChoiceText, selected && styles.wizardDefensePositionChoiceTextActive, changed && styles.wizardDefensePositionChoiceTextChanged]}>{position.number}{position.label}</Text></Pressable>; })}</ScrollView><View style={styles.wizardParallelDefense}>{defenseStage("away", away)}{defenseStage("home", home)}</View></View>;
     const body = wizardStep === 1 ? <View style={styles.wizardStepPanel}><Text style={styles.inputLabel}>盃賽／聯賽名稱</Text><TextInput value={form.competition} onChangeText={(competition) => onChange({ ...form, competition })} placeholder="例如：春季聯賽、校際盃" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>賽事名稱（可選）</Text><TextInput value={form.name} onChangeText={(name) => onChange({ ...form, name })} placeholder="未填時可於賽後補充" placeholderTextColor={BRAND.muted} style={styles.formInput} /></View> : wizardStep === 2 ? <View style={styles.wizardStepPanel}><Text style={styles.inputLabel}>年齡層級</Text><View style={styles.modalChoiceRow}>{AGE_GROUP_OPTIONS.map((ageGroup) => <Pressable key={ageGroup} onPress={() => onChange({ ...form, ageGroup })} style={[styles.inningsChoice, form.ageGroup === ageGroup && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.ageGroup === ageGroup && styles.modalChoiceTextActive]}>{ageGroup}</Text></Pressable>)}</View></View> : wizardStep === 3 ? <View style={styles.wizardStepPanel}><Text style={styles.inputLabel}>正規局數</Text><View style={styles.modalChoiceRow}>{([6, 7, 9, 15] as const).map((innings) => <Pressable key={innings} onPress={() => onChange({ ...form, maxInnings: innings })} style={[styles.inningsChoice, form.maxInnings === innings && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, form.maxInnings === innings && styles.modalChoiceTextActive]}>{innings} 局</Text></Pressable>)}</View><View style={styles.wizardPitchLimitPanel}><Text style={styles.inputLabel}>單一投手單場投球數門檻</Text><Text style={styles.wizardPitchLimitHint}>前 3 球開始預警；黃 ＜ 橘 ＜ 紅、各 1 至 300 球。開啟鍵盤後仍可上下拖曳並操作下方按鈕。</Text><View style={[styles.wizardPitchLimitRow, useCompactPitchLimitLayout && styles.wizardPitchLimitRowCompact]}>{(["黃", "橘", "紅"] as const).map((label, index) => <Animated.View key={label} style={[styles.wizardPitchLimitField, useCompactPitchLimitLayout && styles.wizardPitchLimitFieldCompact, focusedPitchLimit === index && styles.wizardPitchLimitFieldFocused, { transform: [{ scale: pitchLimitFocusScales[index] }] }]}><Text style={styles.wizardPitchLimitLabel}>{label}</Text><TextInput value={pitchLimitDraft[index]} onChangeText={(value) => setPitchLimitDraft((current) => { const next = [...current] as [string, string, string]; next[index] = value.replace(/[^0-9]/g, "").slice(0, 3); return next; })} onFocus={() => setFocusedPitchLimit(index)} onBlur={() => { setFocusedPitchLimit(null); commitPitchLimitThresholds(false); }} onSubmitEditing={() => { setFocusedPitchLimit(null); commitPitchLimitThresholds(false); Keyboard.dismiss(); }} keyboardType="numeric" returnKeyType="done" blurOnSubmit selectTextOnFocus style={[styles.wizardPitchLimitInput, useCompactPitchLimitLayout && styles.wizardPitchLimitInputCompact]} accessibilityLabel={`${label}色投球數門檻`} /><Text style={styles.wizardPitchLimitUnit}>球</Text></Animated.View>)}</View></View></View> : wizardStep === 4 ? <View style={styles.wizardStepPanel}><Text style={styles.inputLabel}>比賽場地</Text><TextInput value={form.venue} onChangeText={(venue) => onChange({ ...form, venue })} placeholder="例如：市立棒球場" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.inputLabel}>比賽日期</Text><DatePicker value={form.date} onChange={(date) => onChange({ ...form, date })} style={styles.formInput} /><Text style={styles.inputLabel}>比賽時間 (24小時制)</Text><TimePicker value={form.time || "08:00"} onChange={(time) => onChange({ ...form, time })} style={styles.formInput} /></View> : wizardStep === 5 ? <View style={styles.wizardStepPanel}><Text style={styles.inputLabel}>天氣</Text><View style={styles.weatherChoiceRow}>{WEATHER_OPTIONS.map((option) => <Pressable key={option.value} onPress={() => onChange({ ...form, weather: option.value })} style={[styles.weatherChoice, form.weather === option.value && styles.weatherChoiceActive]}><Text style={styles.weatherIcon}>{option.icon}</Text><Text style={[styles.weatherChoiceText, form.weather === option.value && styles.modalChoiceTextActive]}>{option.label}</Text></Pressable>)}</View></View> : wizardStep === 6 ? teamStage("home", home) : wizardStep === 7 ? registrationStage("home", home) : wizardStep === 8 ? teamStage("away", away) : wizardStep === 9 ? registrationStage("away", away) : wizardStep === 10 ? defenseWorkspace : wizardStep === 11 ? battingStage("home", home) : wizardStep === 12 ? battingStage("away", away) : confirmationStage();
     function confirmationStage() {
+      const getPositionShortLabel = (assignedPosition?: string) => {
+        if (!assignedPosition) return "未排";
+        const position = FIELD_POSITIONS.find((candidate) => candidate.number === assignedPosition || candidate.label === assignedPosition);
+        if (!position) return assignedPosition === RESERVE_POSITION || assignedPosition === RESERVE_POSITION_LABEL ? "後" : "未排";
+        const shortMap: Record<string, string> = {
+          投手: "投",
+          捕手: "捕",
+          一壘手: "一",
+          二壘手: "二",
+          三壘手: "三",
+          游擊手: "游",
+          左外野手: "左",
+          中外野手: "中",
+          右外野手: "右",
+          指定打擊: "指",
+        };
+        return shortMap[position.label] ?? position.label.slice(0, 1);
+      };
       const lineupPreview = (side: "home" | "away", team?: Team) => {
         if (!team) return null;
         const lineup = lineupFor(side, team);
         const conflicts = getDefensivePositionConflicts(lineup);
-        return <View key={`${side}-confirmation`} style={styles.wizardConfirmationTeam}><Text style={styles.wizardConfirmationTeamTitle}>{side === "home" ? "主場(先守)" : "客場(先攻)"} · {team.name}</Text><View style={styles.wizardConfirmationColumns}><View style={styles.wizardConfirmationRoster}>{lineup.battingOrderIds.map((playerId, index) => { const player = team.players.find((candidate) => candidate.id === playerId); const position = FIELD_POSITIONS.find((candidate) => candidate.number === lineup.defensivePositions[playerId] || candidate.label === lineup.defensivePositions[playerId]); const conflicted = conflicts.some((conflict) => conflict.playerIds.includes(playerId)); return <View key={`${side}-confirmation-${playerId}`} style={[styles.wizardConfirmationPlayer, conflicted && styles.wizardConfirmationPlayerConflict]}><Text style={[styles.wizardConfirmationPlayerText, conflicted && styles.wizardConfirmationPlayerTextConflict]}>{index + 1}棒　#{player?.number ?? "—"} {player?.name ?? "未指派"}</Text><Text style={[styles.wizardConfirmationPosition, conflicted && styles.wizardConfirmationPositionConflict]}>{conflicted ? "守位重複" : position ? `${position.number}${position.label}` : "未排守備"}</Text></View>; })}</View><View style={styles.wizardConfirmationField}><TopDownLineupField team={team} lineup={lineup} conflictedPositions={conflicts.map((conflict) => conflict.position)} highlightedPositions={changedSwapPositions} /></View></View>{renderConflictFixSuggestions(side, team, lineup, "confirmation")}</View>;
+        return <View key={`${side}-confirmation`} style={styles.wizardConfirmationTeam}><Text style={styles.wizardConfirmationTeamTitle}>{side === "home" ? "主場(先守)" : "客場(先攻)"} · {team.name}</Text><View style={styles.wizardConfirmationColumns}><View style={styles.wizardConfirmationRoster}>{lineup.battingOrderIds.map((playerId, index) => { const player = team.players.find((candidate) => candidate.id === playerId); const assignedPosition = lineup.defensivePositions[playerId]; const conflicted = conflicts.some((conflict) => conflict.playerIds.includes(playerId)); const positionText = conflicted ? "重複" : getPositionShortLabel(assignedPosition); const handText = player ? (player.throwingHand === "L" ? "左投" : "右投") : "—"; return <View key={`${side}-confirmation-${playerId}`} style={[styles.wizardConfirmationPlayer, conflicted && styles.wizardConfirmationPlayerConflict]}><Text numberOfLines={1} style={[styles.wizardConfirmationOrderText, conflicted && styles.wizardConfirmationPlayerTextConflict]}>{index + 1}</Text><Text numberOfLines={1} style={[styles.wizardConfirmationPosText, conflicted && styles.wizardConfirmationPositionConflict]}>{positionText}</Text><Text numberOfLines={1} style={[styles.wizardConfirmationNameText, conflicted && styles.wizardConfirmationPlayerTextConflict]}>{player?.name ?? "未指派"}</Text><Text numberOfLines={1} style={[styles.wizardConfirmationNumberText, conflicted && styles.wizardConfirmationPlayerTextConflict]}>#{player?.number ?? "—"}</Text><Text numberOfLines={1} style={[styles.wizardConfirmationHandText, conflicted && styles.wizardConfirmationPlayerTextConflict]}>{handText}</Text></View>; })}</View><View style={styles.wizardConfirmationField}><TopDownLineupField team={team} lineup={lineup} style={styles.wizardConfirmationFieldImage} conflictedPositions={conflicts.map((conflict) => conflict.position)} highlightedPositions={changedSwapPositions} /></View></View>{renderConflictFixSuggestions(side, team, lineup, "confirmation")}</View>;
       };
       return <View style={styles.wizardConfirmationPanel}><Text style={styles.wizardConfirmationTitle}>送出前確認</Text><Text style={styles.wizardConfirmationHint}>請核對主客隊九人先發、棒次與守備位置；如需調整，可使用下方「上一步」返回修正。</Text><View style={styles.wizardConfirmationTeams}>{lineupPreview("home", home)}{lineupPreview("away", away)}</View></View>;
     }
@@ -6605,18 +6637,18 @@ const styles = StyleSheet.create({
   liveLineupTeamHeader: { fontSize: 10, fontWeight: "900" },
   liveLineupColumn: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6, flex: 1, minWidth: 0 },
   liveLineupColumnTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingBottom: 4 },
-  lineupListWrap: { gap: 2 },
-  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 1, paddingHorizontal: 3, borderRadius: 4 },
+  lineupListWrap: { gap: 4 },
+  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 3.5, paddingHorizontal: 3, borderRadius: 4 },
   lineupRowItemActive: { backgroundColor: "#EFF6FF", borderWidth: 0.5, borderColor: "#BFDBFE" },
-  lineupOrderText: { color: BRAND.muted, fontSize: 8, fontWeight: "900", width: 10 },
+  lineupOrderText: { color: BRAND.muted, fontSize: 8, fontWeight: "900", width: 12 },
   lineupOrderTextActive: { color: BRAND.blue },
-  lineupNumberText: { color: BRAND.muted, fontSize: 8, width: 14, fontWeight: "700" },
+  lineupNumberText: { color: BRAND.muted, fontSize: 8, width: 18, fontWeight: "700" },
   lineupNumberTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupNameText: { color: BRAND.ink, fontSize: 9, flex: 1, fontWeight: "700" },
+  lineupNameText: { color: BRAND.ink, fontSize: 9, width: 62, fontWeight: "700" },
   lineupNameTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupHandText: { color: BRAND.muted, fontSize: 7, fontWeight: "800", width: 12, textAlign: "center" },
+  lineupHandText: { color: BRAND.muted, fontSize: 7, fontWeight: "800", width: 20, textAlign: "center" },
   lineupHandTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupPosText: { color: BRAND.muted, fontSize: 7, fontWeight: "900" },
+  lineupPosText: { color: BRAND.muted, fontSize: 7, fontWeight: "900", width: 14 },
   lineupPosTextActive: { color: BRAND.blue },
 
   /* 任務二：投手區塊與打者區塊樣式 */
@@ -6661,7 +6693,7 @@ const styles = StyleSheet.create({
   outValueColor: { color: BRAND.red },
 
   /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 */
-  liveRunnerCrossContainer: { flex: 1, minWidth: 0, minHeight: 280, aspectRatio: 612 / 535, position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
+  liveRunnerCrossContainer: { width: "100%", maxWidth: 440, minWidth: 0, aspectRatio: 1.1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
   liveRunnerCrossBackgroundImage: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%", opacity: 0.88 },
   liveRunnerAbsoluteSlot: { position: "absolute", alignItems: "center", gap: 3 },
   teamPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
@@ -6792,22 +6824,22 @@ const styles = StyleSheet.create({
   wbcImportText: { color: BRAND.muted, fontSize: 11, lineHeight: 17, marginTop: 3 },
   scoreCard: { backgroundColor: BRAND.white, borderRadius: 12, borderWidth: 1, borderColor: BRAND.line, padding: 8 },
   photoScoreboard: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, overflow: "hidden" },
-  photoScoreboardCaption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 7, paddingVertical: 5, backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: BRAND.line },
-  photoScoreboardTitle: { color: BRAND.navy, fontSize: 12, fontWeight: "900" },
-  photoScoreboardMeta: { color: BRAND.muted, fontSize: 9, fontWeight: "700" },
+  photoScoreboardCaption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: BRAND.line },
+  photoScoreboardTitle: { color: BRAND.navy, fontSize: 15, fontWeight: "900" },
+  photoScoreboardMeta: { color: BRAND.muted, fontSize: 11, fontWeight: "700" },
   photoScoreboardScroll: { minWidth: "100%" },
   photoScoreboardHeaderRow: { flexDirection: "row", backgroundColor: BRAND.navy },
-  photoScoreboardHeaderText: { color: BRAND.white, fontSize: 9, fontWeight: "900", textAlign: "center", paddingVertical: 5 },
-  photoScoreboardTeamHeader: { width: 112, paddingHorizontal: 6, textAlign: "left" },
-  photoScoreboardInningHeader: { width: 27, borderLeftWidth: 1, borderLeftColor: "#315A88" },
-  photoScoreboardTotalHeader: { width: 28, borderLeftWidth: 1, borderLeftColor: "#315A88" },
+  photoScoreboardHeaderText: { color: BRAND.white, fontSize: 11, fontWeight: "900", textAlign: "center", paddingVertical: 10 },
+  photoScoreboardTeamHeader: { width: 120, paddingHorizontal: 10, textAlign: "left" },
+  photoScoreboardInningHeader: { width: 32, borderLeftWidth: 1, borderLeftColor: "#315A88" },
+  photoScoreboardTotalHeader: { width: 32, borderLeftWidth: 1, borderLeftColor: "#315A88" },
   photoScoreboardTeamRow: { flexDirection: "row", backgroundColor: "#F8FBFF", borderTopWidth: 1, borderTopColor: "#E2EAF2" },
   photoScoreboardHomeRow: { backgroundColor: "#F1FAF5" },
-  photoScoreboardTeamCell: { width: 112, minHeight: 27, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 6 },
-  photoScoreboardSide: { color: BRAND.blue, fontSize: 10, fontWeight: "900" },
-  photoScoreboardTeamName: { flex: 1, color: BRAND.ink, fontSize: 11, fontWeight: "800" },
-  photoScoreboardInningCell: { width: 27, minHeight: 27, textAlign: "center", textAlignVertical: "center", color: BRAND.ink, fontSize: 10, fontWeight: "800", borderLeftWidth: 1, borderLeftColor: "#E2EAF2", paddingTop: 7 },
-  photoScoreboardTotalCell: { width: 28, minHeight: 27, textAlign: "center", textAlignVertical: "center", color: BRAND.navy, backgroundColor: "#E7F0FA", fontSize: 10, fontWeight: "900", borderLeftWidth: 1, borderLeftColor: "#BFD2E7", paddingTop: 7 },
+  photoScoreboardTeamCell: { width: 120, minHeight: 40, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10 },
+  photoScoreboardSide: { color: BRAND.blue, fontSize: 12, fontWeight: "900" },
+  photoScoreboardTeamName: { flex: 1, color: BRAND.ink, fontSize: 13, fontWeight: "800" },
+  photoScoreboardInningCell: { width: 32, minHeight: 40, textAlign: "center", textAlignVertical: "center", color: BRAND.ink, fontSize: 12, fontWeight: "800", borderLeftWidth: 1, borderLeftColor: "#E2EAF2", paddingTop: 11 },
+  photoScoreboardTotalCell: { width: 32, minHeight: 40, textAlign: "center", textAlignVertical: "center", color: BRAND.navy, backgroundColor: "#E7F0FA", fontSize: 12, fontWeight: "900", borderLeftWidth: 1, borderLeftColor: "#BFD2E7", paddingTop: 11 },
   photoScoreboardActiveHeader: { backgroundColor: BRAND.blue },
   photoScoreboardActiveCell: { backgroundColor: "#FFF5D6", color: BRAND.navy },
   scoreCardTop: { flexDirection: "row", justifyContent: "space-between" },
@@ -7186,18 +7218,24 @@ const styles = StyleSheet.create({
   wizardConfirmationPanel: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#BFDBFE", borderRadius: 12, padding: 9, gap: 8 },
   wizardConfirmationTitle: { color: BRAND.navy, fontSize: 13, fontWeight: "900" },
   wizardConfirmationHint: { color: BRAND.muted, fontSize: 10, lineHeight: 14 },
-  wizardConfirmationTeams: { flexDirection: "row", alignItems: "stretch", gap: 7 },
-  wizardConfirmationTeam: { flex: 1, minWidth: 0, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, gap: 4 },
+  wizardConfirmationTeams: { flexDirection: "row", alignItems: "stretch", gap: 8 },
+  wizardConfirmationTeam: { flex: 1, minWidth: 0, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6 },
   wizardConfirmationTeamTitle: { color: BRAND.blue, fontSize: 12, fontWeight: "900" },
-  wizardConfirmationColumns: { flexDirection: "row", gap: 4, alignItems: "stretch" },
-  wizardConfirmationRoster: { flex: 1, minWidth: 0, gap: 1 },
-  wizardConfirmationPlayer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3, minHeight: 17, borderBottomWidth: 1, borderBottomColor: "#EAF0F6" },
+  wizardConfirmationColumns: { flexDirection: "row", gap: 6, alignItems: "stretch" },
+  wizardConfirmationRoster: { width: 175, minWidth: 175, gap: 1 },
+  wizardConfirmationPlayer: { flexDirection: "row", alignItems: "center", gap: 3, minHeight: 18, borderBottomWidth: 1, borderBottomColor: "#EAF0F6" },
+  wizardConfirmationOrderText: { width: 14, color: BRAND.navy, fontSize: 9.5, fontWeight: "900", textAlign: "center" },
+  wizardConfirmationPosText: { width: 18, color: BRAND.blue, fontSize: 9.5, fontWeight: "900", textAlign: "center" },
+  wizardConfirmationNameText: { flex: 1, minWidth: 0, color: BRAND.ink, fontSize: 9.5, fontWeight: "800" },
+  wizardConfirmationNumberText: { width: 28, color: BRAND.muted, fontSize: 9.5, fontWeight: "800", textAlign: "right" },
+  wizardConfirmationHandText: { width: 28, color: BRAND.muted, fontSize: 8.5, fontWeight: "700", textAlign: "right" },
   wizardConfirmationPlayerText: { flex: 1, color: BRAND.ink, fontSize: 7, fontWeight: "800" },
   wizardConfirmationPosition: { color: BRAND.blue, fontSize: 7, fontWeight: "900" },
   wizardConfirmationPlayerConflict: { backgroundColor: "#FFF0F1", borderBottomColor: "#F0A4AA", borderRadius: 4, paddingHorizontal: 4 },
   wizardConfirmationPlayerTextConflict: { color: BRAND.red },
   wizardConfirmationPositionConflict: { color: BRAND.red },
-  wizardConfirmationField: { width: 118, minWidth: 118, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  wizardConfirmationField: { flex: 1, minWidth: 140, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  wizardConfirmationFieldImage: { width: "100%", height: undefined, aspectRatio: 612 / 535 },
   exportPresetRow: { flexDirection: "row", gap: 8, marginBottom: 7 },
   exportInputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   exportNumberInput: { flex: 1, textAlign: "center", marginBottom: 12 },
@@ -7436,13 +7474,13 @@ const styles = StyleSheet.create({
   topDownFieldBaseSecond: { left: 82, top: 51 },
   topDownFieldBaseThird: { left: 45, top: 88 },
   topDownFieldBaseHome: { left: 82, top: 118 },
-  topDownFieldMarker: { position: "absolute", width: 27, minHeight: 22, marginTop: -11, marginLeft: -14, borderRadius: 12, alignItems: "center", justifyContent: "center", paddingHorizontal: 1, paddingVertical: 1 },
+  topDownFieldMarker: { position: "absolute", minWidth: 32, minHeight: 18, marginTop: -9, marginLeft: -16, borderRadius: 9, alignItems: "center", justifyContent: "center", paddingHorizontal: 3, paddingVertical: 1 },
   topDownFieldMarkerFilled: { backgroundColor: BRAND.navy, borderWidth: 1, borderColor: BRAND.white },
   topDownFieldMarkerConflict: { backgroundColor: BRAND.red, borderColor: "#FFF0F1", borderWidth: 2 },
   topDownFieldMarkerChanged: { backgroundColor: "#D89B11", borderColor: "#FFF7D1", borderWidth: 2 },
-  topDownFieldMarkerEmpty: { backgroundColor: "rgba(255,255,255,0.82)", borderWidth: 1, borderColor: "#7C8FA2" },
-  topDownFieldMarkerText: { color: BRAND.white, fontSize: 6, fontWeight: "900" },
-  topDownFieldMarkerTextEmpty: { color: BRAND.navy },
+  topDownFieldMarkerEmpty: { backgroundColor: "rgba(255,255,255,0.85)", borderWidth: 1, borderColor: "#7C8FA2" },
+  topDownFieldMarkerText: { color: BRAND.white, fontSize: 7.5, fontWeight: "900", textAlign: "center" },
+  topDownFieldMarkerTextEmpty: { color: BRAND.navy, fontSize: 7, fontWeight: "800" },
   topDownFieldMarkerLabel: { color: BRAND.white, fontSize: 5, fontWeight: "800" },
   topDownFieldMarkerLabelConflict: { color: BRAND.white },
   registrationList: { gap: 7, paddingRight: 4 },
@@ -7766,7 +7804,7 @@ const styles = StyleSheet.create({
 
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
   recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "stretch" },
-  recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6 },
+  recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6, justifyContent: "flex-start" },
   recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8 },
   recordMatchupTop: { gap: 6 },
   recordMatchupBottom: { gap: 6 },
@@ -7801,7 +7839,7 @@ const styles = StyleSheet.create({
   batterHandText: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
   centralDuelMiddleRow: { flexDirection: "row", gap: 12, alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8 },
-  centralDuelWasedaBox: { flex: 1.2, alignItems: "center", justifyContent: "center" },
+  centralDuelWasedaBox: { flex: 1.4, width: "100%", alignSelf: "stretch", justifyContent: "center" },
   centralDuelBsoBox: { flex: 0.8, gap: 8, paddingHorizontal: 8, justifyContent: "center" },
   bsoLargeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   bsoLargeLabel: { fontSize: 18, fontWeight: "900", width: 20, textAlign: "center" },
@@ -7809,16 +7847,16 @@ const styles = StyleSheet.create({
   bsoLargeDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2 },
 
   // 後續棒次待打擊區
-  batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6 },
+  batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 10, gap: 8 },
   batterQueueTitle: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
   batterQueueRow: { flexDirection: "row", gap: 8 },
-  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 8 },
-  batterQueueIdentity: { gap: 3, flex: 1 },
-  batterQueueOrder: { color: BRAND.blue, fontSize: 11, fontWeight: "900" },
-  batterQueueName: { color: BRAND.ink, fontSize: 13, fontWeight: "900" },
-  batterQueueHand: { color: BRAND.muted, fontSize: 10, fontWeight: "800" },
-  batterQueueAtBatWrap: { alignItems: "center", gap: 2 },
-  batterQueueAtBatTitle: { color: BRAND.muted, fontSize: 9, fontWeight: "800" },
+  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 10, minHeight: 96 },
+  batterQueueIdentity: { gap: 4, flex: 1 },
+  batterQueueOrder: { color: BRAND.blue, fontSize: 13, fontWeight: "900" },
+  batterQueueName: { color: BRAND.ink, fontSize: 16, fontWeight: "900" },
+  batterQueueHand: { color: BRAND.muted, fontSize: 12, fontWeight: "800" },
+  batterQueueAtBatWrap: { alignItems: "center", gap: 4 },
+  batterQueueAtBatTitle: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
   // 賽況及時紀錄父層組件
   realtimeLoggerContainer: { backgroundColor: BRAND.white, borderWidth: 1.5, borderColor: BRAND.blue, borderRadius: 12, padding: 10, gap: 8 },
@@ -7851,8 +7889,8 @@ const styles = StyleSheet.create({
   liveRunnerZoomButton: { minHeight: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 2, borderRadius: 5, borderWidth: 1, borderColor: "#6EE7B7", backgroundColor: "#123A2A", paddingHorizontal: 5, paddingVertical: 1 },
   liveRunnerZoomIcon: { color: "#A7F3D0", fontSize: 11, fontWeight: "900", lineHeight: 13 },
   liveRunnerZoomText: { color: "#D1FAE5", fontSize: 7, fontWeight: "900", lineHeight: 10 },
-  liveInfieldWorkRow: { flexDirection: "row", alignItems: "stretch", gap: 7 },
-  liveRunnerCross: { flex: 1, minWidth: 0, minHeight: 280, aspectRatio: 612 / 535, justifyContent: "space-between", padding: 10, overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
+  liveInfieldWorkRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
+  liveRunnerCross: { flex: 1, minWidth: 0, minHeight: 280, aspectRatio: 1.1, justifyContent: "space-between", padding: 10, overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
   liveRunnerCrossBackground: { opacity: 0.88, borderRadius: 9, backgroundColor: BRAND.white },
   liveRunnerTopSlot: { alignItems: "center", justifyContent: "center", gap: 3 },
   liveRunnerMiddleSlot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 5 },
@@ -7902,7 +7940,7 @@ const styles = StyleSheet.create({
   summaryCompactMeta: { color: BRAND.muted, fontSize: 10, lineHeight: 13, fontWeight: "700" },
   summaryDetailMeta: { color: BRAND.muted, fontSize: 10, lineHeight: 13, fontWeight: "700", textAlign: "center" },
   atBatRecordPanel: { flex: 1, minWidth: 0 },
-  currentAtBatPanel: { borderWidth: 1, borderColor: "#93C5FD", backgroundColor: "#F8FBFF", borderRadius: 10, padding: 6, gap: 4 },
+  currentAtBatPanel: { width: "100%", flex: 1, borderWidth: 1, borderColor: "#93C5FD", backgroundColor: "#F8FBFF", borderRadius: 10, padding: 8, gap: 6 },
   currentAtBatHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   currentAtBatName: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
   currentAtBatSync: { color: BRAND.blue, fontSize: 9, fontWeight: "900", backgroundColor: "#DBEAFE", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
@@ -8226,11 +8264,11 @@ const styles = StyleSheet.create({
   teamColorInput: { width: 76, height: 25, borderWidth: 1, borderColor: BRAND.line, borderRadius: 6, paddingHorizontal: 6, color: BRAND.navy, fontSize: 10, fontWeight: "800", backgroundColor: BRAND.white },
   teamColorReset: { paddingHorizontal: 7, paddingVertical: 5, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 6 },
   teamColorResetText: { color: BRAND.muted, fontSize: 9, fontWeight: "900" },
-  liveTeamIdentityRow: { flexDirection: "row", gap: 7, marginBottom: 6 },
-  liveTeamIdentityCard: { flex: 1, minWidth: 0, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 5, gap: 2 },
+  liveTeamIdentityRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  liveTeamIdentityCard: { flex: 1, minWidth: 0, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 9, gap: 3 },
   liveTeamIdentityCardHome: { alignItems: "flex-end" },
-  liveTeamIdentitySide: { color: BRAND.muted, fontSize: 8, fontWeight: "900" },
-  liveTeamIdentityName: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
+  liveTeamIdentitySide: { color: BRAND.muted, fontSize: 10, fontWeight: "900" },
+  liveTeamIdentityName: { color: BRAND.navy, fontSize: 14, fontWeight: "900" },
   homeSplitRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
   homeSplitCol: { flex: 1, minWidth: 280 },
   scoreboardTableWrap: { marginVertical: 4 },

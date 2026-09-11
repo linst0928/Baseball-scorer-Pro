@@ -312,13 +312,18 @@ const styles = StyleSheet.create({
 
   /* 常用守備位置.jpg 風格球場畫布 */
   fieldCanvasContainer: {
-    height: 196,
+    width: "100%",
+    maxWidth: 420,
+    aspectRatio: 16 / 10,
+    maxHeight: 260,
+    alignSelf: "center",
     borderRadius: 10,
     position: "relative",
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#1E293B",
     backgroundColor: "#061325",
+    marginVertical: 4,
   },
   fieldDarkBackground: {
     position: "absolute",

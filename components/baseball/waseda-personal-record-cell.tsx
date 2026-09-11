@@ -259,24 +259,24 @@ export function WasedaPersonalRecordCell({
   return (
     <View style={[styles.wrap, sizeStyle, style]}>
       {label ? <View style={styles.heading}><Text numberOfLines={1} style={styles.headingLabel}>{label}</Text>{headingNote ? <Text numberOfLines={1} style={styles.headingNote}>{headingNote}</Text> : null}</View> : null}
-      <View style={[styles.cell, compactSize && styles.cellCompact, liveSize && styles.cellLive]}>
-        <View style={[styles.pitchColumn, compactSize && styles.pitchColumnCompact, liveSize && styles.pitchColumnLive]}>
+      <View style={[styles.cell, compactSize && styles.cellCompact, liveSize && styles.cellLive, largeSize && styles.cellLarge]}>
+        <View style={[styles.pitchColumn, compactSize && styles.pitchColumnCompact, liveSize && styles.pitchColumnLive, largeSize && styles.pitchColumnLarge]}>
           {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.zoneLabel}>球數欄</Text> : null}
-          <View accessibilityLabel={`逐球紀錄，共 ${pitchMarkItems.length} 球`} style={[styles.pitchMarkGrid, compactSize && styles.pitchMarkGridCompact, liveSize && styles.pitchMarkGridLive]}>
+          <View accessibilityLabel={`逐球紀錄，共 ${pitchMarkItems.length} 球`} style={[styles.pitchMarkGrid, compactSize && styles.pitchMarkGridCompact, liveSize && styles.pitchMarkGridLive, largeSize && styles.pitchMarkGridLarge]}>
             {(pitchMarkItems.length ? pitchMarkItems : ["·"]).map((mark, index) => (
-              <Text {...scorebookGlyphFitProps} key={`${mark}-${index}`} numberOfLines={1} style={[styles.pitchMarkCell, compactSize && styles.pitchMarkCellCompact, liveSize && styles.pitchMarkCellLive]}>{mark}</Text>
+              <Text {...scorebookGlyphFitProps} key={`${mark}-${index}`} numberOfLines={1} style={[styles.pitchMarkCell, compactSize && styles.pitchMarkCellCompact, liveSize && styles.pitchMarkCellLive, largeSize && styles.pitchMarkCellLarge]}>{mark}</Text>
             ))}
           </View>
         </View>
-        <View style={[styles.outerArea, compactSize && styles.outerAreaCompact, liveSize && styles.outerAreaLive]}>
+        <View style={[styles.outerArea, compactSize && styles.outerAreaCompact, liveSize && styles.outerAreaLive, largeSize && styles.outerAreaLarge]}>
           {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.outerLabel}>外圈</Text> : null}
           {pitchingChangeBadge ? <View pointerEvents="none" accessibilityLabel={`換投標記：第${pitchingChangeBadge.inning}局 ︺ P ${pitchingChangeBadge.pitcherLabel ?? "新投手"}`} style={[styles.pitchingChangeBadge, liveSize && styles.pitchingChangeBadgeLive]}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.pitchingChangeBadgeCode, liveSize && styles.pitchingChangeBadgeCodeLive]}>︺ P</Text><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.pitchingChangeBadgePitcher, liveSize && styles.pitchingChangeBadgePitcherLive]}>{pitchingChangeBadge.pitcherLabel ?? "新投手"}</Text></View> : null}
           {replacementBadge ? <View pointerEvents="none" accessibilityLabel={`替換交接：第${replacementBadge.inning}局起 ${replacementBadge.code}${replacementHandoffLabel ? `；${replacementHandoffLabel}` : typeof replacementPitchTotal === "number" ? `；本席 ${replacementPitchTotal} 球（非精確交接）` : ""}`} style={[styles.replacementBadge, liveSize && styles.replacementBadgeLive]}><View style={styles.replacementBadgeHeader}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeCode, liveSize && styles.replacementBadgeCodeLive]}>{replacementBadge.code}</Text><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeHandoff, liveSize && styles.replacementBadgeHandoffLive]}>交接</Text></View><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeInning, liveSize && styles.replacementBadgeInningLive]}>第{replacementBadge.inning}局起</Text>{replacementHandoffLabel ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>{replacementHandoffLabel}</Text> : typeof replacementPitchTotal === "number" ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>本席 {replacementPitchTotal} 球</Text> : null}</View> : null}
-          {correction?.outerMark && !hasStructuredOuterCorrection ? <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.outerCorrectionMark, liveSize && styles.outerCorrectionMarkLive]}>{correction.outerMark}</Text> : <>
-            <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.leftTop, liveSize && styles.leftTopLive, hit && styles.redText]}>{outerMarks?.leftTop ?? leftTop ?? ""}</Text>
-            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[batterReachesFirst ? styles.batterFirstBaseMark : styles.rightTop, liveSize && (batterReachesFirst ? styles.batterFirstBaseMarkLive : styles.rightTopLive)]}>{outerMarks?.rightTop ?? onBaseMarks}</Text>
-            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, liveSize && styles.leftBottomLive]}>{outerMarks?.leftBottom ?? (rbi ? "①②③④".slice(0, rbi) : "")}</Text>
-            <View accessibilityLabel={displayedFieldingNotation ? `右下角傳接符號：${displayedFieldingNotation}` : "右下角傳接符號"} style={[styles.rightBottom, liveSize && styles.rightBottomLive, displayedFieldingNotation && styles.rightBottomHasFielding]}>
+          {correction?.outerMark && !hasStructuredOuterCorrection ? <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.outerCorrectionMark, liveSize && styles.outerCorrectionMarkLive, largeSize && styles.outerCorrectionMarkLarge]}>{correction.outerMark}</Text> : <>
+            <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.leftTop, liveSize && styles.leftTopLive, largeSize && styles.leftTopLarge, hit && styles.redText]}>{outerMarks?.leftTop ?? leftTop ?? ""}</Text>
+            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[batterReachesFirst ? styles.batterFirstBaseMark : styles.rightTop, liveSize && (batterReachesFirst ? styles.batterFirstBaseMarkLive : styles.rightTopLive), largeSize && (batterReachesFirst ? styles.batterFirstBaseMarkLarge : styles.rightTopLarge)]}>{outerMarks?.rightTop ?? onBaseMarks}</Text>
+            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, liveSize && styles.leftBottomLive, largeSize && styles.leftBottomLarge]}>{outerMarks?.leftBottom ?? (rbi ? "①②③④".slice(0, rbi) : "")}</Text>
+            <View accessibilityLabel={displayedFieldingNotation ? `右下角傳接符號：${displayedFieldingNotation}` : "右下角傳接符號"} style={[styles.rightBottom, liveSize && styles.rightBottomLive, largeSize && styles.rightBottomLarge, displayedFieldingNotation && styles.rightBottomHasFielding]}>
               {compactBattedBallNotation ? <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`放大查看右下角簡化符號：${compactBattedBallNotation}`}
@@ -304,12 +304,12 @@ export function WasedaPersonalRecordCell({
               </Pressable> : null}
             </View>
           </>}
-          <View style={styles.diamondStage}>
+          <View style={[styles.diamondStage, largeSize && styles.diamondStageLarge]}>
             <View pointerEvents="none" style={[styles.diamondGuide, styles.diamondGuideTop]} />
             <View pointerEvents="none" style={[styles.diamondGuide, styles.diamondGuideRight]} />
             <View pointerEvents="none" style={[styles.diamondGuide, styles.diamondGuideBottom]} />
             <View pointerEvents="none" style={[styles.diamondGuide, styles.diamondGuideLeft]} />
-            <View style={styles.diamond} />
+            <View style={[styles.diamond, largeSize && styles.diamondLarge]} />
             {batterFirstBaseLines.map((line) => (
               <View key={`batter-${line.segment}`} pointerEvents="none" style={styles.runnerAdvanceOverlay}>
                 <View style={[styles.batterReachLine, batterReachSegmentStyle(line.segment)]} />
@@ -325,9 +325,9 @@ export function WasedaPersonalRecordCell({
             {hitAdvanceSegments.map((segment) => (
               <View key={segment} style={[styles.hitAdvanceLine, hitSegmentStyle(segment)]} />
             ))}
-            <View style={[styles.innerSquare, liveSize && styles.innerSquareLive]}>
+            <View style={[styles.innerSquare, liveSize && styles.innerSquareLive, largeSize && styles.innerSquareLarge]}>
               {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.innerLabel}>內圈</Text> : null}
-              <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.innerMark, liveSize && styles.innerMarkLive, innerMark.length > 3 && styles.innerMarkLong, (innerMark === "○" || innerMark === "●") && styles.innerScoreMark]}>{innerMark}</Text>
+              <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.innerMark, liveSize && styles.innerMarkLive, largeSize && styles.innerMarkLarge, innerMark.length > 3 && styles.innerMarkLong, (innerMark === "○" || innerMark === "●") && styles.innerScoreMark]}>{innerMark}</Text>
             </View>
           </View>
           {showEmptyHint ? <View pointerEvents="none" style={styles.emptyHintOverlay}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.emptyHintText}>{emptyHint}</Text></View> : null}
@@ -363,7 +363,7 @@ export function WasedaPersonalRecordCell({
 const styles = StyleSheet.create({
   /** 2013 WBC 記錄表採直角方格；打席格不得因尺寸改為圓角或圓形。 */
   wrap: { borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, overflow: "hidden" },
-  large: { minWidth: 236, minHeight: 158 },
+  large: { flex: 1, width: "100%", minWidth: 236, minHeight: 158 },
   regular: { minWidth: 150, minHeight: 112 },
   /** 參考紙本格為左側 22px 逐球欄＋右側 68px 方框，連同外框採 92×70 比例。 */
   compact: { width: 92, minWidth: 92, minHeight: 70 },
@@ -375,22 +375,27 @@ const styles = StyleSheet.create({
   cell: { flex: 1, flexDirection: "row", minHeight: 96 },
   cellCompact: { minHeight: 68 },
   cellLive: { minHeight: 70 },
+  cellLarge: { minHeight: 140 },
   pitchColumn: { width: 29, paddingVertical: 3, alignItems: "center", borderRightWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white },
   pitchColumnCompact: { width: 22, paddingVertical: 2 },
   pitchColumnLive: { width: 23, paddingVertical: 2 },
+  pitchColumnLarge: { width: 38, paddingVertical: 4 },
   zoneLabel: { color: COLORS.muted, fontSize: 6, fontWeight: "900", writingDirection: "ltr" },
   /** 每欄最多14球、兩欄共28球；直式由上而下讀取，維持緊湊橫式工作台高度。 */
   pitchMarkGrid: { width: 20, height: 82, marginTop: 2, flexDirection: "column", flexWrap: "wrap", alignContent: "flex-start", overflow: "hidden" },
   pitchMarkGridCompact: { width: 16, height: 62, marginTop: 1 },
   pitchMarkGridLive: { width: 16, height: 62, marginTop: 1 },
+  pitchMarkGridLarge: { width: 26, height: 110, marginTop: 4 },
   pitchMarkCell: { width: 10, height: 11, color: COLORS.ink, fontSize: 9.5, fontWeight: "900", lineHeight: 11, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   pitchMarkCellCompact: { width: 8, height: 8.8, fontSize: 8, fontWeight: "900", lineHeight: 8.8, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   pitchMarkCellLive: { width: 8, height: 8.8, fontSize: 8, fontWeight: "900", lineHeight: 8.8, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
+  pitchMarkCellLarge: { width: 12, height: 14, fontSize: 13, lineHeight: 14, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   /** 最外層 wrap 已提供紙本格線；外圈僅承載符號，避免再畫一層重複方框。 */
   outerArea: { flex: 1, minHeight: 96, position: "relative", overflow: "hidden", backgroundColor: "transparent", borderWidth: 0 },
   /** 緊湊格維持 68px 高的單一紙本方格，不加內嵌外框。 */
   outerAreaCompact: { minHeight: 68, borderWidth: 0 },
   outerAreaLive: { minHeight: 70 },
+  outerAreaLarge: { minHeight: 140 },
   outerLabel: { position: "absolute", top: 3, left: 4, color: COLORS.muted, fontSize: 6, fontWeight: "900" },
   pitchingChangeBadge: { position: "absolute", top: 3, left: 4, maxWidth: "34%", paddingHorizontal: 1, paddingVertical: 1, borderWidth: 1, borderColor: "#F59E0B", borderRadius: 4, backgroundColor: "transparent", zIndex: 12 },
   pitchingChangeBadgeLive: { top: 2, left: 2, paddingHorizontal: 1, paddingVertical: 0 },
@@ -411,26 +416,34 @@ const styles = StyleSheet.create({
   replacementBadgePitchCountLive: { fontSize: 4.5, lineHeight: 5.5 },
   outerCorrectionMark: { position: "absolute", top: 12, left: 4, right: 4, color: COLORS.blue, fontSize: 8, fontWeight: "900", lineHeight: 10, textAlign: "center" },
   outerCorrectionMarkLive: { top: 6, left: 3, right: 3, fontSize: 7, lineHeight: 8.5 },
+  outerCorrectionMarkLarge: { top: 18, left: 8, right: 8, fontSize: 12, lineHeight: 14.5 },
   leftTop: { position: "absolute", top: 2, left: 3, maxWidth: "42%", color: COLORS.blue, fontSize: 9, fontWeight: "900" },
   leftTopLive: { top: 2, left: 2, fontSize: 8 },
+  leftTopLarge: { top: 6, left: 8, fontSize: 13.5 },
   rightTop: { position: "absolute", top: 12, right: 5, maxWidth: "42%", color: COLORS.blue, fontSize: 8, fontWeight: "900", textAlign: "right" },
   rightTopLive: { top: 5, right: 3, fontSize: 7.5 },
+  rightTopLarge: { top: 16, right: 10, fontSize: 12.5 },
   /** BB／K+ 緊鄰本壘至一壘藍線，與參考表的右下上壘分區一致。 */
   batterFirstBaseMark: { position: "absolute", right: 4, bottom: 15, maxWidth: "48%", color: COLORS.blue, fontSize: 13, fontWeight: "900", lineHeight: 14, textAlign: "right", zIndex: 7 },
   batterFirstBaseMarkLive: { right: 2, bottom: 12, fontSize: 10, lineHeight: 11 },
+  batterFirstBaseMarkLarge: { right: 8, bottom: 22, fontSize: 18, lineHeight: 19 },
   battedBallRightBottom: { alignItems: "flex-end", gap: 0, marginBottom: 1, maxWidth: "100%" },
   battedBallType: { color: COLORS.blue, fontSize: 8, fontWeight: "900", lineHeight: 9 },
   groundBallType: { letterSpacing: -0.2 },
   battedBallDirection: { color: COLORS.blue, fontSize: 10, fontWeight: "900", lineHeight: 10 },
   leftBottom: { position: "absolute", bottom: 5, left: 5, color: COLORS.red, fontSize: 10, fontWeight: "900", letterSpacing: -2 },
   leftBottomLive: { bottom: 3, left: 3, fontSize: 8 },
+  leftBottomLarge: { bottom: 8, left: 10, fontSize: 14 },
   rightBottom: { position: "absolute", right: 3, bottom: 3, maxWidth: "58%", alignItems: "flex-end", justifyContent: "flex-end", zIndex: 8 },
   rightBottomLive: { right: 2, bottom: 2, maxWidth: "58%" },
+  rightBottomLarge: { right: 8, bottom: 8, maxWidth: "58%" },
   rightBottomHasFielding: { paddingHorizontal: 2, paddingVertical: 1, borderTopLeftRadius: 3, backgroundColor: "transparent" },
   fieldingTapTarget: { alignSelf: "flex-end", maxWidth: "100%", minWidth: 18, minHeight: 16, justifyContent: "flex-end" },
   fieldingTapTargetPressed: { opacity: 0.62, transform: [{ scale: 0.98 }] },
   compactBattedBallNotation: { maxWidth: "100%", color: COLORS.blue, fontSize: 9, fontWeight: "900", lineHeight: 10, includeFontPadding: false, textAlign: "right", flexShrink: 1 },
+  compactBattedBallNotationLarge: { fontSize: 14, lineHeight: 16 },
   fieldingNotation: { maxWidth: "100%", color: COLORS.blue, fontSize: 8, fontWeight: "900", lineHeight: 9.5, includeFontPadding: false, textAlign: "right", flexShrink: 1 },
+  fieldingNotationLarge: { fontSize: 12.5, lineHeight: 14.5 },
   fieldingNotationTruncated: { textDecorationLine: "underline", textDecorationStyle: "dotted" },
   fieldingModalBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: 22, backgroundColor: "rgba(15, 23, 42, 0.48)" },
   fieldingModalCard: { width: "100%", maxWidth: 420, gap: 8, borderRadius: 18, padding: 18, backgroundColor: COLORS.white, shadowColor: "#0F172A", shadowOpacity: 0.22, shadowRadius: 16, elevation: 8 },
@@ -453,9 +466,9 @@ const styles = StyleSheet.create({
    * 外側打者上壘／安打線取四個邊界交點，跑者推進線則取菱形四角交點。
    */
   diamondStage: { position: "absolute", top: "50%", left: "50%", width: 68, height: 68, marginLeft: -34, marginTop: -34, alignItems: "center", justifyContent: "center", zIndex: 2 },
-  diamondStageLarge: { width: 140, height: 140, marginLeft: -70, marginTop: -70 },
+  diamondStageLarge: { width: 68, height: 68, marginLeft: -34, marginTop: -34, transform: [{ scale: 1.65 }] },
   diamond: { position: "absolute", width: 32, height: 32, borderWidth: 1, borderStyle: "dashed", borderColor: "#7B91A8", transform: [{ rotate: "45deg" }] },
-  diamondLarge: { width: 64, height: 64 },
+  diamondLarge: { width: 32, height: 32 },
   diamondGuide: { position: "absolute", borderStyle: "dashed", borderColor: "#A8B8C9" },
   diamondGuideTop: { top: 0, left: 33, width: 1, height: 12, borderLeftWidth: 1 },
   diamondGuideRight: { top: 33, right: 0, width: 12, height: 1, borderTopWidth: 1 },
@@ -491,11 +504,14 @@ const styles = StyleSheet.create({
   /** 中央僅保留得分／出局符號的透明定位區，不繪製多餘小方框。 */
   innerSquare: { width: 26, height: 26, alignItems: "center", justifyContent: "center", backgroundColor: "transparent" },
   innerSquareLive: { width: 24, height: 24, backgroundColor: "transparent" },
+  innerSquareLarge: { width: 38, height: 38, backgroundColor: "transparent" },
   innerLabel: { color: COLORS.muted, fontSize: 5, fontWeight: "900" },
   innerMark: { color: COLORS.ink, maxWidth: 27, fontSize: 12, fontWeight: "900", lineHeight: 13, textAlign: "center" },
   innerMarkLive: { fontSize: 12, lineHeight: 13 },
+  innerMarkLarge: { fontSize: 18, lineHeight: 20 },
   /** 得分以高辨識度紅色圓點呈現；○／●仍分別保留非自責／自責責任意義。 */
   innerScoreMark: { color: COLORS.red, fontSize: 16, lineHeight: 16 },
+  innerScoreMarkLarge: { fontSize: 24, lineHeight: 24 },
   innerMarkLong: { fontSize: 8.5, letterSpacing: -0.45 },
   emptyHintOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   emptyHintText: { color: "#9AA9B9", backgroundColor: "transparent", fontSize: 10, fontWeight: "800" },
