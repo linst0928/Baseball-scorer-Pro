@@ -104,6 +104,7 @@ const config: ExpoConfig = {
       },
     ],
     "./plugins/with-android-landscape",
+    "./plugins/with-suppressed-warnings",
     [
       "expo-navigation-bar",
       {
