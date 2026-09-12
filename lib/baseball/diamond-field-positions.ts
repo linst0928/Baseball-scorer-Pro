@@ -96,7 +96,7 @@ export const DIAMOND_FIELD_POSITIONS: DiamondFieldPositionItem[] = [
     label: "捕手",
     shortLabel: "捕手",
     displayCode: "C 捕手",
-    top: "84%",
+    top: "80%",
     left: "50%",
     aliases: ["2", "捕手", "捕", "2 捕手", "C"],
   },

@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   /** 參考紙本格為左側 22px 逐球欄＋右側 68px 方框，連同外框採 92×70 比例。 */
   compact: { width: 92, minWidth: 92, minHeight: 70 },
   live: { width: 72, minWidth: 72, minHeight: 70 },
-  rail: { minWidth: 132, minHeight: 86 },
+  rail: { width: 132, minWidth: 132, height: 86, maxHeight: 86, overflow: "hidden" },
   heading: { minHeight: 20, paddingHorizontal: 6, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.paper, borderBottomWidth: 1, borderColor: COLORS.line },
   headingLabel: { color: COLORS.ink, flexShrink: 1, fontSize: 9, fontWeight: "900" },
   headingNote: { color: COLORS.muted, flex: 1, fontSize: 7, fontWeight: "700", textAlign: "right" },

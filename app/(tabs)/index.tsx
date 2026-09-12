@@ -7803,7 +7803,7 @@ const styles = StyleSheet.create({
   recordTopPanelCenter: { flex: 2, minWidth: 0, gap: 6 },
 
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
-  recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "stretch" },
+  recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
   recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6, justifyContent: "flex-start" },
   recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8 },
   recordMatchupTop: { gap: 6 },
@@ -7850,12 +7850,12 @@ const styles = StyleSheet.create({
   batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 10, gap: 8 },
   batterQueueTitle: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
   batterQueueRow: { flexDirection: "row", gap: 8 },
-  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 10, minHeight: 96 },
+  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 10, minHeight: 96, maxHeight: 110 },
   batterQueueIdentity: { gap: 4, flex: 1 },
   batterQueueOrder: { color: BRAND.blue, fontSize: 13, fontWeight: "900" },
   batterQueueName: { color: BRAND.ink, fontSize: 16, fontWeight: "900" },
   batterQueueHand: { color: BRAND.muted, fontSize: 12, fontWeight: "800" },
-  batterQueueAtBatWrap: { alignItems: "center", gap: 4 },
+  batterQueueAtBatWrap: { alignItems: "center", justifyContent: "center", gap: 4, height: 88, maxHeight: 88, overflow: "hidden" },
   batterQueueAtBatTitle: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
   // 賽況及時紀錄父層組件

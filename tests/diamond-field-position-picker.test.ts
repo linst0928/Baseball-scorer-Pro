@@ -109,6 +109,18 @@ describe("DiamondFieldPositionPicker 棒球場菱形圖常用守備位置指派"
     expect(formatPreferredPositionsShort(undefined)).toBe("後備");
   });
 
+  it("捕手 (C) 與各守備位置座標應符合 SVG 球場長寬比配置", () => {
+    const posC = DIAMOND_FIELD_POSITIONS.find((p) => p.number === "2");
+    expect(posC).toBeDefined();
+    expect(posC?.enCode).toBe("C");
+    expect(posC?.top).toBe("80%");
+    expect(posC?.left).toBe("50%");
+
+    const posP = DIAMOND_FIELD_POSITIONS.find((p) => p.number === "1");
+    expect(posP?.top).toBe("55%");
+    expect(posP?.left).toBe("50%");
+  });
+
   it("空陣列或無效值應回傳 false", () => {
     const pos1 = DIAMOND_FIELD_POSITIONS.find((p) => p.number === "1")!;
     expect(isPositionSelected([], pos1)).toBe(false);

@@ -6,6 +6,14 @@ import {
   Text,
   View,
 } from "react-native";
+import Svg, {
+  Rect,
+  Path,
+  Circle,
+  Polygon,
+  Line,
+  Text as SvgText,
+} from "react-native-svg";
 import type { InterfacePalette } from "@/lib/theme-provider";
 import {
   DIAMOND_FIELD_POSITIONS,
@@ -31,37 +39,45 @@ export function LiveInfieldDiamondBackground({
   themeMode?: "dark" | "light";
 }) {
   const isDark = themeMode === "dark";
+  const bgColor = isDark ? "#0B192C" : "#F1F5F9";
   return (
     <View style={[styles.liveFieldCanvas, isDark && styles.liveFieldCanvasDark, style]}>
-      {/* 暗色/深藍背景底層 */}
-      <View style={[styles.fieldBgOverlay, isDark && styles.fieldBgOverlayDark]} />
-
-      {/* 外野草皮扇形弧 */}
-      <View style={styles.liveOutfieldArc} />
-
-      {/* 內野橘黃色紅土走道 (Dirt Track Arc) */}
-      <View style={styles.liveDirtArc} />
-
-      {/* 左/右白色界外線 (Foul Lines) */}
-      <View style={styles.liveLeftFoulLine} />
-      <View style={styles.liveRightFoulLine} />
-
-      {/* 內野紅土菱形 (Dirt Diamond) */}
-      <View style={styles.liveDirtDiamond} />
-
-      {/* 內野草地菱形島 (Infield Grass Island) */}
-      <View style={styles.liveInfieldGrass} />
-
-      {/* 投手丘與白色投手板 */}
-      <View style={styles.livePitcherMound}>
-        <View style={styles.livePitcherRubber} />
-      </View>
-
-      {/* 四個壘包 (2B, 1B, 3B, HP) */}
-      <View style={styles.liveBase2B} />
-      <View style={styles.liveBase1B} />
-      <View style={styles.liveBase3B} />
-      <View style={styles.liveHomePlate} />
+      <Svg
+        viewBox="0 0 400 250"
+        preserveAspectRatio="xMidYMid meet"
+        style={StyleSheet.absoluteFill}
+      >
+        <Rect x="0" y="0" width="400" height="250" fill={bgColor} />
+        {/* 外野綠色草皮扇形 */}
+        <Path
+          d="M 200 210 L 30 35 A 240 240 0 0 1 370 35 Z"
+          fill="#5D941E"
+          stroke="#F5A623"
+          strokeWidth={2}
+          opacity={0.9}
+        />
+        {/* 內野橘黃色紅土走道 */}
+        <Path
+          d="M 200 210 L 70 75 A 180 180 0 0 1 330 75 Z"
+          fill="#F5A623"
+          opacity={0.95}
+        />
+        {/* 白色界外線 */}
+        <Line x1="200" y1="210" x2="25" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+        <Line x1="200" y1="210" x2="375" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+        {/* 內野紅土菱形 */}
+        <Polygon points="200,210 265,145 200,80 135,145" fill="#F5A623" />
+        {/* 內野草地菱形島 */}
+        <Polygon points="200,195 250,145 200,95 150,145" fill="#5D941E" />
+        {/* 投手丘與投手板 */}
+        <Circle cx="200" cy="145" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
+        <Rect x="194" y="143.5" width="12" height="3" rx="1" fill="#FFFFFF" />
+        {/* 壘包 (2B, 1B, 3B, HP) */}
+        <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+        <Polygon points="265,139 271,145 265,151 259,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+        <Polygon points="135,139 141,145 135,151 129,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+        <Polygon points="200,203 207,210 200,217 193,210" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+      </Svg>
     </View>
   );
 }
@@ -146,43 +162,78 @@ export function DiamondFieldPositionPicker({
         </Text>
       ) : null}
 
-      {/* 棒球場菱形圖（比照 常用守備位置.jpg 繪製） */}
+      {/* 棒球場菱形圖（以 SVG 繪製維持固定長寬比，等比例不變形） */}
       <View style={styles.fieldCanvasContainer}>
-        {/* 暗黑深藍波點科技球場底色 */}
-        <View style={styles.fieldDarkBackground} />
+        {/* SVG 球場向量繪製層：固定 viewBox 與 preserveAspectRatio */}
+        <Svg
+          viewBox="0 0 400 250"
+          preserveAspectRatio="xMidYMid meet"
+          style={StyleSheet.absoluteFill}
+        >
+          {/* 暗黑深藍波點科技球場底色 */}
+          <Rect x="0" y="0" width="400" height="250" rx="10" fill="#061325" />
 
-        {/* 外野綠色草皮 */}
-        <View style={styles.outfieldArc} />
+          {/* 外野綠色草皮扇形弧 */}
+          <Path
+            d="M 200 200 L 35 35 A 235 235 0 0 1 365 35 Z"
+            fill="#5D941E"
+            stroke="#F5A623"
+            strokeWidth={2}
+          />
 
-        {/* 內野橘黃色紅土走道 (Dirt Arc) */}
-        <View style={styles.dirtArc} />
+          {/* 內野橘黃色紅土走道 (Dirt Track Arc) */}
+          <Path
+            d="M 200 200 L 75 75 A 175 175 0 0 1 325 75 Z"
+            fill="#F5A623"
+          />
 
-        {/* 左/右白色界外線 (Foul Lines) */}
-        <View style={styles.leftFoulLine} />
-        <View style={styles.rightFoulLine} />
+          {/* 左/右白色界外線 (Foul Lines) */}
+          <Line x1="200" y1="200" x2="30" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
+          <Line x1="200" y1="200" x2="370" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
 
-        {/* 內野紅土菱形 (Dirt Diamond) */}
-        <View style={styles.dirtDiamond} />
+          {/* 內野紅土菱形 (Dirt Diamond) */}
+          <Polygon
+            points="200,200 260,140 200,80 140,140"
+            fill="#F5A623"
+          />
 
-        {/* 內野草地菱形島 (Infield Grass Island) */}
-        <View style={styles.infieldGrass} />
+          {/* 內野草地菱形島 (Infield Grass Island) */}
+          <Polygon
+            points="200,186 246,140 200,94 154,140"
+            fill="#5D941E"
+          />
 
-        {/* 投手丘與白色投手板 */}
-        <View style={styles.pitcherMound}>
-          <View style={styles.pitcherRubber} />
-        </View>
+          {/* 投手丘與白色投手板 */}
+          <Circle cx="200" cy="137.5" r="13" fill="#D97706" />
+          <Rect x="194" y="136" width="12" height="3" rx="1" fill="#FFFFFF" />
 
-        {/* 二壘包 */}
-        <View style={styles.base2B} />
+          {/* 二壘包 (2B) */}
+          <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
 
-        {/* 本壘板區 */}
-        <View style={styles.homePlateArea} />
-        <View style={styles.homePlate} />
+          {/* 一壘包 (1B) */}
+          <Polygon points="260,134 266,140 260,146 254,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
 
-        {/* 左下角「常用守備位置」金色浮水印標籤 */}
-        <View style={styles.watermarkContainer}>
-          <Text style={styles.watermarkText}>常用守備位置</Text>
-        </View>
+          {/* 三壘包 (3B) */}
+          <Polygon points="140,134 146,140 140,146 134,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+
+          {/* 本壘板區紅土圓弧 (Home Plate Dirt Area) */}
+          <Circle cx="200" cy="200" r="18" fill="#F5A623" stroke="#FFFFFF" strokeWidth={1.5} />
+
+          {/* 本壘板 (Home Plate) - 精準置中於菱形尖端 (200, 200) */}
+          <Polygon points="200,193 207,200 200,207 193,200" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={0.5} />
+
+          {/* 左下角「常用守備位置」金色浮水印標籤 */}
+          <SvgText
+            x="14"
+            y="238"
+            fill="#F5A623"
+            fontSize="12"
+            fontWeight="900"
+            letterSpacing="1"
+          >
+            常用守備位置
+          </SvgText>
+        </Svg>
 
         {/* 9 個守備位置標籤（完全比照附圖：左側銀白代號 + 右側黑底中文名稱） */}
         {DIAMOND_FIELD_POSITIONS.map((pos) => {
@@ -310,7 +361,7 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  /* 常用守備位置.jpg 風格球場畫布 */
+  /* 常用守備位置.jpg 風格球場畫布 - 鎖定 16:10 長寬比與防擠壓 */
   fieldCanvasContainer: {
     width: "100%",
     maxWidth: 420,
@@ -324,150 +375,7 @@ const styles = StyleSheet.create({
     borderColor: "#1E293B",
     backgroundColor: "#061325",
     marginVertical: 4,
-  },
-  fieldDarkBackground: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: "#061325",
-  },
-  outfieldArc: {
-    position: "absolute",
-    left: "6%",
-    right: "6%",
-    top: "3%",
-    height: 165,
-    borderTopLeftRadius: 160,
-    borderTopRightRadius: 160,
-    backgroundColor: "#5D941E",
-    borderWidth: 2,
-    borderColor: "#F5A623",
-  },
-  dirtArc: {
-    position: "absolute",
-    left: "14%",
-    right: "14%",
-    top: "22%",
-    height: 130,
-    borderTopLeftRadius: 120,
-    borderTopRightRadius: 120,
-    backgroundColor: "#F5A623",
-  },
-  leftFoulLine: {
-    position: "absolute",
-    width: 2.5,
-    height: 180,
-    left: "50%",
-    bottom: 22,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#FFF",
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-  },
-  rightFoulLine: {
-    position: "absolute",
-    width: 2.5,
-    height: 180,
-    left: "50%",
-    bottom: 22,
-    transform: [{ rotate: "-45deg" }],
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#FFF",
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-  },
-  dirtDiamond: {
-    position: "absolute",
-    width: 80,
-    height: 80,
-    left: "50%",
-    top: 75,
-    marginLeft: -40,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#F5A623",
-    borderRadius: 4,
-  },
-  infieldGrass: {
-    position: "absolute",
-    width: 52,
-    height: 52,
-    left: "50%",
-    top: 89,
-    marginLeft: -26,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#5D941E",
-    borderRadius: 2,
-  },
-  pitcherMound: {
-    position: "absolute",
-    width: 24,
-    height: 14,
-    left: "50%",
-    top: 108,
-    marginLeft: -12,
-    borderRadius: 7,
-    backgroundColor: "#D97706",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pitcherRubber: {
-    width: 8,
-    height: 2,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 1,
-  },
-  base2B: {
-    position: "absolute",
-    width: 8,
-    height: 8,
-    left: "50%",
-    top: 71,
-    marginLeft: -4,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 1,
-  },
-  homePlateArea: {
-    position: "absolute",
-    width: 40,
-    height: 24,
-    left: "50%",
-    bottom: 12,
-    marginLeft: -20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    backgroundColor: "#F5A623",
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-  },
-  homePlate: {
-    position: "absolute",
-    width: 7,
-    height: 7,
-    left: "50%",
-    bottom: 24,
-    marginLeft: -3.5,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-  },
-  watermarkContainer: {
-    position: "absolute",
-    left: 8,
-    bottom: 6,
-  },
-  watermarkText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#F5A623",
-    letterSpacing: 1,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    flexShrink: 0,
   },
 
   /* 守位標籤樣式 (比照 常用守備位置.jpg：左側銀白代號 + 右側黑底中文名稱) */
@@ -632,159 +540,5 @@ const styles = StyleSheet.create({
   },
   liveFieldCanvasDark: {
     backgroundColor: "#0B192C",
-  },
-  fieldBgOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: "transparent",
-  },
-  fieldBgOverlayDark: {
-    backgroundColor: "#0B192C",
-  },
-  liveOutfieldArc: {
-    position: "absolute",
-    left: "5%",
-    right: "5%",
-    top: "4%",
-    height: "90%",
-    borderTopLeftRadius: 180,
-    borderTopRightRadius: 180,
-    backgroundColor: "#5D941E",
-    borderWidth: 2,
-    borderColor: "#F5A623",
-    opacity: 0.9,
-  },
-  liveDirtArc: {
-    position: "absolute",
-    left: "14%",
-    right: "14%",
-    top: "22%",
-    height: "72%",
-    borderTopLeftRadius: 130,
-    borderTopRightRadius: 130,
-    backgroundColor: "#F5A623",
-    opacity: 0.95,
-  },
-  liveLeftFoulLine: {
-    position: "absolute",
-    width: 2.5,
-    height: 240,
-    left: "50%",
-    bottom: 24,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-    opacity: 0.9,
-  },
-  liveRightFoulLine: {
-    position: "absolute",
-    width: 2.5,
-    height: 240,
-    left: "50%",
-    bottom: 24,
-    transform: [{ rotate: "-45deg" }],
-    backgroundColor: "#FFFFFF",
-    opacity: 0.9,
-  },
-  liveDirtDiamond: {
-    position: "absolute",
-    width: 100,
-    height: 100,
-    left: "50%",
-    top: "34%",
-    marginLeft: -50,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#F5A623",
-    borderRadius: 6,
-  },
-  liveInfieldGrass: {
-    position: "absolute",
-    width: 66,
-    height: 66,
-    left: "50%",
-    top: "40%",
-    marginLeft: -33,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#5D941E",
-    borderRadius: 3,
-  },
-  livePitcherMound: {
-    position: "absolute",
-    width: 32,
-    height: 20,
-    left: "50%",
-    top: "48%",
-    marginLeft: -16,
-    borderRadius: 10,
-    backgroundColor: "#D97706",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#FFE699",
-  },
-  livePitcherRubber: {
-    width: 10,
-    height: 2.5,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 1,
-  },
-  liveBase2B: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    left: "50%",
-    top: "22%",
-    marginLeft: -6,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-  },
-  liveBase1B: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    right: "17%",
-    top: "48%",
-    marginTop: -6,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-  },
-  liveBase3B: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    left: "17%",
-    top: "48%",
-    marginTop: -6,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-  },
-  liveHomePlate: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    left: "50%",
-    bottom: 24,
-    marginLeft: -6,
-    transform: [{ rotate: "45deg" }],
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
   },
 });
