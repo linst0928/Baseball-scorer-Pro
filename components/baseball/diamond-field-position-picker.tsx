@@ -1,10 +1,12 @@
 import React from "react";
 import {
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type ImageSourcePropType,
 } from "react-native";
 import Svg, {
   Rect,
@@ -34,50 +36,56 @@ export {
 export function LiveInfieldDiamondBackground({
   style,
   themeMode = "dark",
+  imageSource,
 }: {
   style?: object;
   themeMode?: "dark" | "light";
+  imageSource?: ImageSourcePropType;
 }) {
   const isDark = themeMode === "dark";
   const bgColor = isDark ? "#0B192C" : "#F1F5F9";
   return (
     <View style={[styles.liveFieldCanvas, isDark && styles.liveFieldCanvasDark, style]}>
-      <Svg
-        viewBox="0 0 400 250"
-        preserveAspectRatio="xMidYMid meet"
-        style={StyleSheet.absoluteFill}
-      >
-        <Rect x="0" y="0" width="400" height="250" fill={bgColor} />
-        {/* 外野綠色草皮扇形 */}
-        <Path
-          d="M 200 210 L 30 35 A 240 240 0 0 1 370 35 Z"
-          fill="#5D941E"
-          stroke="#F5A623"
-          strokeWidth={2}
-          opacity={0.9}
-        />
-        {/* 內野橘黃色紅土走道 */}
-        <Path
-          d="M 200 210 L 70 75 A 180 180 0 0 1 330 75 Z"
-          fill="#F5A623"
-          opacity={0.95}
-        />
-        {/* 白色界外線 */}
-        <Line x1="200" y1="210" x2="25" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
-        <Line x1="200" y1="210" x2="375" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
-        {/* 內野紅土菱形 */}
-        <Polygon points="200,210 265,145 200,80 135,145" fill="#F5A623" />
-        {/* 內野草地菱形島 */}
-        <Polygon points="200,195 250,145 200,95 150,145" fill="#5D941E" />
-        {/* 投手丘與投手板 */}
-        <Circle cx="200" cy="145" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
-        <Rect x="194" y="143.5" width="12" height="3" rx="1" fill="#FFFFFF" />
-        {/* 壘包 (2B, 1B, 3B, HP) */}
-        <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-        <Polygon points="265,139 271,145 265,151 259,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-        <Polygon points="135,139 141,145 135,151 129,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-        <Polygon points="200,203 207,210 200,217 193,210" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-      </Svg>
+      {imageSource ? (
+        <Image source={imageSource} style={StyleSheet.absoluteFill} resizeMode="contain" />
+      ) : (
+        <Svg
+          viewBox="0 0 400 250"
+          preserveAspectRatio="xMidYMid meet"
+          style={StyleSheet.absoluteFill}
+        >
+          <Rect x="0" y="0" width="400" height="250" fill={bgColor} />
+          {/* 外野綠色草皮扇形 */}
+          <Path
+            d="M 200 210 L 30 35 A 240 240 0 0 1 370 35 Z"
+            fill="#5D941E"
+            stroke="#F5A623"
+            strokeWidth={2}
+            opacity={0.9}
+          />
+          {/* 內野橘黃色紅土走道 */}
+          <Path
+            d="M 200 210 L 70 75 A 180 180 0 0 1 330 75 Z"
+            fill="#F5A623"
+            opacity={0.95}
+          />
+          {/* 白色界外線 */}
+          <Line x1="200" y1="210" x2="25" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+          <Line x1="200" y1="210" x2="375" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+          {/* 內野紅土菱形 */}
+          <Polygon points="200,210 265,145 200,80 135,145" fill="#F5A623" />
+          {/* 內野草地菱形島 */}
+          <Polygon points="200,195 250,145 200,95 150,145" fill="#5D941E" />
+          {/* 投手丘與投手板 */}
+          <Circle cx="200" cy="145" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
+          <Rect x="194" y="143.5" width="12" height="3" rx="1" fill="#FFFFFF" />
+          {/* 壘包 (2B, 1B, 3B, HP) */}
+          <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+          <Polygon points="265,139 271,145 265,151 259,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+          <Polygon points="135,139 141,145 135,151 129,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+          <Polygon points="200,203 207,210 200,217 193,210" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+        </Svg>
+      )}
     </View>
   );
 }
@@ -89,6 +97,8 @@ interface DiamondFieldPositionPickerProps {
   interfacePalette?: InterfacePalette;
   title?: string;
   hint?: string;
+  /** 可選的球場背景圖；未提供時沿用原 SVG。 */
+  fieldImageSource?: ImageSourcePropType;
 }
 
 /**
@@ -102,6 +112,7 @@ export function DiamondFieldPositionPicker({
   interfacePalette,
   title = "常用守備位置指派（點擊球場菱形圖）",
   hint = "最多可選擇 4 個常用守備位置，點擊位置圖示即可選取／取消",
+  fieldImageSource,
 }: DiamondFieldPositionPickerProps) {
   const currentPositions = Array.isArray(selectedPositions) ? selectedPositions : [];
 
@@ -162,78 +173,81 @@ export function DiamondFieldPositionPicker({
         </Text>
       ) : null}
 
-      {/* 棒球場菱形圖（以 SVG 繪製維持固定長寬比，等比例不變形） */}
+      {/* 棒球場菱形圖：可傳入 JPG；未傳入時保留原 SVG。 */}
       <View style={styles.fieldCanvasContainer}>
-        {/* SVG 球場向量繪製層：固定 viewBox 與 preserveAspectRatio */}
-        <Svg
-          viewBox="0 0 400 250"
-          preserveAspectRatio="xMidYMid meet"
-          style={StyleSheet.absoluteFill}
-        >
-          {/* 暗黑深藍波點科技球場底色 */}
-          <Rect x="0" y="0" width="400" height="250" rx="10" fill="#061325" />
-
-          {/* 外野綠色草皮扇形弧 */}
-          <Path
-            d="M 200 200 L 35 35 A 235 235 0 0 1 365 35 Z"
-            fill="#5D941E"
-            stroke="#F5A623"
-            strokeWidth={2}
-          />
-
-          {/* 內野橘黃色紅土走道 (Dirt Track Arc) */}
-          <Path
-            d="M 200 200 L 75 75 A 175 175 0 0 1 325 75 Z"
-            fill="#F5A623"
-          />
-
-          {/* 左/右白色界外線 (Foul Lines) */}
-          <Line x1="200" y1="200" x2="30" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
-          <Line x1="200" y1="200" x2="370" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
-
-          {/* 內野紅土菱形 (Dirt Diamond) */}
-          <Polygon
-            points="200,200 260,140 200,80 140,140"
-            fill="#F5A623"
-          />
-
-          {/* 內野草地菱形島 (Infield Grass Island) */}
-          <Polygon
-            points="200,186 246,140 200,94 154,140"
-            fill="#5D941E"
-          />
-
-          {/* 投手丘與白色投手板 */}
-          <Circle cx="200" cy="137.5" r="13" fill="#D97706" />
-          <Rect x="194" y="136" width="12" height="3" rx="1" fill="#FFFFFF" />
-
-          {/* 二壘包 (2B) */}
-          <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-
-          {/* 一壘包 (1B) */}
-          <Polygon points="260,134 266,140 260,146 254,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-
-          {/* 三壘包 (3B) */}
-          <Polygon points="140,134 146,140 140,146 134,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-
-          {/* 本壘板區紅土圓弧 (Home Plate Dirt Area) */}
-          <Circle cx="200" cy="200" r="18" fill="#F5A623" stroke="#FFFFFF" strokeWidth={1.5} />
-
-          {/* 本壘板 (Home Plate) - 精準置中於菱形尖端 (200, 200) */}
-          <Polygon points="200,193 207,200 200,207 193,200" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={0.5} />
-
-          {/* 左下角「常用守備位置」金色浮水印標籤 */}
-          <SvgText
-            x="14"
-            y="238"
-            fill="#F5A623"
-            fontSize="12"
-            fontWeight="900"
-            letterSpacing="1"
+        {fieldImageSource ? (
+          <Image source={fieldImageSource} style={StyleSheet.absoluteFill} resizeMode="contain" />
+        ) : (
+          <Svg
+            viewBox="0 0 400 250"
+            preserveAspectRatio="xMidYMid meet"
+            style={StyleSheet.absoluteFill}
           >
-            常用守備位置
-          </SvgText>
-        </Svg>
+            {/* 暗黑深藍波點科技球場底色 */}
+            <Rect x="0" y="0" width="400" height="250" rx="10" fill="#061325" />
+
+            {/* 外野綠色草皮扇形弧 */}
+            <Path
+              d="M 200 200 L 35 35 A 235 235 0 0 1 365 35 Z"
+              fill="#5D941E"
+              stroke="#F5A623"
+              strokeWidth={2}
+            />
+
+            {/* 內野橘黃色紅土走道 (Dirt Track Arc) */}
+            <Path
+              d="M 200 200 L 75 75 A 175 175 0 0 1 325 75 Z"
+              fill="#F5A623"
+            />
+
+            {/* 左/右白色界外線 (Foul Lines) */}
+            <Line x1="200" y1="200" x2="30" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
+            <Line x1="200" y1="200" x2="370" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
+
+            {/* 內野紅土菱形 (Dirt Diamond) */}
+            <Polygon
+              points="200,200 260,140 200,80 140,140"
+              fill="#F5A623"
+            />
+
+            {/* 內野草地菱形島 (Infield Grass Island) */}
+            <Polygon
+              points="200,186 246,140 200,94 154,140"
+              fill="#5D941E"
+            />
+
+            {/* 投手丘與白色投手板 */}
+            <Circle cx="200" cy="137.5" r="13" fill="#D97706" />
+            <Rect x="194" y="136" width="12" height="3" rx="1" fill="#FFFFFF" />
+
+            {/* 二壘包 (2B) */}
+            <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+
+            {/* 一壘包 (1B) */}
+            <Polygon points="260,134 266,140 260,146 254,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+
+            {/* 三壘包 (3B) */}
+            <Polygon points="140,134 146,140 140,146 134,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+
+            {/* 本壘板區紅土圓弧 (Home Plate Dirt Area) */}
+            <Circle cx="200" cy="200" r="18" fill="#F5A623" stroke="#FFFFFF" strokeWidth={1.5} />
+
+            {/* 本壘板 (Home Plate) - 精準置中於菱形尖端 (200, 200) */}
+            <Polygon points="200,193 207,200 200,207 193,200" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={0.5} />
+
+            {/* 左下角「常用守備位置」金色浮水印標籤 */}
+            <SvgText
+              x="14"
+              y="238"
+              fill="#F5A623"
+              fontSize="12"
+              fontWeight="900"
+              letterSpacing="1"
+            >
+              常用守備位置
+            </SvgText>
+          </Svg>
+        )}
 
         {/* 9 個守備位置標籤（完全比照附圖：左側銀白代號 + 右側黑底中文名稱） */}
         {DIAMOND_FIELD_POSITIONS.map((pos) => {

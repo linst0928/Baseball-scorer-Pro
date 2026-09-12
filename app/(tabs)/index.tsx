@@ -41,6 +41,10 @@ import { ScorebookDisplayEditor, ScorebookGameSelector } from "@/components/base
 import { DiamondFieldPositionPicker, LiveInfieldDiamondBackground } from "@/components/baseball/diamond-field-position-picker";
 import { formatPreferredPositionsShort } from "@/lib/baseball/diamond-field-positions";
 import { HOME_DEFENSE_FIELD_IMAGE } from "@/constants/baseball-assets";
+import {
+  COMMON_DEFENSE_BLANK_FIELD_IMAGE,
+  LIVE_INFIELD_BLANK_FIELD_IMAGE,
+} from "@/constants/baseball-assets";
 import { INTERFACE_COLOR_MODES, resolveInterfacePalette, useThemeContext, type InterfaceColorMode, type InterfacePalette } from "@/lib/theme-provider";
 import { loadScenarioState, createScenarioTeams } from "@/lib/baseball/test-scenarios";
 import { shareGameImage, shareGamePdf, shareGameScoreCsv, type GameReportFilter } from "@/lib/baseball/export";
@@ -580,26 +584,29 @@ function TeamPill({ team, side }: { team: Team; side: TeamSide }) {
   );
 }
 
-function ScoreBoard({ game, away, home }: { game: Game; away: Team; home: Team }) {
+function ScoreBoard({ game, away, home, fontScale = 1 }: { game: Game; away: Team; home: Team; fontScale?: number }) {
   const rows = getInningRows(game);
   const totals = (side: TeamSide) => rows.reduce((sum, row) => sum + row[side], 0);
   const hits = (side: TeamSide) => game.events.filter((event) => event.half === side && ["1B", "2B", "3B", "HR"].includes(event.result)).length;
   // 失誤由守備方承擔：客隊打擊時的 E 計入主隊，反之亦然。
   const errors = (side: TeamSide) => game.events.filter((event) => event.half !== side && event.result === "E").length;
+  const scaledFontSize = (size: number) => size * fontScale;
+  const scoreboardTeamNameStyle = { ...styles.photoScoreboardTeamName, fontSize: scaledFontSize(13) };
+  const scoreboardSideStyle = { ...styles.photoScoreboardSide, fontSize: scaledFontSize(12) };
   return (
     <View style={styles.photoScoreboard}>
       <View style={styles.photoScoreboardCaption}>
-        <Text style={styles.photoScoreboardTitle}>主客場比分</Text>
-        <Text style={styles.photoScoreboardMeta}>{game.status === "final" ? "FINAL" : `第 ${game.inning} 局${game.half === "away" ? "上" : "下"}`} · 預定 {game.maxInnings} 局</Text>
+        <Text style={[styles.photoScoreboardTitle, { fontSize: scaledFontSize(15) }]}>主客場比分</Text>
+        <Text style={[styles.photoScoreboardMeta, { fontSize: scaledFontSize(11) }]}>{game.status === "final" ? "FINAL" : `第 ${game.inning} 局${game.half === "away" ? "上" : "下"}`} · 預定 {game.maxInnings} 局</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoScoreboardScroll}>
         <View>
           <View style={styles.photoScoreboardHeaderRow}>
-            <Text style={[styles.photoScoreboardTeamHeader, styles.photoScoreboardHeaderText]}>隊伍</Text>
-            {rows.map((row) => <Text key={row.inning} style={[styles.photoScoreboardInningHeader, styles.photoScoreboardHeaderText, row.inning === game.inning && styles.photoScoreboardActiveHeader]}>{row.inning}</Text>)}
-            {(["R", "H", "E"] as const).map((label) => <Text key={label} style={[styles.photoScoreboardTotalHeader, styles.photoScoreboardHeaderText]}>{label}</Text>)}
+            <Text style={[styles.photoScoreboardTeamHeader, styles.photoScoreboardHeaderText, { fontSize: scaledFontSize(11) }]}>隊伍</Text>
+            {rows.map((row) => <Text key={row.inning} style={[styles.photoScoreboardInningHeader, styles.photoScoreboardHeaderText, { fontSize: scaledFontSize(11) }, row.inning === game.inning && styles.photoScoreboardActiveHeader]}>{row.inning}</Text>)}
+            {(["R", "H", "E"] as const).map((label) => <Text key={label} style={[styles.photoScoreboardTotalHeader, styles.photoScoreboardHeaderText, { fontSize: scaledFontSize(11) }]}>{label}</Text>)}
           </View>
-          {([ ["away", away, "客"], ["home", home, "主"] ] as const).map(([side, team, sideLabel]) => <View key={side} style={[styles.photoScoreboardTeamRow, side === "home" && styles.photoScoreboardHomeRow, { backgroundColor: teamSurfaceColor(team, side) }]}><View style={styles.photoScoreboardTeamCell}><Text style={styles.photoScoreboardSide}>{sideLabel}</Text><TeamLogoName team={team} textStyle={styles.photoScoreboardTeamName} logoSize={16} /></View>{rows.map((row) => <Text key={`${side}-${row.inning}`} style={[styles.photoScoreboardInningCell, row.inning === game.inning && styles.photoScoreboardActiveCell]}>{row[side]}</Text>)}<Text style={styles.photoScoreboardTotalCell}>{totals(side)}</Text><Text style={styles.photoScoreboardTotalCell}>{hits(side)}</Text><Text style={styles.photoScoreboardTotalCell}>{errors(side)}</Text></View>)}
+          {([ ["away", away, "客"], ["home", home, "主"] ] as const).map(([side, team, sideLabel]) => <View key={side} style={[styles.photoScoreboardTeamRow, side === "home" && styles.photoScoreboardHomeRow, { backgroundColor: teamSurfaceColor(team, side) }]}><View style={styles.photoScoreboardTeamCell}><Text style={[styles.photoScoreboardSide, scoreboardSideStyle]}>{sideLabel}</Text><TeamLogoName team={team} textStyle={scoreboardTeamNameStyle} logoSize={16} /></View>{rows.map((row) => <Text key={`${side}-${row.inning}`} style={[styles.photoScoreboardInningCell, { fontSize: scaledFontSize(12) }, row.inning === game.inning && styles.photoScoreboardActiveCell]}>{row[side]}</Text>)}<Text style={[styles.photoScoreboardTotalCell, { fontSize: scaledFontSize(12) }]}>{totals(side)}</Text><Text style={[styles.photoScoreboardTotalCell, { fontSize: scaledFontSize(12) }]}>{hits(side)}</Text><Text style={[styles.photoScoreboardTotalCell, { fontSize: scaledFontSize(12) }]}>{errors(side)}</Text></View>)}
         </View>
       </ScrollView>
     </View>
@@ -2529,6 +2536,7 @@ function IntegratedManagementCard({
             onChange={setPPositions}
             maxCount={4}
             interfacePalette={interfacePalette}
+            fieldImageSource={COMMON_DEFENSE_BLANK_FIELD_IMAGE}
           />
 
           <View style={{ flexDirection: "row", gap: 6, borderTopWidth: 0.5, borderTopColor: interfacePalette.border, paddingTop: 8, marginTop: 4 }}>
@@ -3069,8 +3077,8 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
           <LiveLineupColumn team={away} side="away" game={game} batter={batter} />
         </View>
         <View style={styles.recordTopPanelCenter}>
-          <View style={styles.liveTeamIdentityRow}><View style={[styles.liveTeamIdentityCard, { backgroundColor: teamSurfaceColor(away, "away") }]}><Text style={styles.liveTeamIdentitySide}>客場(先攻)／先攻</Text><TeamLogoName team={away} textStyle={styles.liveTeamIdentityName} logoSize={22} /></View><View style={[styles.liveTeamIdentityCard, styles.liveTeamIdentityCardHome, { backgroundColor: teamSurfaceColor(home, "home") }]}><Text style={styles.liveTeamIdentitySide}>主場(先守)／後攻</Text><TeamLogoName team={home} textStyle={styles.liveTeamIdentityName} logoSize={22} align="right" /></View></View>
-          <ScoreBoard game={game} away={away} home={home} />
+          <View style={styles.liveTeamIdentityRow}><View style={[styles.liveTeamIdentityCard, { backgroundColor: teamSurfaceColor(away, "away") }]}><Text style={styles.liveTeamIdentitySide}>客場(先攻)／先攻</Text><TeamLogoName team={away} textStyle={styles.liveTeamIdentityName} logoSize={26} /></View><View style={[styles.liveTeamIdentityCard, styles.liveTeamIdentityCardHome, { backgroundColor: teamSurfaceColor(home, "home") }]}><Text style={styles.liveTeamIdentitySide}>主場(先守)／後攻</Text><TeamLogoName team={home} textStyle={styles.liveTeamIdentityName} logoSize={26} align="right" /></View></View>
+          <ScoreBoard game={game} away={away} home={home} fontScale={1.3} />
           {game.status === "setup" ? <View style={styles.setupCard}><Text style={styles.setupTitle}>球員名單與比賽資訊已就緒</Text><Text style={styles.setupText}>客場(先攻)先攻，記錄員可以從第一球開始建立完整比賽紀錄。</Text><Button label="開始第一局" onPress={onStart} /></View> : null}
         </View>
         <View style={styles.recordTopPanelCol}>
@@ -3183,7 +3191,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
             <LivePanelTitle number="5" title={`第 ${selectedRailInning} 局已上場打者`} subtitle="可收合局數快速切換；與單場整體紀錄同步。" />
             <View style={styles.substitutionQuickRow}><Button label={inningFilterOpen ? "收合局數" : "切換局數"} onPress={() => setInningFilterOpen((open) => !open)} variant="secondary" compact />{!inningFilterOpen && <Button label={`第 ${selectedRailInning} 局`} onPress={() => setInningFilterOpen(true)} variant="ghost" compact />}</View>
             {inningFilterOpen && <View style={styles.substitutionQuickRow}>{inningsWithEvents.map((inning) => <Button key={inning} label={`${inning} 局`} onPress={() => { setSelectedRailInning(inning); setInningFilterOpen(false); }} variant={selectedRailInning === inning ? "primary" : "secondary"} compact />)}</View>}
-            <ScrollView style={styles.inningRailScroll} nestedScrollEnabled>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inningRailHorizontalScroll} contentContainerStyle={styles.inningRailHorizontalScrollContent} nestedScrollEnabled>
               <InningAtBatRail events={currentHalfEvents} players={battingTeam.players} />
             </ScrollView>
           </View>
@@ -3750,7 +3758,10 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
     </View>
     <View style={styles.liveInfieldWorkRow}>
       <View style={styles.liveRunnerCrossContainer}>
-        <LiveInfieldDiamondBackground themeMode="dark" />
+        <LiveInfieldDiamondBackground
+          themeMode="dark"
+          imageSource={LIVE_INFIELD_BLANK_FIELD_IMAGE}
+        />
         
         {/* 二壘 (Top Center) */}
         <View style={[styles.liveRunnerAbsoluteSlot, { top: "5%", left: "50%", transform: [{ translateX: -46 }] }]}>
@@ -4093,9 +4104,37 @@ function BatterQueuePreview({ players, events }: { players: Player[]; events: Ga
 }
 
 function InningAtBatRail({ events, players }: { events: Game["events"]; players: Player[] }) {
-  if (events.length === 0) return <View style={styles.inningRailEmpty}><Text style={styles.inningRailEmptyTitle}>本局尚無完成打席</Text><Text style={styles.inningRailEmptyText}>完成第一個打席後，早稻田紀錄格會依時間列在此處。</Text></View>;
+  if (events.length === 0) {
+    return (
+      <View style={styles.inningRailEmptyHorizontal}>
+        <Text style={styles.inningRailEmptyTitle}>本局尚無完成打席</Text>
+        <Text style={styles.inningRailEmptyText}>完成第一個打席後，早稻田紀錄格會依序橫向排列在此處。</Text>
+      </View>
+    );
+  }
   const playerInningEvents = Array.from(new Map(events.map((event) => [`${event.batterId}-${event.inning}`, aggregateInningRunnerEvents(events, event.batterId, event.inning) ?? event])).values());
-  return <View style={styles.inningRailList}>{playerInningEvents.map((event, index) => { const player = players.find((candidate) => candidate.id === event.batterId); return <View key={event.id} style={styles.inningRailItem}><View style={styles.inningRailIndex}><Text style={styles.inningRailIndexText}>{index + 1}</Text></View><View style={styles.inningRailCell}><Text numberOfLines={1} style={styles.inningRailPlayer}>#{player?.number ?? "—"} {player?.name ?? event.batterId}</Text><WasedaPersonalRecordCell size="rail" event={event} showLabels={false} /></View></View>; })}</View>;
+  return (
+    <View style={styles.inningRailListHorizontal}>
+      {playerInningEvents.map((event, index) => {
+        const player = players.find((candidate) => candidate.id === event.batterId);
+        return (
+          <View key={event.id} style={styles.inningRailCardHorizontal}>
+            <View style={styles.inningRailCardHeader}>
+              <View style={styles.inningRailIndexBadge}>
+                <Text style={styles.inningRailIndexText}>{index + 1}</Text>
+              </View>
+              <Text numberOfLines={1} style={styles.inningRailPlayerHorizontal}>
+                #{player?.number ?? "—"} {player?.name ?? event.batterId}
+              </Text>
+            </View>
+            <View style={styles.inningRailWasedaWrap}>
+              <WasedaPersonalRecordCell size="rail" event={event} showLabels={false} />
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 function LegacyRecordView({ game, away, home, myTeam, mySide, battingTeam, pitchingTeam, batter, pitcher, teamPerformance, awayPerformance, homePerformance, pitchDraft, fieldingPosition, selectedResult, selectedPitchType, selectedPitchZone, recentEvents, canUndo, onUndo, onSubstitute, onSpecialEvent, onStart, onPitch, onOutcome, onPosition, onPitchType, onPitchZone, onEdit, onFinish }: { game: Game; away: Team; home: Team; myTeam: Team; mySide: TeamSide | null; battingTeam: Team; pitchingTeam: Team; batter?: Player; pitcher?: Player; teamPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; awayPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; homePerformance: ReturnType<typeof getTeamPerformanceSummary> | null; pitchDraft: PitchDraft; fieldingPosition: string; selectedResult: AtBatResult; selectedPitchType: PitchType; selectedPitchZone: PitchLocation["zone"]; recentEvents: Array<{ id: string; batterName: string; notation: string; inning: number; half: TeamSide; result: AtBatResult; pitches: { balls: number; strikes: number; total: number } }>; canUndo: boolean; onUndo: () => void; onSubstitute: () => void; onSpecialEvent: () => void; onStart: () => void; onPitch: (kind: PitchOutcome) => void; onOutcome: (result: AtBatResult) => void; onPosition: (position: string) => void; onPitchType: (type: PitchType) => void; onPitchZone: (zone: PitchLocation["zone"]) => void; onEdit: () => void; onFinish: () => void }) {
@@ -6638,18 +6677,18 @@ const styles = StyleSheet.create({
   liveLineupColumn: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6, flex: 1, minWidth: 0 },
   liveLineupColumnTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingBottom: 4 },
   lineupListWrap: { gap: 4 },
-  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 3.5, paddingHorizontal: 3, borderRadius: 4 },
+  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: 3, paddingHorizontal: 2, borderRadius: 4 },
   lineupRowItemActive: { backgroundColor: "#EFF6FF", borderWidth: 0.5, borderColor: "#BFDBFE" },
-  lineupOrderText: { color: BRAND.muted, fontSize: 8, fontWeight: "900", width: 12 },
+  lineupOrderText: { color: BRAND.muted, fontSize: 8, fontWeight: "900", width: 10, textAlign: "center" },
   lineupOrderTextActive: { color: BRAND.blue },
-  lineupNumberText: { color: BRAND.muted, fontSize: 8, width: 18, fontWeight: "700" },
-  lineupNumberTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupNameText: { color: BRAND.ink, fontSize: 9, width: 62, fontWeight: "700" },
-  lineupNameTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupHandText: { color: BRAND.muted, fontSize: 7, fontWeight: "800", width: 20, textAlign: "center" },
-  lineupHandTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupPosText: { color: BRAND.muted, fontSize: 7, fontWeight: "900", width: 14 },
+  lineupPosText: { color: BRAND.muted, fontSize: 7.5, fontWeight: "900", width: 14, textAlign: "center" },
   lineupPosTextActive: { color: BRAND.blue },
+  lineupNameText: { color: BRAND.ink, fontSize: 8.5, flex: 1, minWidth: 24, fontWeight: "700" },
+  lineupNameTextActive: { color: BRAND.blue, fontWeight: "900" },
+  lineupNumberText: { color: BRAND.muted, fontSize: 8, width: 16, fontWeight: "700", textAlign: "right" },
+  lineupNumberTextActive: { color: BRAND.blue, fontWeight: "900" },
+  lineupHandText: { color: BRAND.muted, fontSize: 7, fontWeight: "800", width: 12, textAlign: "center" },
+  lineupHandTextActive: { color: BRAND.blue, fontWeight: "900" },
 
   /* 任務二：投手區塊與打者區塊樣式 */
   middlePitcherPanel: { backgroundColor: BRAND.white, borderColor: BRAND.line, padding: 10 },
@@ -7797,10 +7836,10 @@ const styles = StyleSheet.create({
   liveWasedaLegendItem: { color: BRAND.muted, fontSize: 9, fontWeight: "700" },
   liveWorkspace: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
 
-  // 垂直布局：頂部面板（客隊打線 / 動態比分 / 主隊打線）
+  // 垂直布局：頂部面板（客隊打線 15% / 動態比分 70% / 主隊打線 15%）
   recordTopPanel: { flexDirection: "row", gap: 8, alignItems: "stretch" },
-  recordTopPanelCol: { flex: 1, minWidth: 0, gap: 6 },
-  recordTopPanelCenter: { flex: 2, minWidth: 0, gap: 6 },
+  recordTopPanelCol: { flex: 0.15, minWidth: 0, gap: 6 },
+  recordTopPanelCenter: { flex: 0.70, minWidth: 0, gap: 6 },
 
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
   recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
@@ -7812,11 +7851,13 @@ const styles = StyleSheet.create({
   // 垂直布局：中間區塊 2（投球落點追蹤 + 擊出/觸擊後事件與換人）
   recordMiddleBlock2: { gap: 8 },
 
-  // 垂直布局：底部面板（左側本局已上場打者，右側 PLAY-BY-PLAY）
+  // 垂直布局：底部面板（左側本局已上場打者 70%，右側 PLAY-BY-PLAY 30%）
   recordBottomPanel: { flexDirection: "row", gap: 8, alignItems: "stretch" },
-  recordBottomPanelLeft: { flex: 1, minWidth: 0, gap: 6 },
-  recordBottomPanelRight: { flex: 1, minWidth: 0, gap: 6 },
+  recordBottomPanelLeft: { flex: 0.70, minWidth: 0, gap: 6 },
+  recordBottomPanelRight: { flex: 0.30, minWidth: 0, gap: 6 },
   inningRailScroll: { maxHeight: 180 },
+  inningRailHorizontalScroll: { flexGrow: 0 },
+  inningRailHorizontalScrollContent: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 2 },
 
   // 中央投打對決資訊
   centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch" },
@@ -8100,10 +8141,17 @@ const styles = StyleSheet.create({
   batterQueueNotation: { color: BRAND.navy, fontSize: 12, fontWeight: "900" },
   batterQueueResult: { color: BRAND.blue, fontSize: 9, fontWeight: "900" },
   inningRailEmpty: { flex: 1, minHeight: 220, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC", borderRadius: 10, borderWidth: 1, borderColor: BRAND.line, padding: 14, gap: 5 },
+  inningRailEmptyHorizontal: { flex: 1, minHeight: 110, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC", borderRadius: 10, borderWidth: 1, borderColor: BRAND.line, padding: 14, gap: 4 },
   inningRailEmptyTitle: { color: BRAND.navy, fontSize: 12, fontWeight: "900", textAlign: "center" },
   inningRailEmptyText: { color: BRAND.muted, fontSize: 10, lineHeight: 14, textAlign: "center" },
   inningRailList: { gap: 4 },
+  inningRailListHorizontal: { flexDirection: "row", gap: 8, alignItems: "center" },
   inningRailItem: { flexDirection: "row", gap: 4, alignItems: "stretch" },
+  inningRailCardHorizontal: { width: 142, backgroundColor: "#F8FBFF", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 8, padding: 5, gap: 4 },
+  inningRailCardHeader: { flexDirection: "row", alignItems: "center", gap: 4 },
+  inningRailIndexBadge: { width: 18, height: 18, borderRadius: 9, backgroundColor: BRAND.navy, justifyContent: "center", alignItems: "center" },
+  inningRailPlayerHorizontal: { color: BRAND.navy, fontSize: 9.5, fontWeight: "900", flex: 1 },
+  inningRailWasedaWrap: { width: 132, height: 86, alignSelf: "center", overflow: "hidden", borderRadius: 4 },
   inningRailIndex: { width: 18, justifyContent: "center", alignItems: "center", backgroundColor: BRAND.navy, borderRadius: 9 },
   inningRailIndexText: { color: BRAND.white, fontSize: 9, fontWeight: "900" },
   inningRailCell: { flex: 1, minWidth: 0, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 7, backgroundColor: "#F8FBFF", padding: 4, gap: 2 },
@@ -8267,8 +8315,8 @@ const styles = StyleSheet.create({
   liveTeamIdentityRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
   liveTeamIdentityCard: { flex: 1, minWidth: 0, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 9, gap: 3 },
   liveTeamIdentityCardHome: { alignItems: "flex-end" },
-  liveTeamIdentitySide: { color: BRAND.muted, fontSize: 10, fontWeight: "900" },
-  liveTeamIdentityName: { color: BRAND.navy, fontSize: 14, fontWeight: "900" },
+  liveTeamIdentitySide: { color: BRAND.muted, fontSize: 13, fontWeight: "900" },
+  liveTeamIdentityName: { color: BRAND.navy, fontSize: 18, fontWeight: "900" },
   homeSplitRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
   homeSplitCol: { flex: 1, minWidth: 280 },
   scoreboardTableWrap: { marginVertical: 4 },
