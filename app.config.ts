@@ -143,6 +143,28 @@ const config: ExpoConfig = {
         android: {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
+          extraProguardRules: `
+            -dontwarn com.facebook.react.**
+            -dontwarn com.swmansion.reanimated.**
+            -dontwarn com.swmansion.worklets.**
+            -dontwarn com.horcrux.svg.**
+            -dontwarn com.reactnativecommunity.asyncstorage.**
+            -dontwarn com.reactnativecommunity.slider.**
+            -dontwarn expo.modules.**
+            -keep class com.facebook.react.** { *; }
+            -keep class com.swmansion.reanimated.** { *; }
+            -keep class com.swmansion.worklets.** { *; }
+            -keep class com.horcrux.svg.** { *; }
+            -keep class com.reactnativecommunity.asyncstorage.** { *; }
+            -keep class com.reactnativecommunity.slider.** { *; }
+            -keep class expo.modules.** { *; }
+          `,
+          extraGradleProperties: {
+            "org.gradle.jvmargs": "-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8",
+            "org.gradle.parallel": "true",
+            "org.gradle.caching": "true",
+            "android.enableShrinkResourcesInReleaseBuilds": "false",
+          },
         },
       },
     ],

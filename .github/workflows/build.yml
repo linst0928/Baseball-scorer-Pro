@@ -68,15 +68,16 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          # 將 Gradle 與 Kotlin 編譯器限制在可預期的記憶體範圍內，避免 Runner
-          # 在原生編譯時因競爭資源而讓 daemon 非預期終止。
+          # 將 Gradle 與 Kotlin 編譯器配置充足記憶體 (4GB)，避免在 C++、Hermes Bytecode 與 R8 釋出編譯時因記憶體不足而失敗
           ./gradlew assembleRelease \
             --no-daemon \
+            --parallel \
+            --build-cache \
             --max-workers=2 \
             --stacktrace \
-            --warning-mode=all \
-            -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" \
-            -Dkotlin.daemon.jvm.options=-Xmx512m
+            --warning-mode=summary \
+            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
+            -Dkotlin.daemon.jvm.options=-Xmx1024m
 
       - name: 輸出失敗診斷資訊
         if: failure()
