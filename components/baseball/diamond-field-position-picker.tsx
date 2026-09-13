@@ -50,14 +50,14 @@ export function LiveInfieldDiamondBackground({
         <Image source={imageSource} style={StyleSheet.absoluteFill} resizeMode="contain" />
       ) : (
         <Svg
-          viewBox="0 0 400 250"
+          viewBox="0 0 400 400"
           preserveAspectRatio="xMidYMid meet"
           style={StyleSheet.absoluteFill}
         >
-          <Rect x="0" y="0" width="400" height="250" fill={bgColor} />
+          <Rect x="0" y="0" width="400" height="400" fill={bgColor} />
           {/* 外野綠色草皮扇形 */}
           <Path
-            d="M 200 210 L 30 35 A 240 240 0 0 1 370 35 Z"
+            d="M 200 320 L 30 70 A 240 240 0 0 1 370 70 Z"
             fill="#5D941E"
             stroke="#F5A623"
             strokeWidth={2}
@@ -65,25 +65,25 @@ export function LiveInfieldDiamondBackground({
           />
           {/* 內野橘黃色紅土走道 */}
           <Path
-            d="M 200 210 L 70 75 A 180 180 0 0 1 330 75 Z"
+            d="M 200 320 L 70 140 A 180 180 0 0 1 330 140 Z"
             fill="#F5A623"
             opacity={0.95}
           />
           {/* 白色界外線 */}
-          <Line x1="200" y1="210" x2="25" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
-          <Line x1="200" y1="210" x2="375" y2="30" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+          <Line x1="200" y1="320" x2="25" y2="60" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+          <Line x1="200" y1="320" x2="375" y2="60" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
           {/* 內野紅土菱形 */}
-          <Polygon points="200,210 265,145 200,80 135,145" fill="#F5A623" />
+          <Polygon points="200,320 280,240 200,160 120,240" fill="#F5A623" />
           {/* 內野草地菱形島 */}
-          <Polygon points="200,195 250,145 200,95 150,145" fill="#5D941E" />
+          <Polygon points="200,300 260,240 200,180 140,240" fill="#5D941E" />
           {/* 投手丘與投手板 */}
-          <Circle cx="200" cy="145" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
-          <Rect x="194" y="143.5" width="12" height="3" rx="1" fill="#FFFFFF" />
+          <Circle cx="200" cy="240" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
+          <Rect x="194" y="238.5" width="12" height="3" rx="1" fill="#FFFFFF" />
           {/* 壘包 (2B, 1B, 3B, HP) */}
-          <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-          <Polygon points="265,139 271,145 265,151 259,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-          <Polygon points="135,139 141,145 135,151 129,145" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-          <Polygon points="200,203 207,210 200,217 193,210" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+          <Polygon points="200,154 206,160 200,166 194,160" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+          <Polygon points="280,234 286,240 280,246 274,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+          <Polygon points="120,234 126,240 120,246 114,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+          <Polygon points="200,313 207,320 200,327 193,320" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
         </Svg>
       )}
     </View>
@@ -179,16 +179,16 @@ export function DiamondFieldPositionPicker({
           <Image source={fieldImageSource} style={StyleSheet.absoluteFill} resizeMode="contain" />
         ) : (
           <Svg
-            viewBox="0 0 400 250"
+            viewBox="0 0 400 400"
             preserveAspectRatio="xMidYMid meet"
             style={StyleSheet.absoluteFill}
           >
             {/* 暗黑深藍波點科技球場底色 */}
-            <Rect x="0" y="0" width="400" height="250" rx="10" fill="#061325" />
+            <Rect x="0" y="0" width="400" height="400" rx="10" fill="#061325" />
 
             {/* 外野綠色草皮扇形弧 */}
             <Path
-              d="M 200 200 L 35 35 A 235 235 0 0 1 365 35 Z"
+              d="M 200 320 L 35 70 A 235 235 0 0 1 365 70 Z"
               fill="#5D941E"
               stroke="#F5A623"
               strokeWidth={2}
@@ -196,49 +196,49 @@ export function DiamondFieldPositionPicker({
 
             {/* 內野橘黃色紅土走道 (Dirt Track Arc) */}
             <Path
-              d="M 200 200 L 75 75 A 175 175 0 0 1 325 75 Z"
+              d="M 200 320 L 75 140 A 175 175 0 0 1 325 140 Z"
               fill="#F5A623"
             />
 
             {/* 左/右白色界外線 (Foul Lines) */}
-            <Line x1="200" y1="200" x2="30" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
-            <Line x1="200" y1="200" x2="370" y2="30" stroke="#FFFFFF" strokeWidth={2.5} />
+            <Line x1="200" y1="320" x2="30" y2="60" stroke="#FFFFFF" strokeWidth={2.5} />
+            <Line x1="200" y1="320" x2="370" y2="60" stroke="#FFFFFF" strokeWidth={2.5} />
 
             {/* 內野紅土菱形 (Dirt Diamond) */}
             <Polygon
-              points="200,200 260,140 200,80 140,140"
+              points="200,320 280,240 200,160 120,240"
               fill="#F5A623"
             />
 
             {/* 內野草地菱形島 (Infield Grass Island) */}
             <Polygon
-              points="200,186 246,140 200,94 154,140"
+              points="200,300 260,240 200,180 140,240"
               fill="#5D941E"
             />
 
             {/* 投手丘與白色投手板 */}
-            <Circle cx="200" cy="137.5" r="13" fill="#D97706" />
-            <Rect x="194" y="136" width="12" height="3" rx="1" fill="#FFFFFF" />
+            <Circle cx="200" cy="240" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
+            <Rect x="194" y="238.5" width="12" height="3" rx="1" fill="#FFFFFF" />
 
             {/* 二壘包 (2B) */}
-            <Polygon points="200,74 206,80 200,86 194,80" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+            <Polygon points="200,154 206,160 200,166 194,160" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
 
             {/* 一壘包 (1B) */}
-            <Polygon points="260,134 266,140 260,146 254,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+            <Polygon points="280,234 286,240 280,246 274,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
 
             {/* 三壘包 (3B) */}
-            <Polygon points="140,134 146,140 140,146 134,140" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
+            <Polygon points="120,234 126,240 120,246 114,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
 
             {/* 本壘板區紅土圓弧 (Home Plate Dirt Area) */}
-            <Circle cx="200" cy="200" r="18" fill="#F5A623" stroke="#FFFFFF" strokeWidth={1.5} />
+            <Circle cx="200" cy="320" r="18" fill="#F5A623" stroke="#FFFFFF" strokeWidth={1.5} />
 
-            {/* 本壘板 (Home Plate) - 精準置中於菱形尖端 (200, 200) */}
-            <Polygon points="200,193 207,200 200,207 193,200" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={0.5} />
+            {/* 本壘板 (Home Plate) - 精準置中於菱形尖端 (200, 320) */}
+            <Polygon points="200,313 207,320 200,327 193,320" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={0.5} />
 
             {/* 左下角「常用守備位置」金色浮水印標籤 */}
             <SvgText
               x="14"
-              y="238"
+              y="380"
               fill="#F5A623"
               fontSize="12"
               fontWeight="900"
@@ -375,12 +375,12 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  /* 常用守備位置.jpg 風格球場畫布 - 鎖定 16:10 長寬比與防擠壓 */
+  /* 常用守備位置.jpg 風格球場畫布 - 鎖定等比例正方形與防擠壓 */
   fieldCanvasContainer: {
     width: "100%",
-    maxWidth: 420,
-    aspectRatio: 16 / 10,
-    maxHeight: 260,
+    maxWidth: 380,
+    aspectRatio: 1,
+    maxHeight: 380,
     alignSelf: "center",
     borderRadius: 10,
     position: "relative",

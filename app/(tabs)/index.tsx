@@ -150,6 +150,7 @@ import {
   swapDefensivePositions,
   swapTeamDefensiveConfigurations,
   getChangedDefensivePositions,
+  getGameTeamLineup,
 } from "@/lib/baseball/types";
 import { calculateWasedaMatrixStats, getScorebookDisplayOverrideKey, type WasedaScorebookEntry } from "@/lib/baseball/waseda-scorebook-projection";
 import { AT_BAT_CORRECTION_MODES, getPitchCorrectionPreview, getRecordCorrectionLockReason, getRecordCorrectionSymbolIdsForMode, getRecordCorrectionTargetsForMode, getRecordCorrectionValue, isRecordCorrectionUnlocked, mergeRecordCorrection, PITCH_CORRECTION_OPTIONS, RECORD_CORRECTION_OTHER_OPTIONS, RECORD_CORRECTION_SYMBOL_IDS, RECORD_CORRECTION_TARGETS, type AtBatCorrectionMode, type RecordCorrectionTarget } from "@/lib/baseball/record-correction";
@@ -3016,10 +3017,11 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
   const firstRunner = Boolean(game.runners.first);
   const secondRunner = Boolean(game.runners.second);
   const thirdRunner = Boolean(game.runners.third);
-  const atBatOrder = game.half === "away" ? (game.awayBatterIndex % Math.max(battingTeam.players.length, 1)) + 1 : (game.homeBatterIndex % Math.max(battingTeam.players.length, 1)) + 1;
-  const orderedBatters = [...battingTeam.players].sort((left, right) => (left.battingOrder ?? 99) - (right.battingOrder ?? 99));
+  const orderedBatters = getGameTeamLineup(game, battingTeam, game.half);
+  const totalBatters = Math.max(orderedBatters.length, 1);
+  const atBatOrder = ((game.half === "away" ? game.awayBatterIndex : game.homeBatterIndex) % totalBatters) + 1;
   const currentBatterIndex = Math.max(orderedBatters.findIndex((player) => player.id === batter?.id), 0);
-  const nextBatters = [1, 2].map((offset) => orderedBatters[(currentBatterIndex + offset) % Math.max(orderedBatters.length, 1)]).filter((player): player is Player => Boolean(player));
+  const nextBatters = [1, 2].map((offset) => orderedBatters[(currentBatterIndex + offset) % totalBatters]).filter((player): player is Player => Boolean(player));
   const [inningFilterOpen, setInningFilterOpen] = useState(false);
   const [selectedRailInning, setSelectedRailInning] = useState(game.inning);
   const [summaryMode, setSummaryMode] = useState<"compact" | "detailed">("compact");
@@ -3328,46 +3330,7 @@ function formatPlayerHand(player?: Player): string {
 }
 
 function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: TeamSide; game: Game; batter?: Player }) {
-  const getLineup = (team: Team, side: TeamSide) => {
-    const lineup = side === "away" ? game.awayLineup : game.homeLineup;
-    const playerMap = new Map(team.players.map((p) => [p.id, p]));
-
-    if (lineup && lineup.battingOrderIds && lineup.battingOrderIds.length > 0) {
-      const orderedPlayers = lineup.battingOrderIds
-        .map((playerId, index) => {
-          const player = playerMap.get(playerId);
-          if (!player) return undefined;
-          const defensivePos = lineup.defensivePositions[playerId] || player.position;
-          const updatedPlayer: Player = {
-            ...player,
-            battingOrder: index + 1,
-            position: defensivePos,
-          };
-          return updatedPlayer;
-        })
-        .filter((p): p is Player => p !== undefined);
-
-      if (orderedPlayers.length >= 9) {
-        return orderedPlayers.slice(0, 9);
-      }
-
-      const existingIds = new Set(orderedPlayers.map((p) => p.id));
-      const remaining = team.players
-        .filter((p) => !existingIds.has(p.id))
-        .map((p) => ({ ...p, battingOrder: undefined }));
-      return [...orderedPlayers, ...remaining].slice(0, 9);
-    }
-
-    const lineupPlayers = [...team.players]
-      .filter((p) => p.battingOrder !== undefined && p.battingOrder >= 1 && p.battingOrder <= 9)
-      .sort((a, b) => (a.battingOrder ?? 0) - (b.battingOrder ?? 0));
-    if (lineupPlayers.length >= 9) return lineupPlayers.slice(0, 9);
-    const existingIds = new Set(lineupPlayers.map((p) => p.id));
-    const remaining = team.players.filter((p) => !existingIds.has(p.id));
-    return [...lineupPlayers, ...remaining].slice(0, 9);
-  };
-
-  const lineup = getLineup(team, side);
+  const lineup = getGameTeamLineup(game, team, side);
   const accentColor = teamAccentColor(team, side);
 
   const renderPlayerRow = (player: Player | undefined, index: number, isCurrent: boolean) => {
@@ -6732,7 +6695,7 @@ const styles = StyleSheet.create({
   outValueColor: { color: BRAND.red },
 
   /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 */
-  liveRunnerCrossContainer: { width: "100%", maxWidth: 440, minWidth: 0, aspectRatio: 1.1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
+  liveRunnerCrossContainer: { width: "100%", maxWidth: 440, minWidth: 0, aspectRatio: 1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
   liveRunnerCrossBackgroundImage: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%", opacity: 0.88 },
   liveRunnerAbsoluteSlot: { position: "absolute", alignItems: "center", gap: 3 },
   teamPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
@@ -7931,7 +7894,7 @@ const styles = StyleSheet.create({
   liveRunnerZoomIcon: { color: "#A7F3D0", fontSize: 11, fontWeight: "900", lineHeight: 13 },
   liveRunnerZoomText: { color: "#D1FAE5", fontSize: 7, fontWeight: "900", lineHeight: 10 },
   liveInfieldWorkRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
-  liveRunnerCross: { flex: 1, minWidth: 0, minHeight: 280, aspectRatio: 1.1, justifyContent: "space-between", padding: 10, overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
+  liveRunnerCross: { flex: 1, minWidth: 0, minHeight: 280, aspectRatio: 1, justifyContent: "space-between", padding: 10, overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
   liveRunnerCrossBackground: { opacity: 0.88, borderRadius: 9, backgroundColor: BRAND.white },
   liveRunnerTopSlot: { alignItems: "center", justifyContent: "center", gap: 3 },
   liveRunnerMiddleSlot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 5 },

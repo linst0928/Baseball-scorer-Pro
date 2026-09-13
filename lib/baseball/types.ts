@@ -1633,14 +1633,13 @@ export function getRecentEvents(game: Game, teams: Team[]): Array<AtBatEvent & {
 }
 
 export function getInningRows(game: Game): ScoreByInning[] {
-  const lastRecordedInning = Math.max(
-    game.inning,
-    game.maxInnings,
-    ...game.score.map((row) => row.inning),
-    ...game.events.map((event) => event.inning),
-    ...(game.specialEvents ?? []).map((event) => event.inning),
-  );
-  return ensureScoreThroughInning(game.score, lastRecordedInning);
+  const eventsInnings = game.events.map((e) => e.inning);
+  const specialEventsInnings = (game.specialEvents ?? []).map((e) => e.inning);
+  const scoredInnings = game.score.filter((s) => s.away > 0 || s.home > 0).map((s) => s.inning);
+  const actualMaxInning = Math.max(game.inning, 1, ...eventsInnings, ...specialEventsInnings, ...scoredInnings);
+  const scheduledInnings = game.maxInnings || 6;
+  const displayedInningsCount = Math.max(scheduledInnings, actualMaxInning);
+  return ensureScoreThroughInning(game.score, displayedInningsCount);
 }
 
 /**
@@ -1649,7 +1648,7 @@ export function getInningRows(game: Game): ScoreByInning[] {
  */
 export function ensureScoreThroughInning(score: ScoreByInning[], inning: number): ScoreByInning[] {
   const rowMap = new Map(score.map((row) => [row.inning, { ...row }]));
-  const finalInning = Math.max(1, inning, ...rowMap.keys());
+  const finalInning = Math.max(1, inning);
   return Array.from({ length: finalInning }, (_, index) => rowMap.get(index + 1) ?? ({ inning: index + 1, away: 0, home: 0 }));
 }
 
@@ -1984,4 +1983,47 @@ export function formatGameDateTime(game?: { date: string; time?: string } | null
     return `${rawDate} ${game.time.trim()}`;
   }
   return `${rawDate} 08:00`;
+}
+
+/**
+ * 取得指定球隊在本場賽事中的打線 (1~9 棒及延伸球員)。
+ * 優先依據 game.awayLineup / game.homeLineup 的先發打序 ID 陣列，
+ * 其次依據球員自身的 battingOrder 排序，保證打線名單與待打擊區 NEXT 1/NEXT 2 一致。
+ */
+export function getGameTeamLineup(game: Game, team: Team, side: TeamSide): Player[] {
+  const lineup = side === "away" ? game.awayLineup : game.homeLineup;
+  const playerMap = new Map(team.players.map((p) => [p.id, p]));
+
+  if (lineup && lineup.battingOrderIds && lineup.battingOrderIds.length > 0) {
+    const orderedPlayers = lineup.battingOrderIds
+      .map((playerId, index) => {
+        const player = playerMap.get(playerId);
+        if (!player) return undefined;
+        const defensivePos = lineup.defensivePositions[playerId] || player.position;
+        return {
+          ...player,
+          battingOrder: index + 1,
+          position: defensivePos,
+        };
+      })
+      .filter((p): p is Player => p !== undefined);
+
+    if (orderedPlayers.length >= 9) {
+      return orderedPlayers.slice(0, 9);
+    }
+
+    const existingIds = new Set(orderedPlayers.map((p) => p.id));
+    const remaining = team.players
+      .filter((p) => !existingIds.has(p.id))
+      .map((p) => ({ ...p, battingOrder: undefined }));
+    return [...orderedPlayers, ...remaining].slice(0, 9);
+  }
+
+  const lineupPlayers = [...team.players]
+    .filter((p) => p.battingOrder !== undefined && p.battingOrder >= 1 && p.battingOrder <= 9)
+    .sort((a, b) => (a.battingOrder ?? 0) - (b.battingOrder ?? 0));
+  if (lineupPlayers.length >= 9) return lineupPlayers.slice(0, 9);
+  const existingIds = new Set(lineupPlayers.map((p) => p.id));
+  const remaining = team.players.filter((p) => !existingIds.has(p.id));
+  return [...lineupPlayers, ...remaining].slice(0, 9);
 }
