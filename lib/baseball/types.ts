@@ -1995,35 +1995,48 @@ export function getGameTeamLineup(game: Game, team: Team, side: TeamSide): Playe
   const playerMap = new Map(team.players.map((p) => [p.id, p]));
 
   if (lineup && lineup.battingOrderIds && lineup.battingOrderIds.length > 0) {
-    const orderedPlayers = lineup.battingOrderIds
-      .map((playerId, index) => {
-        const player = playerMap.get(playerId);
-        if (!player) return undefined;
+    const orderedPlayers: Player[] = [];
+    for (let i = 0; i < lineup.battingOrderIds.length; i++) {
+      const playerId = lineup.battingOrderIds[i];
+      const player = playerMap.get(playerId);
+      if (player) {
         const defensivePos = lineup.defensivePositions[playerId] || player.position;
-        return {
+        orderedPlayers.push({
           ...player,
-          battingOrder: index + 1,
+          battingOrder: i + 1,
           position: defensivePos,
-        };
-      })
-      .filter((p): p is Player => p !== undefined);
+        });
+      }
+    }
 
     if (orderedPlayers.length >= 9) {
       return orderedPlayers.slice(0, 9);
     }
 
     const existingIds = new Set(orderedPlayers.map((p) => p.id));
-    const remaining = team.players
-      .filter((p) => !existingIds.has(p.id))
-      .map((p) => ({ ...p, battingOrder: undefined }));
+    const remaining: Player[] = [];
+    for (const p of team.players) {
+      if (p && !existingIds.has(p.id)) {
+        const pCopy = { ...p };
+        delete pCopy.battingOrder;
+        remaining.push(pCopy as Player);
+      }
+    }
     return [...orderedPlayers, ...remaining].slice(0, 9);
   }
 
   const lineupPlayers = [...team.players]
-    .filter((p) => p.battingOrder !== undefined && p.battingOrder >= 1 && p.battingOrder <= 9)
+    .filter((p) => p.battingOrder !== undefined && p.battingOrder! >= 1 && p.battingOrder! <= 9)
     .sort((a, b) => (a.battingOrder ?? 0) - (b.battingOrder ?? 0));
   if (lineupPlayers.length >= 9) return lineupPlayers.slice(0, 9);
   const existingIds = new Set(lineupPlayers.map((p) => p.id));
-  const remaining = team.players.filter((p) => !existingIds.has(p.id));
+  const remaining: Player[] = [];
+  for (const p of team.players) {
+    if (p && !existingIds.has(p.id)) {
+      const pCopy = { ...p };
+      delete pCopy.battingOrder;
+      remaining.push(pCopy as Player);
+    }
+  }
   return [...lineupPlayers, ...remaining].slice(0, 9);
 }
