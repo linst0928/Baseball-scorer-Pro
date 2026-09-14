@@ -46,7 +46,7 @@ export function LiveInfieldDiamondBackground({
   return (
     <View style={[styles.liveFieldCanvas, isDark && styles.liveFieldCanvasDark, style]}>
       <Image
-        source={imageSource || require("../../assets/images/常用守備位置(內野空白).jpg")}
+        source={imageSource || require("../../assets/images/temp_image_1789358223242.jpeg")}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
       />
@@ -137,10 +137,10 @@ export function DiamondFieldPositionPicker({
         </Text>
       ) : null}
 
-      {/* 棒球場菱形圖：採用'常用守備位置(空白).jpg'的圖片取代 */}
+      {/* 棒球場菱形圖：採用'temp_image_1789358467721.jpeg'的圖片取代 */}
       <View style={styles.fieldCanvasContainer}>
         <Image
-          source={fieldImageSource || require("../../assets/images/常用守備位置(空白).jpg")}
+          source={fieldImageSource || require("../../assets/images/temp_image_1789358467721.jpeg")}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
