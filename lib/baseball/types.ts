@@ -1596,26 +1596,12 @@ export function nextFieldersChoiceRunnerState(runners: RunnerState, batterId: st
 }
 
 export function getCurrentBatter(game: Game, team: Team): Player {
-  const index = team.id === game.awayTeamId ? game.awayBatterIndex : game.homeBatterIndex;
-  const registeredPlayers = getRegisteredPlayers(game, team);
-  const battingPool = registeredPlayers.length > 0 ? registeredPlayers : team.players;
-  
-  // 棒球打序以 9 人為一輪槽位 (0~8)
-  const slotIndex = index % 9;
-
-  // 檢查是否有針對該棒次/球員的代打 (PH) 更換
-  const teamSubs = (game.substitutions ?? []).filter((s) => s.teamId === team.id && (s.type === "代打" || s.type === "PH"));
-  const lastSub = teamSubs.reverse().find((s) => {
-    const outPlayer = team.players.find((p) => p.id === s.playerOutId);
-    return outPlayer ? (outPlayer.number - 1) % 9 === slotIndex : false;
-  });
-
-  if (lastSub) {
-    const inPlayer = team.players.find((p) => p.id === lastSub.playerInId);
-    if (inPlayer) return inPlayer;
-  }
-
-  return battingPool[slotIndex] ?? team.players[0];
+  const side: TeamSide = team.id === game.awayTeamId ? "away" : "home";
+  const lineup = getGameTeamLineup(game, team, side);
+  if (!lineup || lineup.length === 0) return team.players[0];
+  const rawIndex = side === "away" ? game.awayBatterIndex : game.homeBatterIndex;
+  const index = rawIndex % lineup.length;
+  return lineup[index] ?? team.players[0];
 }
 
 export function getCurrentPitcher(game: Game, homeTeam: Team, awayTeam: Team): Player {

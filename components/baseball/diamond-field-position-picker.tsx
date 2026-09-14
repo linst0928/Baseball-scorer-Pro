@@ -30,8 +30,8 @@ export {
 };
 
 /**
- * 現場紀錄「壘包與跑壘紀錄」專用的向量棒球場內野背景圖示
- * 包含外野草皮、內野界外線、內野紅土菱形/跑道、內野草皮島、投手丘／投手板及各壘包（本壘、一壘、二壘、三壘）
+ * 現場紀錄「壘包與跑壘紀錄」專用的向量棒球場內野背景圖示 (B1 區塊：僅內野 Infield Only)
+ * 裁切 viewBox 僅保留一壘、二壘、三壘與本壘連線的菱形內野區域，不顯示外野綠地
  */
 export function LiveInfieldDiamondBackground({
   style,
@@ -47,28 +47,20 @@ export function LiveInfieldDiamondBackground({
   return (
     <View style={[styles.liveFieldCanvas, isDark && styles.liveFieldCanvasDark, style]}>
       <Svg
-        viewBox="0 0 400 400"
+        viewBox="90 130 220 220"
         preserveAspectRatio="xMidYMid meet"
         style={StyleSheet.absoluteFill}
       >
-        <Rect x="0" y="0" width="400" height="400" fill={bgColor} />
-        {/* 外野綠色草皮扇形 */}
-        <Path
-          d="M 200 320 L 30 70 A 240 240 0 0 1 370 70 Z"
-          fill="#5D941E"
-          stroke="#F5A623"
-          strokeWidth={2}
-          opacity={0.9}
-        />
+        <Rect x="90" y="130" width="220" height="220" fill={bgColor} />
         {/* 內野橘黃色紅土走道 */}
         <Path
-          d="M 200 320 L 70 140 A 180 180 0 0 1 330 140 Z"
+          d="M 200 320 L 95 145 A 155 155 0 0 1 305 145 Z"
           fill="#F5A623"
           opacity={0.95}
         />
         {/* 白色界外線 */}
-        <Line x1="200" y1="320" x2="25" y2="60" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
-        <Line x1="200" y1="320" x2="375" y2="60" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+        <Line x1="200" y1="320" x2="90" y2="135" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
+        <Line x1="200" y1="320" x2="310" y2="135" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
         {/* 內野紅土菱形 */}
         <Polygon points="200,320 280,240 200,160 120,240" fill="#F5A623" />
         {/* 內野草地菱形島 */}

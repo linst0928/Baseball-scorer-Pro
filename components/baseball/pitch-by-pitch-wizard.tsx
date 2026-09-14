@@ -151,14 +151,17 @@ export function PitchByPitchWizard({
     return runnerQueue[runnerQueueIndex] || null;
   }, [runnerQueue, runnerQueueIndex]);
 
-  // 取得當前打者名稱
+  // 取得當前打者物件與名稱 (正確對應攻擊方打線與棒次指標)
+  const currentBatter = useMemo(() => {
+    if (battingPlayers.length === 0) return undefined;
+    const rawIndex = present.game.half === "away" ? present.game.awayBatterIndex : present.game.homeBatterIndex;
+    const currentBatterIndex = rawIndex % battingPlayers.length;
+    return battingPlayers[currentBatterIndex];
+  }, [present.game.half, present.game.awayBatterIndex, present.game.homeBatterIndex, battingPlayers]);
+
   const currentBatterName = useMemo(() => {
-    const batterId = present.game.half === "away"
-      ? present.game.homeRegisteredPlayerIds?.[present.game.awayBatterIndex]
-      : present.game.awayRegisteredPlayerIds?.[present.game.homeBatterIndex];
-    const player = battingPlayers.find((p) => p.id === batterId);
-    return player ? `#${player.number} ${player.name}` : "未知打者";
-  }, [present, battingPlayers]);
+    return currentBatter ? `#${currentBatter.number} ${currentBatter.name}` : "未知打者";
+  }, [currentBatter]);
 
   // --- Step 1 處理方法 ---
   const handlePitchOutcome = (outcome: PitchOutcome) => {
@@ -203,9 +206,7 @@ export function PitchByPitchWizard({
 
       if (newBalls >= 4) {
         // 四壞保送自動擠回分數
-        const batterId = present.game.half === "away"
-          ? present.game.awayRegisteredPlayerIds?.[present.game.awayBatterIndex]
-          : present.game.homeRegisteredPlayerIds?.[present.game.homeBatterIndex];
+        const batterId = currentBatter?.id;
 
         let finalRunners = { ...present.game.runners };
         let walkRuns = 0;
@@ -295,9 +296,7 @@ export function PitchByPitchWizard({
     }
 
     const isWalk = result === "BB" || result === "HBP";
-    const batterId = present.game.half === "away"
-      ? present.game.awayRegisteredPlayerIds?.[present.game.awayBatterIndex]
-      : present.game.homeRegisteredPlayerIds?.[present.game.homeBatterIndex];
+    const batterId = currentBatter?.id;
 
     let nextRunners = { ...present.game.runners };
     let nextStep: 1 | 2 | 3 | 4 = 4;
@@ -451,9 +450,7 @@ export function PitchByPitchWizard({
       rbi: atBatResult === "BB" && present.game.runners.first && present.game.runners.second && present.game.runners.third ? 1 : 0,
     };
 
-    const batterId = present.game.half === "away"
-      ? present.game.awayRegisteredPlayerIds?.[present.game.awayBatterIndex]
-      : present.game.homeRegisteredPlayerIds?.[present.game.homeBatterIndex];
+    const batterId = currentBatter?.id;
 
     const nextRunnersWithBatter = { ...tempRunners };
     // 安打、失誤、保送與特殊上壘決定打者到達哪一壘，原壘上跑者已在 Step 3 循序處理
@@ -490,6 +487,10 @@ export function PitchByPitchWizard({
       }
     }
 
+    // 打席結束：當半局未結束時，必須推進 currentBatterIndex = (currentBatterIndex + 1) % lineup.length
+    const nextAwayBatterIndex = present.game.half === "away" ? present.game.awayBatterIndex + 1 : present.game.awayBatterIndex;
+    const nextHomeBatterIndex = present.game.half === "home" ? present.game.homeBatterIndex + 1 : present.game.homeBatterIndex;
+
     const finalGame: Game = {
       ...present.game,
       score: finalScore,
@@ -497,6 +498,8 @@ export function PitchByPitchWizard({
       outs: tempOuts >= 3 ? 0 : tempOuts,
       inning: tempOuts >= 3 ? present.game.inning + (present.game.half === "home" ? 1 : 0) : present.game.inning,
       half: tempOuts >= 3 ? (present.game.half === "away" ? "home" : "away") : present.game.half,
+      awayBatterIndex: nextAwayBatterIndex,
+      homeBatterIndex: nextHomeBatterIndex,
     };
 
     const finalSnapshot: GameSnapshot = {

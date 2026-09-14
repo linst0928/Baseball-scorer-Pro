@@ -3018,8 +3018,8 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
   const thirdRunner = Boolean(game.runners.third);
   const orderedBatters = getGameTeamLineup(game, battingTeam, game.half);
   const totalBatters = Math.max(orderedBatters.length, 1);
-  const atBatOrder = ((game.half === "away" ? game.awayBatterIndex : game.homeBatterIndex) % totalBatters) + 1;
-  const currentBatterIndex = Math.max(orderedBatters.findIndex((player) => player.id === batter?.id), 0);
+  const currentBatterIndex = ((game.half === "away" ? game.awayBatterIndex : game.homeBatterIndex) % totalBatters);
+  const atBatOrder = currentBatterIndex + 1;
   const nextBatters = [1, 2].map((offset) => orderedBatters[(currentBatterIndex + offset) % totalBatters]).filter((player): player is Player => Boolean(player));
   const [inningFilterOpen, setInningFilterOpen] = useState(false);
   const [selectedRailInning, setSelectedRailInning] = useState(game.inning);
@@ -6692,8 +6692,8 @@ const styles = StyleSheet.create({
   outLabelColor: { color: BRAND.red },
   outValueColor: { color: BRAND.red },
 
-  /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 - 鎖定等比例正方形 aspect-square */
-  liveRunnerCrossContainer: { flex: 1, width: "100%", maxWidth: 380, minWidth: 0, aspectRatio: 1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
+  /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 - 鎖定等比例正方形 aspect-square (移除 flex: 1 避免垂直拉伸) */
+  liveRunnerCrossContainer: { width: "100%", maxWidth: 380, minWidth: 0, aspectRatio: 1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, flexShrink: 0 },
   liveRunnerCrossBackgroundImage: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%", opacity: 0.88 },
   liveRunnerAbsoluteSlot: { position: "absolute", alignItems: "center", gap: 3 },
   teamPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
@@ -7892,7 +7892,7 @@ const styles = StyleSheet.create({
   liveRunnerZoomIcon: { color: "#A7F3D0", fontSize: 11, fontWeight: "900", lineHeight: 13 },
   liveRunnerZoomText: { color: "#D1FAE5", fontSize: 7, fontWeight: "900", lineHeight: 10 },
   liveInfieldWorkRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
-  liveRunnerCross: { flex: 1, minWidth: 0, minHeight: 280, aspectRatio: 1, justifyContent: "space-between", padding: 10, overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
+  liveRunnerCross: { width: "100%", maxWidth: 380, minWidth: 0, minHeight: 280, aspectRatio: 1, justifyContent: "space-between", padding: 10, overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, flexShrink: 0, alignSelf: "center" },
   liveRunnerCrossBackground: { opacity: 0.88, borderRadius: 9, backgroundColor: BRAND.white },
   liveRunnerTopSlot: { alignItems: "center", justifyContent: "center", gap: 3 },
   liveRunnerMiddleSlot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 5 },
