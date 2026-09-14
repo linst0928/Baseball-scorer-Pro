@@ -3725,7 +3725,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
         />
         
         {/* 二壘 (Top Center) */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "5%", left: "50%", transform: [{ translateX: -46 }] }]}>
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "16%", left: "50%", transform: [{ translateX: -46 }, { translateY: -40 }] }]}>
           <View style={[styles.liveRunnerScoreCell, game.runners.second && styles.liveRunnerScoreCellOccupied]}>
             <WasedaBaseCell {...quadrants[2]} dense style={{ borderWidth: 0 }} />
           </View>
@@ -3735,7 +3735,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
         </View>
 
         {/* 三壘 (Middle Left) */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "35%", left: "5%" }]}>
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "48%", left: "18%", transform: [{ translateX: -46 }, { translateY: -40 }] }]}>
           <View style={[styles.liveRunnerScoreCell, game.runners.third && styles.liveRunnerScoreCellOccupied]}>
             <WasedaBaseCell {...quadrants[3]} dense style={{ borderWidth: 0 }} />
           </View>
@@ -3744,8 +3744,8 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           </View>
         </View>
 
-        {/* 投手丘 (Center) */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "35%", left: "50%", transform: [{ translateX: -36 }] }]}>
+        {/* 投手丘 (Center - 投手名稱正上方) */}
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "48%", left: "50%", transform: [{ translateX: -36 }, { translateY: -36 }] }]}>
           <View style={styles.liveRunnerMound}>
             <Text style={styles.liveRunnerMoundText}>投</Text>
             <Text style={styles.liveRunnerMoundText}>#{pitcher?.number ?? "—"}</Text>
@@ -3754,7 +3754,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
         </View>
 
         {/* 一壘 (Middle Right) */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "35%", right: "5%" }]}>
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "48%", left: "82%", transform: [{ translateX: -46 }, { translateY: -40 }] }]}>
           <View style={[styles.liveRunnerScoreCell, game.runners.first && styles.liveRunnerScoreCellOccupied]}>
             <WasedaBaseCell {...quadrants[1]} dense style={{ borderWidth: 0 }} />
           </View>
@@ -3764,7 +3764,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
         </View>
 
         {/* 本壘 (Bottom Center) */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { bottom: "5%", left: "50%", transform: [{ translateX: -46 }] }]}>
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "80%", left: "50%", transform: [{ translateX: -46 }, { translateY: -40 }] }]}>
           <View style={styles.liveRunnerScoreCell}>
             <WasedaBaseCell {...quadrants[0]} dense style={{ borderWidth: 0 }} />
           </View>
@@ -6692,8 +6692,8 @@ const styles = StyleSheet.create({
   outLabelColor: { color: BRAND.red },
   outValueColor: { color: BRAND.red },
 
-  /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 - 鎖定等比例正方形 aspect-square (移除 flex: 1 避免垂直拉伸) */
-  liveRunnerCrossContainer: { width: "100%", maxWidth: 380, minWidth: 0, aspectRatio: 1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, flexShrink: 0 },
+  /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 - 鎖定 5:3 長寬比，外擴防裁切 */
+  liveRunnerCrossContainer: { width: "100%", maxWidth: 480, minWidth: 0, aspectRatio: 5 / 3, alignSelf: "center", position: "relative", overflow: "visible", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, flexShrink: 0 },
   liveRunnerCrossBackgroundImage: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%", opacity: 0.88 },
   liveRunnerAbsoluteSlot: { position: "absolute", alignItems: "center", gap: 3 },
   teamPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
@@ -7898,7 +7898,7 @@ const styles = StyleSheet.create({
   liveRunnerMiddleSlot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 5 },
   liveRunnerBottomSlot: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   liveRunnerSideSlot: { width: "31.5%", alignItems: "center", gap: 3 },
-  liveRunnerScoreCell: { width: 92, height: 70, borderWidth: 1, borderColor: "#CBD5E1", backgroundColor: BRAND.white, overflow: "hidden", justifyContent: "center", alignSelf: "center" },
+  liveRunnerScoreCell: { width: 92, minHeight: 68, maxWidth: "100%", height: "auto", borderWidth: 1, borderColor: "#CBD5E1", backgroundColor: BRAND.white, overflow: "visible", justifyContent: "center", alignSelf: "center" },
   liveRunnerScoreCellOccupied: { borderColor: "#60A5FA", borderWidth: 2 },
   liveRunnerPlayerTag: { maxWidth: 104, minHeight: 20, borderRadius: 7, borderWidth: 1, borderColor: "#D6A64B", backgroundColor: "#111827", justifyContent: "center", paddingHorizontal: 5 },
   liveRunnerPlayerTagOccupied: { borderColor: "#FBBF24", backgroundColor: "#1C1917" },

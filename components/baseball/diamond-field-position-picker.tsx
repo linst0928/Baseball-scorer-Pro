@@ -8,20 +8,16 @@ import {
   View,
   type ImageSourcePropType,
 } from "react-native";
-import Svg, {
-  Rect,
-  Path,
-  Circle,
-  Polygon,
-  Line,
-  Text as SvgText,
-} from "react-native-svg";
 import type { InterfacePalette } from "@/lib/theme-provider";
 import {
   DIAMOND_FIELD_POSITIONS,
   isPositionSelected,
   type DiamondFieldPositionItem,
 } from "@/lib/baseball/diamond-field-positions";
+import {
+  COMMON_DEFENSE_BLANK_FIELD_IMAGE,
+  LIVE_INFIELD_BLANK_FIELD_IMAGE,
+} from "@/constants/baseball-assets";
 
 export {
   DIAMOND_FIELD_POSITIONS,
@@ -30,8 +26,8 @@ export {
 };
 
 /**
- * 現場紀錄「壘包與跑壘紀錄」專用的向量棒球場內野背景圖示 (B1 區塊：僅內野 Infield Only)
- * 裁切 viewBox 僅保留一壘、二壘、三壘與本壘連線的菱形內野區域，不顯示外野綠地
+ * 現場紀錄「壘包與跑壘紀錄」專用的棒球場內野背景圖 (B1 區塊：僅內野 Infield Only)
+ * 使用 常用守備位置(內野空白).jpg，保持 1:1 長寬比防變形
  */
 export function LiveInfieldDiamondBackground({
   style,
@@ -46,9 +42,9 @@ export function LiveInfieldDiamondBackground({
   return (
     <View style={[styles.liveFieldCanvas, isDark && styles.liveFieldCanvasDark, style]}>
       <Image
-        source={imageSource || require("../../assets/images/temp_image_1789358223242.jpeg")}
-        style={StyleSheet.absoluteFill}
-        resizeMode="cover"
+        source={imageSource || LIVE_INFIELD_BLANK_FIELD_IMAGE}
+        style={styles.backgroundImage}
+        resizeMode="contain"
       />
     </View>
   );
@@ -61,13 +57,13 @@ interface DiamondFieldPositionPickerProps {
   interfacePalette?: InterfacePalette;
   title?: string;
   hint?: string;
-  /** 可選的球場背景圖；未提供時沿用原 SVG。 */
+  /** 可選的球場背景圖；未提供時預設使用 常用守備位置(空白).jpg。 */
   fieldImageSource?: ImageSourcePropType;
 }
 
 /**
  * 常用守備位置視覺化棒球場菱形圖元件
- * 完全比照「常用守備位置.jpg」繪製（包含深色背景、外野/內野紅土草皮、投手丘、壘包、[英文代號]+[中文守位]立體黑底標籤與點擊指派切換）
+ * 完全比照「常用守備位置(空白).jpg」繪製（包含深色背景、外野/內野紅土草皮、投手丘、壘包、[英文代號]+[中文守位]立體黑底標籤與點擊指派切換）
  */
 export function DiamondFieldPositionPicker({
   selectedPositions = [],
@@ -137,15 +133,15 @@ export function DiamondFieldPositionPicker({
         </Text>
       ) : null}
 
-      {/* 棒球場菱形圖：採用'temp_image_1789358467721.jpeg'的圖片取代 */}
+      {/* 棒球場菱形圖：採用「常用守備位置(空白).jpg」全場示意圖 */}
       <View style={styles.fieldCanvasContainer}>
         <Image
-          source={fieldImageSource || require("../../assets/images/temp_image_1789358467721.jpeg")}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
+          source={fieldImageSource || COMMON_DEFENSE_BLANK_FIELD_IMAGE}
+          style={styles.backgroundImage}
+          resizeMode="contain"
         />
 
-        {/* 9 個守備位置標籤（完全比照附圖：左側銀白代號 + 右側黑底中文名稱） */}
+        {/* 9 個守備位置標籤（左側銀白代號 + 右側黑底中文名稱） */}
         {DIAMOND_FIELD_POSITIONS.map((pos) => {
           const selected = isPositionSelected(currentPositions, pos);
           return (
@@ -271,15 +267,15 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  /* 常用守備位置.jpg 風格球場畫布 - 鎖定等比例正方形 aspect-square 與防拉伸 */
+  /* 常用守備位置(空白).jpg 風格球場畫布 - 鎖定 6:3 (2:1) 長寬比防變形 */
   fieldCanvasContainer: {
     width: "100%",
-    maxWidth: 380,
-    aspectRatio: 1,
+    maxWidth: 520,
+    aspectRatio: 6 / 3,
     alignSelf: "center",
     borderRadius: 10,
     position: "relative",
-    overflow: "hidden",
+    overflow: "visible",
     borderWidth: 1,
     borderColor: "#1E293B",
     backgroundColor: "#061325",
@@ -287,7 +283,15 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
 
-  /* 守位標籤樣式 (比照 常用守備位置.jpg：左側銀白代號 + 右側黑底中文名稱) */
+  backgroundImage: {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    top: 0,
+    left: 0,
+  },
+
+  /* 守位標籤樣式 (左側銀白代號 + 右側黑底中文名稱) */
   positionBadge: {
     position: "absolute",
     flexDirection: "row",
@@ -435,17 +439,14 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  /* 現場紀錄 LiveInfieldDiamondBackground 樣式 */
+  /* 現場紀錄 LiveInfieldDiamondBackground 樣式 (5:3 長寬比) */
   liveFieldCanvas: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+    position: "relative",
     width: "100%",
-    height: "100%",
-    overflow: "hidden",
-    backgroundColor: "#F1F5F9",
+    aspectRatio: 5 / 3,
+    overflow: "visible",
+    backgroundColor: "#0B192C",
+    borderRadius: 10,
   },
   liveFieldCanvasDark: {
     backgroundColor: "#0B192C",
