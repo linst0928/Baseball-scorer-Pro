@@ -5657,7 +5657,7 @@ function TopDownLineupField({ team, lineup, conflictedPositions = [], highlighte
     .map(([playerId]) => team.players.find((player) => player.id === playerId))
     .filter((player): player is Player => Boolean(player));
 
-  return <ImageBackground source={HOME_DEFENSE_FIELD_IMAGE} resizeMode="contain" style={[styles.topDownField, style]} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（使用者指定棒球場俯視圖）`}>
+  return <ImageBackground source={COMMON_DEFENSE_BLANK_FIELD_IMAGE} resizeMode="contain" style={[styles.topDownField, style]} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（常用守備位置空白圖）`}>
     {FIELD_POSITION_LAYOUT.map((spot) => {
       const players = playersForPosition(spot.number);
       const conflicted = conflictedPositions.includes(spot.number);
@@ -5676,7 +5676,7 @@ function PreferredPositionFieldPicker({ selectedPositions, onToggle }: { selecte
       <Text style={styles.preferredPositionFieldTitle}>直接點選球場守位</Text>
       <Text style={styles.preferredPositionFieldHint}>已選 {selectedPositions.length}/4</Text>
     </View>
-    <ImageBackground source={HOME_DEFENSE_FIELD_IMAGE} resizeMode="contain" style={styles.preferredPositionField} imageStyle={styles.preferredPositionFieldImage} accessibilityLabel="慣用守備位置球場圖">
+    <ImageBackground source={COMMON_DEFENSE_BLANK_FIELD_IMAGE} resizeMode="contain" style={styles.preferredPositionField} imageStyle={styles.preferredPositionFieldImage} accessibilityLabel="慣用守備位置球場圖">
       {FIELD_POSITION_LAYOUT.map((spot) => {
         const position = FIELD_POSITIONS.find((candidate) => candidate.number === spot.number);
         const selected = selectedPositions.includes(spot.number);
