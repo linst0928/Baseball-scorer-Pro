@@ -275,7 +275,7 @@ export function WasedaPersonalRecordCell({
           {correction?.outerMark && !hasStructuredOuterCorrection ? <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.outerCorrectionMark, liveSize && styles.outerCorrectionMarkLive, largeSize && styles.outerCorrectionMarkLarge]}>{correction.outerMark}</Text> : <>
             <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.leftTop, liveSize && styles.leftTopLive, largeSize && styles.leftTopLarge, hit && styles.redText]}>{outerMarks?.leftTop ?? leftTop ?? ""}</Text>
             <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[batterReachesFirst ? styles.batterFirstBaseMark : styles.rightTop, liveSize && (batterReachesFirst ? styles.batterFirstBaseMarkLive : styles.rightTopLive), largeSize && (batterReachesFirst ? styles.batterFirstBaseMarkLarge : styles.rightTopLarge)]}>{outerMarks?.rightTop ?? onBaseMarks}</Text>
-            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, liveSize && styles.leftBottomLive, largeSize && styles.leftBottomLarge]}>{outerMarks?.leftBottom ?? (rbi ? "①②③④".slice(0, rbi) : "")}</Text>
+            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, liveSize && styles.leftBottomLive, largeSize && styles.leftBottomLarge]}>{outerMarks?.leftBottom ?? (rbi > 0 ? (["①", "②", "③", "④"][rbi - 1] ?? "") : "")}</Text>
             <View accessibilityLabel={displayedFieldingNotation ? `右下角傳接符號：${displayedFieldingNotation}` : "右下角傳接符號"} style={[styles.rightBottom, liveSize && styles.rightBottomLive, largeSize && styles.rightBottomLarge, displayedFieldingNotation && styles.rightBottomHasFielding]}>
               {compactBattedBallNotation ? <Pressable
                 accessibilityRole="button"
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   battedBallType: { color: COLORS.blue, fontSize: 8, fontWeight: "900", lineHeight: 9 },
   groundBallType: { letterSpacing: -0.2 },
   battedBallDirection: { color: COLORS.blue, fontSize: 10, fontWeight: "900", lineHeight: 10 },
-  leftBottom: { position: "absolute", bottom: 5, left: 5, color: COLORS.red, fontSize: 10, fontWeight: "900", letterSpacing: -2 },
+  leftBottom: { position: "absolute", bottom: 5, left: 5, color: COLORS.red, fontSize: 10, fontWeight: "900" },
   leftBottomLive: { bottom: 3, left: 3, fontSize: 8 },
   leftBottomLarge: { bottom: 8, left: 10, fontSize: 14 },
   rightBottom: { position: "absolute", right: 3, bottom: 3, maxWidth: "58%", alignItems: "flex-end", justifyContent: "flex-end", zIndex: 8 },

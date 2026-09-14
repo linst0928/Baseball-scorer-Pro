@@ -2537,7 +2537,6 @@ function IntegratedManagementCard({
             onChange={setPPositions}
             maxCount={4}
             interfacePalette={interfacePalette}
-            fieldImageSource={COMMON_DEFENSE_BLANK_FIELD_IMAGE}
           />
 
           <View style={{ flexDirection: "row", gap: 6, borderTopWidth: 0.5, borderTopColor: interfacePalette.border, paddingTop: 8, marginTop: 4 }}>
@@ -3723,7 +3722,6 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
       <View style={styles.liveRunnerCrossContainer}>
         <LiveInfieldDiamondBackground
           themeMode="dark"
-          imageSource={LIVE_INFIELD_BLANK_FIELD_IMAGE}
         />
         
         {/* 二壘 (Top Center) */}
@@ -6694,8 +6692,8 @@ const styles = StyleSheet.create({
   outLabelColor: { color: BRAND.red },
   outValueColor: { color: BRAND.red },
 
-  /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 */
-  liveRunnerCrossContainer: { width: "100%", maxWidth: 440, minWidth: 0, aspectRatio: 1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
+  /* 任務三：場地與跑壘狀況 100% 絕對定位樣式 - 鎖定等比例正方形 aspect-square */
+  liveRunnerCrossContainer: { flex: 1, width: "100%", maxWidth: 380, minWidth: 0, aspectRatio: 1, alignSelf: "center", position: "relative", overflow: "hidden", borderRadius: 9, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line },
   liveRunnerCrossBackgroundImage: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%", opacity: 0.88 },
   liveRunnerAbsoluteSlot: { position: "absolute", alignItems: "center", gap: 3 },
   teamPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
@@ -7854,12 +7852,12 @@ const styles = StyleSheet.create({
   batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 10, gap: 8 },
   batterQueueTitle: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
   batterQueueRow: { flexDirection: "row", gap: 8 },
-  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 10, minHeight: 96, maxHeight: 110 },
+  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 8, minHeight: 104 },
   batterQueueIdentity: { gap: 4, flex: 1 },
   batterQueueOrder: { color: BRAND.blue, fontSize: 13, fontWeight: "900" },
   batterQueueName: { color: BRAND.ink, fontSize: 16, fontWeight: "900" },
   batterQueueHand: { color: BRAND.muted, fontSize: 12, fontWeight: "800" },
-  batterQueueAtBatWrap: { alignItems: "center", justifyContent: "center", gap: 4, height: 88, maxHeight: 88, overflow: "hidden" },
+  batterQueueAtBatWrap: { alignItems: "center", justifyContent: "center", gap: 3 },
   batterQueueAtBatTitle: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
   // 賽況及時紀錄父層組件
