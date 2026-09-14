@@ -43,37 +43,13 @@ export function LiveInfieldDiamondBackground({
   imageSource?: ImageSourcePropType;
 }) {
   const isDark = themeMode === "dark";
-  const bgColor = isDark ? "#0B192C" : "#F1F5F9";
   return (
     <View style={[styles.liveFieldCanvas, isDark && styles.liveFieldCanvasDark, style]}>
-      <Svg
-        viewBox="90 130 220 220"
-        preserveAspectRatio="xMidYMid meet"
+      <Image
+        source={imageSource || require("../../assets/images/常用守備位置(內野空白).jpg")}
         style={StyleSheet.absoluteFill}
-      >
-        <Rect x="90" y="130" width="220" height="220" fill={bgColor} />
-        {/* 內野橘黃色紅土走道 */}
-        <Path
-          d="M 200 320 L 95 145 A 155 155 0 0 1 305 145 Z"
-          fill="#F5A623"
-          opacity={0.95}
-        />
-        {/* 白色界外線 */}
-        <Line x1="200" y1="320" x2="90" y2="135" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
-        <Line x1="200" y1="320" x2="310" y2="135" stroke="#FFFFFF" strokeWidth={2.5} opacity={0.9} />
-        {/* 內野紅土菱形 */}
-        <Polygon points="200,320 280,240 200,160 120,240" fill="#F5A623" />
-        {/* 內野草地菱形島 */}
-        <Polygon points="200,300 260,240 200,180 140,240" fill="#5D941E" />
-        {/* 投手丘與投手板 */}
-        <Circle cx="200" cy="240" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
-        <Rect x="194" y="238.5" width="12" height="3" rx="1" fill="#FFFFFF" />
-        {/* 壘包 (2B, 1B, 3B, HP) */}
-        <Polygon points="200,154 206,160 200,166 194,160" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-        <Polygon points="280,234 286,240 280,246 274,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-        <Polygon points="120,234 126,240 120,246 114,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-        <Polygon points="200,313 207,320 200,327 193,320" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-      </Svg>
+        resizeMode="cover"
+      />
     </View>
   );
 }
@@ -161,77 +137,13 @@ export function DiamondFieldPositionPicker({
         </Text>
       ) : null}
 
-      {/* 棒球場菱形圖：採用純向量 SVG，強制 1:1 正方形等比例縮放 */}
+      {/* 棒球場菱形圖：採用'常用守備位置(空白).jpg'的圖片取代 */}
       <View style={styles.fieldCanvasContainer}>
-        <Svg
-          viewBox="0 0 400 400"
-          preserveAspectRatio="xMidYMid meet"
+        <Image
+          source={fieldImageSource || require("../../assets/images/常用守備位置(空白).jpg")}
           style={StyleSheet.absoluteFill}
-        >
-          {/* 暗黑深藍波點科技球場底色 */}
-          <Rect x="0" y="0" width="400" height="400" rx="10" fill="#061325" />
-
-          {/* 外野綠色草皮扇形弧 */}
-          <Path
-            d="M 200 320 L 35 70 A 235 235 0 0 1 365 70 Z"
-            fill="#5D941E"
-            stroke="#F5A623"
-            strokeWidth={2}
-          />
-
-          {/* 內野橘黃色紅土走道 (Dirt Track Arc) */}
-          <Path
-            d="M 200 320 L 75 140 A 175 175 0 0 1 325 140 Z"
-            fill="#F5A623"
-          />
-
-          {/* 左/右白色界外線 (Foul Lines) */}
-          <Line x1="200" y1="320" x2="30" y2="60" stroke="#FFFFFF" strokeWidth={2.5} />
-          <Line x1="200" y1="320" x2="370" y2="60" stroke="#FFFFFF" strokeWidth={2.5} />
-
-          {/* 內野紅土菱形 (Dirt Diamond) */}
-          <Polygon
-            points="200,320 280,240 200,160 120,240"
-            fill="#F5A623"
-          />
-
-          {/* 內野草地菱形島 (Infield Grass Island) */}
-          <Polygon
-            points="200,300 260,240 200,180 140,240"
-            fill="#5D941E"
-          />
-
-          {/* 投手丘與白色投手板 */}
-          <Circle cx="200" cy="240" r="14" fill="#D97706" stroke="#FFE699" strokeWidth={1} />
-          <Rect x="194" y="238.5" width="12" height="3" rx="1" fill="#FFFFFF" />
-
-          {/* 二壘包 (2B) */}
-          <Polygon points="200,154 206,160 200,166 194,160" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-
-          {/* 一壘包 (1B) */}
-          <Polygon points="280,234 286,240 280,246 274,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-
-          {/* 三壘包 (3B) */}
-          <Polygon points="120,234 126,240 120,246 114,240" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={1} />
-
-          {/* 本壘板區紅土圓弧 (Home Plate Dirt Area) */}
-          <Circle cx="200" cy="320" r="18" fill="#F5A623" stroke="#FFFFFF" strokeWidth={1.5} />
-
-          {/* 本壘板 (Home Plate) - 精準置中於菱形尖端 (200, 320) */}
-          <Polygon points="200,313 207,320 200,327 193,320" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={0.5} />
-
-          {/* 左下角「常用守備位置」金色浮水印標籤 */}
-          <SvgText
-            x="14"
-            y="380"
-            fill="#F5A623"
-            fontSize="12"
-            fontWeight="900"
-            letterSpacing="1"
-          >
-            常用守備位置
-          </SvgText>
-        </Svg>
+          resizeMode="cover"
+        />
 
         {/* 9 個守備位置標籤（完全比照附圖：左側銀白代號 + 右側黑底中文名稱） */}
         {DIAMOND_FIELD_POSITIONS.map((pos) => {
