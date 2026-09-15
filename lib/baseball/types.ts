@@ -482,9 +482,20 @@ export const FIELD_POSITIONS = [
  */
 export function normalizePreferredPositions(positions: unknown): string[] {
   if (!Array.isArray(positions)) return [];
+  const mapping: Record<string, string> = {
+    "1": "1", "P": "1", "投手": "1", "投": "1",
+    "2": "2", "C": "2", "捕手": "2", "捕": "2",
+    "3": "3", "1B": "3", "一壘手": "3", "一壘": "3",
+    "4": "4", "2B": "4", "二壘手": "4", "二壘": "4",
+    "5": "5", "3B": "5", "三壘手": "5", "三壘": "5",
+    "6": "6", "SS": "6", "游擊手": "6", "游擊": "6", "遊擊手": "6", "遊擊": "6",
+    "7": "7", "LF": "7", "左外野手": "7", "左外野": "7", "左外": "7",
+    "8": "8", "CF": "8", "中外野手": "8", "中外野": "8", "中外": "8",
+    "9": "9", "RF": "9", "右外野手": "9", "右外野": "9", "右外": "9"
+  };
   const normalized = positions
-    .map((value) => String(value).trim())
-    .map((value) => FIELD_POSITIONS.find((position) => position.number === value || position.label === value)?.number)
+    .map((value) => String(value).trim().toUpperCase())
+    .map((value) => mapping[value] || FIELD_POSITIONS.find((position) => position.number === value || position.label === value)?.number)
     .filter((position): position is string => Boolean(position));
   return Array.from(new Set(normalized)).slice(0, 4);
 }

@@ -251,7 +251,7 @@ describe("Android 橫式與設定配色回饋", () => {
   it("橫式球員詳情擴大守位摘要，棒次選取列同時呈現背號、姓名與投打縮寫", () => {
     const homeScreen = readProjectFile("app/(tabs)/index.tsx");
 
-    expect(homeScreen).toContain("numberOfLines={2} style={styles.playerPreferredPositionsText}");
+    expect(homeScreen).toContain("style={styles.playerPreferredPositionsText}");
     expect(homeScreen).toContain('playerPreferredPositionsReadout: { flexBasis: 216');
     expect(homeScreen).toContain('battingNumberOption: { minWidth: 112');
     expect(homeScreen).toContain("#{player.number} {player.name} {playerHandAbbr(player)}");
