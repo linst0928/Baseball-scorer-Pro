@@ -27,7 +27,7 @@ export {
 
 /**
  * 現場紀錄「壘包與跑壘紀錄」專用的棒球場內野背景圖 (B1 區塊：僅內野 Infield Only)
- * 使用 常用守備位置(內野空白).jpg，保持 1:1 長寬比防變形
+ * 使用 內野守備位置(空白).jpg，保持 5:3 長寬比防變形
  */
 export function LiveInfieldDiamondBackground({
   style,
@@ -133,7 +133,7 @@ export function DiamondFieldPositionPicker({
         </Text>
       ) : null}
 
-      {/* 棒球場菱形圖：採用「常用守備位置(空白).jpg」全場示意圖 */}
+      {/* 棒球場菱形圖：採用「內外野守備位置(空白).jpg」全場示意圖 */}
       <View style={styles.fieldCanvasContainer}>
         <Image
           source={fieldImageSource || COMMON_DEFENSE_BLANK_FIELD_IMAGE}
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  /* 常用守備位置(空白).jpg 風格球場畫布 - 鎖定 6:3 (2:1) 長寬比防變形 */
+  /* 內外野守備位置(空白).jpg 風格球場畫布 - 鎖定 6:3 (2:1) 長寬比防變形 */
   fieldCanvasContainer: {
     width: "100%",
     maxWidth: 520,
