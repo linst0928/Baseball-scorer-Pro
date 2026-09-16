@@ -45,6 +45,8 @@ jobs:
 
       - name: 設定 Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11.0'
 
       - name: 安裝專案依賴套件
         run: pnpm install --frozen-lockfile
