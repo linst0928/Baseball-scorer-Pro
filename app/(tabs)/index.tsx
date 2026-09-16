@@ -1332,8 +1332,8 @@ function App() {
       id: `${schoolId}-p${index + 1}`,
       number: Number(player.number),
       name: player.name.trim(),
-      position: player.preferredPositions[0] ?? RESERVE_POSITION_LABEL,
-      preferredPositions: player.preferredPositions.slice(0, 4),
+      position: (player.preferredPositions && player.preferredPositions[0]) ?? RESERVE_POSITION_LABEL,
+      preferredPositions: normalizePreferredPositions(player.preferredPositions),
       bats: player.battingHand,
       throwingHand: player.throwingHand,
       battingHand: player.battingHand,
@@ -6517,7 +6517,7 @@ function getRosterCompleteness(players: PrimaryTeamWizardPlayer[]) {
     return /^\d{1,2}$/.test(number) && parsed >= 1 && parsed <= 99 && numberCounts[number] === 1;
   }).length;
   const handedness = configuredPlayers.filter((player) => Boolean(player.throwingHand && player.battingHand)).length;
-  const preferredPositions = configuredPlayers.filter((player) => player.preferredPositions.length > 0).length;
+  const preferredPositions = configuredPlayers.filter((player) => (player.preferredPositions ?? []).length > 0).length;
   const warnings = [
     ...(duplicateNumbers.length ? [`重複背號：${duplicateNumbers.join("、")}號`] : []),
     ...(handedness < configuredPlayers.length ? [`${configuredPlayers.length - handedness} 位隊員尚未設定投打`] : []),
@@ -7019,7 +7019,7 @@ const styles = StyleSheet.create({
   numberBadgeText: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
   playerNameInput: { flex: 1, minWidth: 118, color: BRAND.ink, fontSize: 12, borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingVertical: 5 },
   playerPreferredPositionsReadout: { flexBasis: 216, flexGrow: 1, minHeight: 42, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingHorizontal: 5, paddingVertical: 4 },
-  playerPreferredPositionsText: { color: BRAND.muted, fontSize: 10, fontWeight: "800", lineHeight: 14, flexWrap: "wrap", writingDirection: "ltr" },
+  playerPreferredPositionsText: { color: BRAND.muted, fontSize: 10, fontWeight: "800", lineHeight: 14, writingDirection: "ltr" },
   batsBadge: { color: BRAND.blue, fontSize: 11, fontWeight: "900", width: 18, textAlign: "center" },
   battingOrderCard: { backgroundColor: BRAND.white, borderRadius: 11, borderWidth: 1, borderColor: BRAND.line, padding: 8 },
   battingOrderGrid: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
@@ -7780,7 +7780,7 @@ const styles = StyleSheet.create({
   liveWasedaHint: { color: BRAND.muted, fontSize: 10, lineHeight: 14, marginTop: 3, maxWidth: 420 },
   liveWasedaBatter: { color: BRAND.blue, fontSize: 11, fontWeight: "900", textAlign: "right" },
   liveWasedaQuadrantGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, padding: 8, backgroundColor: "#ECFDF5", borderRadius: 12, borderWidth: 1, borderColor: "#BBF7D0" },
-  liveWasedaQuadrant: { width: "calc(50% - 4px)" as unknown as number, minHeight: 112, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 7, gap: 5 },
+  liveWasedaQuadrant: { width: "48%", minHeight: 112, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 7, gap: 5 },
   liveWasedaQuadrantHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6 },
   liveWasedaBaseLabel: { color: BRAND.navy, fontWeight: "900", fontSize: 11 },
   liveWasedaQuadrantNote: { color: BRAND.muted, fontSize: 8, fontWeight: "700", flex: 1, textAlign: "right" },

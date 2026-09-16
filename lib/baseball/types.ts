@@ -494,6 +494,7 @@ export function normalizePreferredPositions(positions: unknown): string[] {
     "9": "9", "RF": "9", "右外野手": "9", "右外野": "9", "右外": "9"
   };
   const normalized = positions
+    .filter((value): value is NonNullable<typeof value> => value !== null && value !== undefined)
     .map((value) => String(value).trim().toUpperCase())
     .map((value) => mapping[value] || FIELD_POSITIONS.find((position) => position.number === value || position.label === value)?.number)
     .filter((position): position is string => Boolean(position));
