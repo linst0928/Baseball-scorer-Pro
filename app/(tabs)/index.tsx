@@ -6566,7 +6566,7 @@ function PrimaryTeamWizard({ visible, teams, onClose, onSubmit }: { visible: boo
   };
   const togglePosition = (position: string) => {
     if (!activePlayer) return;
-    const selected = activePlayer.preferredPositions;
+    const selected = normalizePreferredPositions(activePlayer.preferredPositions);
     if (selected.includes(position)) {
       updatePlayer(activePlayer.id, { preferredPositions: selected.filter((item) => item !== position) });
       return;
