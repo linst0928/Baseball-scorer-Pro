@@ -3087,11 +3087,11 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
         </View>
       </View>
 
-      {/* 中間區塊 1：左側壘包與跑壘紀錄，右側投打對決（最大化早稻田打席格 + 後續兩棒） */}
+      {/* 中間區塊 1：核心視覺區（左側 65% 壘包與跑壘紀錄，右側 35% 上側投打對決、左側BSO與早稻田格、右側直式待打擊區） */}
       <View style={styles.recordMiddleBlock1}>
         <View style={styles.recordMiddleBlock1Left}>
           <View style={styles.liveQuadrant}>
-            <LivePanelTitle number="1" title="壘包與跑壘紀錄" subtitle="本壘三區格與一、二、三壘跑壘同步" />
+            <LivePanelTitle number="1" title="壘包與跑壘紀錄" subtitle="視覺化球場圖與下方高觸控跑壘按鈕" />
             <LiveInfieldPanel
               game={game}
               pitchDraft={pitchDraft}
@@ -3101,49 +3101,51 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
               selectedResult={selectedResult}
               fieldingPosition={fieldingPosition}
               recordColumn={recordColumnDraft}
-              runnerActionRail={<View style={styles.runnerActionRail}>
-                <Text style={styles.runnerActionRailTitle}>跑壘事件</Text>
-                <Text style={styles.runnerActionRailHint}>依壘況推進</Text>
-                <RunnerActionButton vertical label="1→2 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!firstRunner} onPress={() => onRunnerAction("SB", 1)} onLongPress={onOpenSymbolHelp} />
-                <RunnerActionButton vertical label="2→3 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!secondRunner} onPress={() => onRunnerAction("SB", 2)} onLongPress={onOpenSymbolHelp} />
-                <RunnerActionButton vertical label="3→本 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!thirdRunner} onPress={() => onRunnerAction("SB", 3)} onLongPress={onOpenSymbolHelp} />
-                <RunnerActionButton vertical label="盜壘失敗" mark="CS" help={RUNNER_SYMBOL_HELP.CS} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("CS")} onLongPress={onOpenSymbolHelp} emphasis />
-                <RunnerActionButton vertical label="進壘" mark="↑" help={RUNNER_SYMBOL_HELP.ADV} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => onRunnerAction("ADV")} onLongPress={onOpenSymbolHelp} />
-                <RunnerActionButton vertical label="暴投" mark="WP" help={RUNNER_SYMBOL_HELP.WP} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("WP")} onLongPress={onOpenSymbolHelp} />
-                <RunnerActionButton vertical label="捕逸" mark="PB" help={RUNNER_SYMBOL_HELP.PB} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("PB")} onLongPress={onOpenSymbolHelp} />
-                <RunnerActionButton vertical label="投手犯規" mark="BK" help={RUNNER_SYMBOL_HELP.BK} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("BK")} onLongPress={onOpenSymbolHelp} />
-                <RunnerActionButton vertical label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!canUndo} onPress={onUndo} onLongPress={onOpenSymbolHelp} emphasis />
-              </View>}
+              runnerActionRail={
+                <View style={styles.runnerActionRailHorizontalWrap}>
+                  <View style={styles.runnerActionRailHeader}>
+                    <Text style={styles.runnerActionRailTitle}>跑壘事件</Text>
+                    <Text style={styles.runnerActionRailHint}>觸控強化按鈕 · 依壘況推進</Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.runnerActionHorizontalScroll}>
+                    <RunnerActionButton label="1→2 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!firstRunner} onPress={() => onRunnerAction("SB", 1)} onLongPress={onOpenSymbolHelp} />
+                    <RunnerActionButton label="2→3 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!secondRunner} onPress={() => onRunnerAction("SB", 2)} onLongPress={onOpenSymbolHelp} />
+                    <RunnerActionButton label="3→本 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!thirdRunner} onPress={() => onRunnerAction("SB", 3)} onLongPress={onOpenSymbolHelp} />
+                    <RunnerActionButton label="盜壘失敗" mark="CS" help={RUNNER_SYMBOL_HELP.CS} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("CS")} onLongPress={onOpenSymbolHelp} emphasis />
+                    <RunnerActionButton label="進壘" mark="↑" help={RUNNER_SYMBOL_HELP.ADV} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => onRunnerAction("ADV")} onLongPress={onOpenSymbolHelp} />
+                    <RunnerActionButton label="暴投" mark="WP" help={RUNNER_SYMBOL_HELP.WP} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("WP")} onLongPress={onOpenSymbolHelp} />
+                    <RunnerActionButton label="捕逸" mark="PB" help={RUNNER_SYMBOL_HELP.PB} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("PB")} onLongPress={onOpenSymbolHelp} />
+                    <RunnerActionButton label="投手犯規" mark="BK" help={RUNNER_SYMBOL_HELP.BK} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("BK")} onLongPress={onOpenSymbolHelp} />
+                    <RunnerActionButton label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!canUndo} onPress={onUndo} onLongPress={onOpenSymbolHelp} emphasis />
+                  </ScrollView>
+                </View>
+              }
             />
           </View>
         </View>
         <View style={styles.recordMiddleBlock1Right}>
-          <View style={styles.recordMatchupTop}>
-            <LiveCentralDuelPanel
-              game={game}
-              battingTeam={battingTeam}
-              pitchingTeam={pitchingTeam}
-              batter={batter}
-              pitcher={pitcher}
-              atBatOrder={atBatOrder}
-              pitchDraft={pitchDraft}
-              currentPitcherPitches={currentPitcherPitches}
-              pitchLimitWarning={pitchLimitWarning}
-              pitchWarningStyle={pitchWarningStyle}
-              pitchWarningTextStyle={pitchWarningTextStyle}
-              pitchWarningPulse={pitchWarningPulse}
-              pitcherHistories={pitcherHistories}
-              playerById={playerById}
-              latestCompletedAtBat={latestCompletedAtBat}
-              latestCompletedBatter={latestCompletedBatter}
-              selectedResult={selectedResult}
-              fieldingPosition={fieldingPosition}
-              recordColumnDraft={recordColumnDraft}
-            />
-          </View>
-          <View style={styles.recordMatchupBottom}>
-            <BatterQueuePreview players={nextBatters} events={game.events} />
-          </View>
+          <LiveCentralDuelPanel
+            game={game}
+            battingTeam={battingTeam}
+            pitchingTeam={pitchingTeam}
+            batter={batter}
+            pitcher={pitcher}
+            atBatOrder={atBatOrder}
+            pitchDraft={pitchDraft}
+            currentPitcherPitches={currentPitcherPitches}
+            pitchLimitWarning={pitchLimitWarning}
+            pitchWarningStyle={pitchWarningStyle}
+            pitchWarningTextStyle={pitchWarningTextStyle}
+            pitchWarningPulse={pitchWarningPulse}
+            pitcherHistories={pitcherHistories}
+            playerById={playerById}
+            latestCompletedAtBat={latestCompletedAtBat}
+            latestCompletedBatter={latestCompletedBatter}
+            selectedResult={selectedResult}
+            fieldingPosition={fieldingPosition}
+            recordColumnDraft={recordColumnDraft}
+            nextBatters={nextBatters}
+          />
         </View>
       </View>
 
@@ -3198,7 +3200,43 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
           </View>
         </View>
         <View style={styles.recordBottomPanelRight}>
-          <View style={styles.recentCard}><SectionTitle eyebrow="PLAY-BY-PLAY" title="最近紀錄" action={<Text style={styles.eventCount}>{game.events.length + (game.specialEvents ?? []).length} 筆</Text>} />{recentEvents.length === 0 && (game.specialEvents ?? []).length === 0 ? <Text style={styles.emptyText}>尚未有逐球結果。從左下選取投球落點與動作，或在中下選擇早稻田打席結果。</Text> : <>{recentEvents.map((event) => <View key={event.id} style={styles.eventRow}><View style={styles.eventInning}><Text style={styles.eventInningNumber}>{event.inning}</Text><Text style={styles.eventInningHalf}>{event.half === "away" ? "上" : "下"}</Text></View><View style={styles.eventMain}><Text style={styles.eventBatter}>{event.batterName}</Text><Text style={styles.eventMeta}>{event.pitches.total} 球 · {event.result}</Text></View><Text style={styles.eventNotation}>{event.notation}</Text></View>)}{(game.specialEvents ?? []).slice(-8).reverse().map((event) => <View key={event.id} style={styles.eventRow}><View style={[styles.eventInning, styles.specialEventInning]}><Text style={styles.eventInningNumber}>{event.inning}</Text><Text style={styles.eventInningHalf}>{event.half === "away" ? "上" : "下"}</Text></View><View style={styles.eventMain}><Text style={styles.eventBatter}>{SPECIAL_EVENT_LABELS[event.type]}</Text><Text style={styles.eventMeta}>{event.runsScored ? `${event.runsScored} 分 · ` : ""}特殊事件</Text></View><Text style={styles.eventNotation}>{event.notation}</Text></View>)}</>}</View>
+          <View style={styles.recentCard}>
+            <SectionTitle eyebrow="PLAY-BY-PLAY" title="最近紀錄" action={<Text style={styles.eventCount}>{game.events.length + (game.specialEvents ?? []).length} 筆</Text>} />
+            <ScrollView nestedScrollEnabled style={styles.playByPlayScroll} contentContainerStyle={styles.playByPlayScrollContent}>
+              {recentEvents.length === 0 && (game.specialEvents ?? []).length === 0 ? (
+                <Text style={styles.emptyText}>尚未有逐球結果。從左下選取投球落點與動作，或在中下選擇早稻田打席結果。</Text>
+              ) : (
+                <>
+                  {recentEvents.map((event) => (
+                    <View key={event.id} style={styles.eventRow}>
+                      <View style={styles.eventInning}>
+                        <Text style={styles.eventInningNumber}>{event.inning}</Text>
+                        <Text style={styles.eventInningHalf}>{event.half === "away" ? "上" : "下"}</Text>
+                      </View>
+                      <View style={styles.eventMain}>
+                        <Text style={styles.eventBatter}>{event.batterName}</Text>
+                        <Text style={styles.eventMeta}>{event.pitches.total} 球 · {event.result}</Text>
+                      </View>
+                      <Text style={styles.eventNotation}>{event.notation}</Text>
+                    </View>
+                  ))}
+                  {(game.specialEvents ?? []).slice(-8).reverse().map((event) => (
+                    <View key={event.id} style={styles.eventRow}>
+                      <View style={[styles.eventInning, styles.specialEventInning]}>
+                        <Text style={styles.eventInningNumber}>{event.inning}</Text>
+                        <Text style={styles.eventInningHalf}>{event.half === "away" ? "上" : "下"}</Text>
+                      </View>
+                      <View style={styles.eventMain}>
+                        <Text style={styles.eventBatter}>{SPECIAL_EVENT_LABELS[event.type]}</Text>
+                        <Text style={styles.eventMeta}>{event.runsScored ? `${event.runsScored} 分 · ` : ""}特殊事件</Text>
+                      </View>
+                      <Text style={styles.eventNotation}>{event.notation}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          </View>
         </View>
       </View>
       <RunnerActionConfirmationModal action={runnerActionConfirmation} game={game} battingPlayers={battingTeam.players} onClose={() => setRunnerActionConfirmation(null)} onConfirm={(fromBase, targetBase) => { if (runnerActionConfirmation === "CS") onRunnerAction("CS", fromBase, targetBase); else if (runnerActionConfirmation) onRunnerAction(runnerActionConfirmation); setRunnerActionConfirmation(null); }} />
@@ -3339,19 +3377,19 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
     // 客場 vs 主場的 active 底色與邊框
     const activeStyle = isCurrent ? {
       backgroundColor: isAway ? "#DBEAFE" : "#FFEDD5",
-      borderWidth: 0.5,
-      borderColor: isAway ? "#93C5FD" : "#FDBA74",
+      borderWidth: 1.5,
+      borderColor: isAway ? BRAND.blue : "#EA580C",
     } : null;
 
     // 客場使用藍色，主場使用橘色
     const activeTextCol = isAway ? BRAND.blue : "#C2410C";
-    const activeTextStyle = isCurrent ? { color: activeTextCol, fontWeight: "900" as const } : null;
+    const activeTextStyle = isCurrent ? { color: activeTextCol, fontWeight: "900" as const, fontSize: 15 } : { fontWeight: "800" as const, fontSize: 14 };
 
     return (
       <View key={player.id || `${side}-${index}`} style={[styles.lineupRowItem, activeStyle]}>
         <Text style={[styles.lineupOrderText, activeTextStyle]}>{index + 1}</Text>
         <Text style={[styles.lineupPosText, activeTextStyle]}>{formatChinesePosition(player.position)}</Text>
-        <Text numberOfLines={1} style={[styles.lineupNameText, activeTextStyle]}>{player.name}</Text>
+        <Text numberOfLines={1} style={[styles.lineupNameText, activeTextStyle, { fontWeight: "900", fontSize: 14 }]}>{player.name}</Text>
         <Text style={[styles.lineupNumberText, activeTextStyle]}>#{player.number}</Text>
         <Text style={[styles.lineupHandText, activeTextStyle]}>{formatPlayerHand(player)}</Text>
       </View>
@@ -3360,7 +3398,7 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
 
   return (
     <View style={[styles.liveLineupColumn, { backgroundColor: teamSurfaceColor(team, side), borderColor: accentColor }]}>
-      <Text style={[styles.liveLineupColumnTitle, { color: accentColor }]}>{team.name} ({side === "away" ? "客" : "主"})</Text>
+      <Text style={[styles.liveLineupColumnTitle, { color: accentColor, fontWeight: "900", fontSize: 13 }]}>{team.name} ({side === "away" ? "客" : "主"})</Text>
       <View style={styles.lineupListWrap}>
         {lineup.map((p, idx) => renderPlayerRow(p, idx, game.half === side && batter?.id === p?.id))}
       </View>
@@ -3400,6 +3438,7 @@ function LiveCentralDuelPanel({
   selectedResult,
   fieldingPosition,
   recordColumnDraft,
+  nextBatters,
 }: {
   game: Game;
   battingTeam: Team;
@@ -3420,17 +3459,18 @@ function LiveCentralDuelPanel({
   selectedResult: AtBatResult | null;
   fieldingPosition: string;
   recordColumnDraft: RecordColumn;
+  nextBatters: Player[];
 }) {
   const pitchingSide: TeamSide = game.half === "away" ? "home" : "away";
   const battingSide: TeamSide = game.half;
 
   return (
     <View style={styles.centralDuelPanel}>
-      <LivePanelTitle number="2" title="中央投打對決資訊" subtitle="早稻田打席格最大化｜投手與打者主客場配色綁定" />
+      <LivePanelTitle number="2" title="中央投打對決資訊" subtitle="投打等寬等高 | 左側 BSO在上與早稻田格在下 | 右側直式待打擊區" />
 
-      {/* 上側：中央投打對決資訊（投手 VS 打者） */}
+      {/* 上側：中央投打對決資訊（等寬等高，名稱字體加大加粗/底色配合主客場） */}
       <View style={styles.centralDuelMatchupHeader}>
-        {/* 投手卡片 */}
+        {/* 投手卡片 (等寬等高) */}
         <View style={[styles.centralDuelPitcherCard, { backgroundColor: teamSurfaceColor(pitchingTeam, pitchingSide), borderColor: teamAccentColor(pitchingTeam, pitchingSide) }]}>
           <View style={styles.pitcherHeaderRow}>
             <Text style={[styles.pitcherHeaderBadge, { backgroundColor: teamAccentColor(pitchingTeam, pitchingSide) }]}>投手</Text>
@@ -3453,7 +3493,7 @@ function LiveCentralDuelPanel({
           <Text style={styles.centralDuelVsText}>VS</Text>
         </View>
 
-        {/* 打者卡片 */}
+        {/* 打者卡片 (等寬等高) */}
         <View style={[styles.centralDuelBatterCard, { backgroundColor: teamSurfaceColor(battingTeam, game.half), borderColor: teamAccentColor(battingTeam, battingSide) }]}>
           <View style={styles.batterHeaderRow}>
             <Text style={[styles.batterHeaderBadge, { borderColor: teamAccentColor(battingTeam, battingSide), color: teamAccentColor(battingTeam, battingSide) }]}>打者</Text>
@@ -3468,77 +3508,85 @@ function LiveCentralDuelPanel({
         </View>
       </View>
 
-      {/* 中側：早稻田打席格 (最大化) + BSO 燈號 */}
-      <View style={styles.centralDuelMiddleRow}>
-        {/* 左半：早稻田打席格等比例放大 */}
-        <View style={styles.centralDuelWasedaBox}>
-          <CurrentAtBatPanel
-            game={game}
-            pitchDraft={pitchDraft}
-            batter={batter}
-            completedAtBat={latestCompletedAtBat}
-            completedBatter={latestCompletedBatter}
-            selectedResult={selectedResult}
-            fieldingPosition={fieldingPosition}
-            recordColumn={recordColumnDraft}
-          />
+      {/* 下側：左右分割（左側：BSO 在上 + 早稻田打席格在下；右側：直式待打擊區 NEXT 1, NEXT 2） */}
+      <View style={styles.centralDuelLowerSplit}>
+        {/* 左側 (上下分割) */}
+        <View style={styles.centralDuelWasedaBsoColumn}>
+          {/* 左上側：BSO (好壞球與出局數) 字體加大加粗識別 */}
+          <View style={styles.centralDuelBsoBoxTop}>
+            <View style={styles.bsoLargeRow}>
+              <Text style={[styles.bsoLargeLabel, { color: BRAND.green }]}>B</Text>
+              <View style={styles.bsoLargeDots}>
+                {[1, 2, 3].map((dot) => {
+                  const active = pitchDraft.balls >= dot && pitchDraft.balls < 4;
+                  return (
+                    <View
+                      key={`b-${dot}`}
+                      style={[
+                        styles.bsoLargeDot,
+                        active ? { backgroundColor: BRAND.green, borderColor: BRAND.green } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.bsoLargeRow}>
+              <Text style={[styles.bsoLargeLabel, { color: "#F59E0B" }]}>S</Text>
+              <View style={styles.bsoLargeDots}>
+                {[1, 2].map((dot) => {
+                  const active = pitchDraft.strikes >= dot && pitchDraft.strikes < 3;
+                  return (
+                    <View
+                      key={`s-${dot}`}
+                      style={[
+                        styles.bsoLargeDot,
+                        active ? { backgroundColor: "#FBBF24", borderColor: "#FBBF24" } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.bsoLargeRow}>
+              <Text style={[styles.bsoLargeLabel, { color: BRAND.red }]}>O</Text>
+              <View style={styles.bsoLargeDots}>
+                {[1, 2].map((dot) => {
+                  const active = game.outs >= dot && game.outs < 3;
+                  return (
+                    <View
+                      key={`o-${dot}`}
+                      style={[
+                        styles.bsoLargeDot,
+                        active ? { backgroundColor: BRAND.red, borderColor: BRAND.red } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+
+          {/* 左下側：「早稻田打席格」最大化且等比例「放大」顯示 */}
+          <View style={styles.centralDuelWasedaBoxBottom}>
+            <CurrentAtBatPanel
+              game={game}
+              pitchDraft={pitchDraft}
+              batter={batter}
+              completedAtBat={latestCompletedAtBat}
+              completedBatter={latestCompletedBatter}
+              selectedResult={selectedResult}
+              fieldingPosition={fieldingPosition}
+              recordColumn={recordColumnDraft}
+            />
+          </View>
         </View>
 
-        {/* 右半：BSO (好壞球與出局數) 字體加大加粗 */}
-        <View style={styles.centralDuelBsoBox}>
-          <View style={styles.bsoLargeRow}>
-            <Text style={[styles.bsoLargeLabel, { color: BRAND.green }]}>B</Text>
-            <View style={styles.bsoLargeDots}>
-              {[1, 2, 3].map((dot) => {
-                const active = pitchDraft.balls >= dot && pitchDraft.balls < 4;
-                return (
-                  <View
-                    key={`b-${dot}`}
-                    style={[
-                      styles.bsoLargeDot,
-                      active ? { backgroundColor: BRAND.green, borderColor: BRAND.green } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
-                    ]}
-                  />
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.bsoLargeRow}>
-            <Text style={[styles.bsoLargeLabel, { color: "#F59E0B" }]}>S</Text>
-            <View style={styles.bsoLargeDots}>
-              {[1, 2].map((dot) => {
-                const active = pitchDraft.strikes >= dot && pitchDraft.strikes < 3;
-                return (
-                  <View
-                    key={`s-${dot}`}
-                    style={[
-                      styles.bsoLargeDot,
-                      active ? { backgroundColor: "#FBBF24", borderColor: "#FBBF24" } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
-                    ]}
-                  />
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.bsoLargeRow}>
-            <Text style={[styles.bsoLargeLabel, { color: BRAND.red }]}>O</Text>
-            <View style={styles.bsoLargeDots}>
-              {[1, 2].map((dot) => {
-                const active = game.outs >= dot && game.outs < 3;
-                return (
-                  <View
-                    key={`o-${dot}`}
-                    style={[
-                      styles.bsoLargeDot,
-                      active ? { backgroundColor: BRAND.red, borderColor: BRAND.red } : { backgroundColor: BRAND.white, borderColor: "#CBD5E1" }
-                    ]}
-                  />
-                );
-              })}
-            </View>
-          </View>
+        {/* 右側待打擊區：直式排列後續兩棒次 (NEXT 1、NEXT 2) */}
+        <View style={styles.centralDuelNextQueueRight}>
+          <BatterQueuePreview players={nextBatters} events={game.events} />
         </View>
       </View>
     </View>
@@ -3718,7 +3766,7 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
         <Text style={styles.liveRunnerDefenseText}>守備：{playerIdentityLabel(pitcher, "#— 尚未設定")}</Text>
       </View>
     </View>
-    <View style={styles.liveInfieldWorkRow}>
+    <View style={styles.liveInfieldWorkColumn}>
       <View style={styles.liveRunnerCrossContainer}>
         <LiveInfieldDiamondBackground
           themeMode="dark"
@@ -3773,7 +3821,9 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           </View>
         </View>
       </View>
-      {runnerActionRail}
+      <View style={styles.liveRunnerActionRowBelow}>
+        {runnerActionRail}
+      </View>
     </View>
   </View>;
 }
@@ -4042,11 +4092,12 @@ function FieldingSequenceButtonEditor({ value, suggestions, hitDirection, onChan
 function BatterQueuePreview({ players, events }: { players: Player[]; events: Game["events"] }) {
   return (
     <View style={styles.batterQueueSection}>
-      <View style={styles.batterQueueRow}>
+      <Text style={styles.batterQueueTitle}>待打擊區</Text>
+      <View style={styles.batterQueueColumn}>
         {players.map((player, index) => {
           const latest = [...events].reverse().find((event) => event.batterId === player.id);
           return (
-            <View key={player.id} style={styles.batterQueueCard}>
+            <View key={player.id} style={styles.batterQueueVerticalCard}>
               <View style={styles.batterQueueIdentity}>
                 <Text style={styles.batterQueueOrder}>NEXT {index + 1}</Text>
                 <Text numberOfLines={1} style={styles.batterQueueName}>#{player.number} {player.name}</Text>
@@ -7822,43 +7873,62 @@ const styles = StyleSheet.create({
 
   // 中央投打對決資訊
   centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch" },
-  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  centralDuelPitcherCard: { flex: 1, borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4 },
+  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 74 },
+  centralDuelPitcherCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4, justifyContent: "space-between" },
   pitcherHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   pitcherHeaderBadge: { color: BRAND.white, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   pitcherMainRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
-  pitcherLargeName: { color: BRAND.ink, fontSize: 15, fontWeight: "900", flex: 1 },
+  pitcherLargeName: { color: BRAND.ink, fontSize: 18, fontWeight: "900", flex: 1 },
   pitcherHandText: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
   centralDuelVsBadge: { backgroundColor: BRAND.navy, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
   centralDuelVsText: { color: BRAND.white, fontSize: 12, fontWeight: "900" },
 
-  centralDuelBatterCard: { flex: 1, borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4 },
+  centralDuelBatterCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4, justifyContent: "space-between" },
   batterHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   batterHeaderBadge: { backgroundColor: BRAND.white, borderWidth: 1, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   batterMainRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
-  batterLargeName: { color: BRAND.ink, fontSize: 15, fontWeight: "900", flex: 1 },
+  batterLargeName: { color: BRAND.ink, fontSize: 18, fontWeight: "900", flex: 1 },
   batterHandText: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
-  centralDuelMiddleRow: { flexDirection: "row", gap: 12, alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8 },
-  centralDuelWasedaBox: { flex: 1.4, width: "100%", alignSelf: "stretch", justifyContent: "center" },
-  centralDuelBsoBox: { flex: 0.8, gap: 8, paddingHorizontal: 8, justifyContent: "center" },
-  bsoLargeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  bsoLargeLabel: { fontSize: 18, fontWeight: "900", width: 20, textAlign: "center" },
-  bsoLargeDots: { flexDirection: "row", gap: 8 },
-  bsoLargeDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2 },
+  // 下側左右雙分割
+  centralDuelLowerSplit: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "stretch" },
+  centralDuelWasedaBsoColumn: { flex: 1.3, gap: 8, justifyContent: "flex-start" },
+  centralDuelBsoBoxTop: { gap: 8, padding: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10 },
+  centralDuelWasedaBoxBottom: { width: "100%", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, minHeight: 180, justifyContent: "center", alignItems: "center" },
+  centralDuelNextQueueRight: { flex: 1.0, alignItems: "stretch" },
+
+  bsoLargeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  bsoLargeLabel: { fontSize: 20, fontWeight: "900", width: 22, textAlign: "center" },
+  bsoLargeDots: { flexDirection: "row", gap: 10 },
+  bsoLargeDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
+
+  // 跑壘事件按鈕水平橫向包裝樣式
+  runnerActionRailHorizontalWrap: { width: "100%", gap: 4, borderTopWidth: 1, borderTopColor: "#1E4930", paddingTop: 6, marginTop: 4 },
+  runnerActionRailHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
+  runnerActionRailTitle: { color: "#FDE68A", fontSize: 11, fontWeight: "900" },
+  runnerActionRailHint: { color: "#A7F3D0", fontSize: 9, fontWeight: "800" },
+  runnerActionHorizontalScroll: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+
+  // PLAY-BY-PLAY 下拉滾動
+  playByPlayScroll: { flex: 1, maxHeight: 220 },
+  playByPlayScrollContent: { paddingBottom: 10 },
+
+  // 縱向球場與跑壘按鈕容器
+  liveInfieldWorkColumn: { flexDirection: "column", gap: 6, alignItems: "stretch" },
+  liveRunnerActionRowBelow: { width: "100%" },
 
   // 後續棒次待打擊區
-  batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 10, gap: 8 },
-  batterQueueTitle: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
-  batterQueueRow: { flexDirection: "row", gap: 8 },
-  batterQueueCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 8, minHeight: 104 },
-  batterQueueIdentity: { gap: 4, flex: 1 },
-  batterQueueOrder: { color: BRAND.blue, fontSize: 13, fontWeight: "900" },
-  batterQueueName: { color: BRAND.ink, fontSize: 16, fontWeight: "900" },
-  batterQueueHand: { color: BRAND.muted, fontSize: 12, fontWeight: "800" },
-  batterQueueAtBatWrap: { alignItems: "center", justifyContent: "center", gap: 3 },
-  batterQueueAtBatTitle: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
+  batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6, flex: 1 },
+  batterQueueTitle: { color: BRAND.navy, fontSize: 12, fontWeight: "900", marginBottom: 4 },
+  batterQueueColumn: { flexDirection: "column", gap: 6, flex: 1 },
+  batterQueueVerticalCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 6, minHeight: 80 },
+  batterQueueIdentity: { gap: 2, flex: 1 },
+  batterQueueOrder: { color: BRAND.blue, fontSize: 12, fontWeight: "900" },
+  batterQueueName: { color: BRAND.ink, fontSize: 14, fontWeight: "900" },
+  batterQueueHand: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
+  batterQueueAtBatWrap: { alignItems: "center", justifyContent: "center", gap: 2 },
+  batterQueueAtBatTitle: { color: BRAND.muted, fontSize: 10, fontWeight: "800" },
 
   // 賽況及時紀錄父層組件
   realtimeLoggerContainer: { backgroundColor: BRAND.white, borderWidth: 1.5, borderColor: BRAND.blue, borderRadius: 12, padding: 10, gap: 8 },
@@ -7915,16 +7985,13 @@ const styles = StyleSheet.create({
   baseZoomCell: { width: "48.9%", minWidth: 0, flexGrow: 1, alignItems: "center", gap: 3, backgroundColor: BRAND.white, borderRadius: 10, borderWidth: 1, borderColor: BRAND.line, padding: 5 },
   baseZoomCellLabel: { color: BRAND.navy, fontSize: 11, lineHeight: 14, fontWeight: "900" },
   baseZoomHint: { color: BRAND.muted, fontSize: 9, lineHeight: 13, textAlign: "center", fontWeight: "700" },
-  runnerActionRail: { width: 78, minWidth: 78, alignItems: "stretch", gap: 2, paddingLeft: 6, borderLeftWidth: 1, borderLeftColor: "#1E4930" },
-  runnerActionRailTitle: { color: "#FDE68A", fontSize: 8, fontWeight: "900", textAlign: "center" },
-  runnerActionRailHint: { color: "#86A99A", fontSize: 6, fontWeight: "800", textAlign: "center", marginTop: -2, marginBottom: 1 },
-  runnerActionButton: { minWidth: 70, flexGrow: 1, minHeight: 34, flexBasis: "22%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, borderRadius: 7, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", paddingHorizontal: 4 },
-  runnerActionButtonVertical: { minWidth: 0, minHeight: 23, flexGrow: 0, flexBasis: "auto", flexDirection: "row", gap: 2, paddingHorizontal: 3, paddingVertical: 2 },
+  runnerActionButton: { minWidth: 92, flexGrow: 1, minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: 8, borderWidth: 1.5, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", paddingHorizontal: 12, paddingVertical: 10 },
+  runnerActionButtonVertical: { minHeight: 44, paddingHorizontal: 10 },
   runnerActionButtonEmphasis: { backgroundColor: "#FFF7ED", borderColor: "#FDBA74" },
-  runnerActionMark: { color: BRAND.blue, fontSize: 11, fontWeight: "900" },
-  runnerActionMarkVertical: { fontSize: 9 },
-  runnerActionText: { color: BRAND.navy, fontSize: 8, fontWeight: "900" },
-  runnerActionTextVertical: { fontSize: 7, flexShrink: 1 },
+  runnerActionMark: { color: BRAND.blue, fontSize: 14, fontWeight: "900" },
+  runnerActionMarkVertical: { fontSize: 13 },
+  runnerActionText: { color: BRAND.navy, fontSize: 12, fontWeight: "900" },
+  runnerActionTextVertical: { fontSize: 11, flexShrink: 1 },
   actionButtonDisabled: { opacity: 0.4 },
   liveMatchupRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#F8FAFC", borderRadius: 8, padding: 5 },
   liveMatchupPlayer: { color: BRAND.navy, fontSize: 10, fontWeight: "900", flex: 1, textAlign: "right" },
