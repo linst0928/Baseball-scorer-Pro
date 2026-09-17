@@ -3403,9 +3403,9 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
   return (
     <View style={[styles.liveLineupColumn, { backgroundColor: teamSurfaceColor(team, side), borderColor: accentColor }]}>
       <Text style={[styles.liveLineupColumnTitle, { color: accentColor, fontWeight: "900", fontSize: 11 }]}>{team.name} ({side === "away" ? "客" : "主"})</Text>
-      <View style={styles.lineupListWrap}>
+      <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled contentContainerStyle={styles.lineupListWrap}>
         {lineup.map((p, idx) => renderPlayerRow(p, idx, game.half === side && batter?.id === p?.id))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -3846,7 +3846,17 @@ function CurrentAtBatPanel({ game, pitchDraft, batter, completedAtBat, completed
   const displayedCompletedAtBat = (game.status === "live" && batter) ? undefined : (hasLiveDraft ? undefined : completedAtBat);
   const displayBatter = displayedCompletedAtBat ? completedBatter ?? batter : batter;
   const preview = selectedResult ? formatRecordColumnNotation(selectedResult, fieldingPosition, recordColumn) : "";
-  return <View style={styles.currentAtBatPanel}><View style={styles.currentAtBatHeader}><Text style={styles.currentAtBatName}>{playerIdentityLabel(displayBatter, "#— 本次打者")}</Text><Text style={styles.currentAtBatSync}>{displayedCompletedAtBat ? "剛完成 · 已同步" : "與左下連動"}</Text></View><WasedaPersonalRecordCell size="large" label={displayedCompletedAtBat ? "剛完成個人紀錄欄｜球數欄、外圈、內圈" : "本次個人紀錄欄｜球數欄、外圈、內圈"} note="早稻田式" event={displayedCompletedAtBat} pitchState={hasLiveDraft ? pitchDraft : undefined} result={hasLiveDraft ? selectedResult ?? undefined : undefined} recordColumn={hasLiveDraft ? recordColumn : undefined} notation={hasLiveDraft ? preview : undefined} outsBefore={hasLiveDraft ? game.outs : undefined} /></View>;
+  return (
+    <View style={styles.currentAtBatPanel}>
+      <View style={styles.currentAtBatHeader}>
+        <Text style={styles.currentAtBatName}>{playerIdentityLabel(displayBatter, "#— 本次打者")}</Text>
+        <Text style={styles.currentAtBatSync}>{displayedCompletedAtBat ? "剛完成 · 已同步" : "與左下連動"}</Text>
+      </View>
+      <View style={{ width: "100%", aspectRatio: 1.25, alignSelf: "center", justifyContent: "center", overflow: "hidden" }}>
+        <WasedaPersonalRecordCell size="large" label={displayedCompletedAtBat ? "剛完成個人紀錄欄｜球數欄、外圈、內圈" : "本次個人紀錄欄｜球數欄、外圈、內圈"} note="早稻田式" event={displayedCompletedAtBat} pitchState={hasLiveDraft ? pitchDraft : undefined} result={hasLiveDraft ? selectedResult ?? undefined : undefined} recordColumn={hasLiveDraft ? recordColumn : undefined} notation={hasLiveDraft ? preview : undefined} outsBefore={hasLiveDraft ? game.outs : undefined} />
+      </View>
+    </View>
+  );
 }
 
 type FieldingEventChoice = "none" | "routine" | "DP" | "TP" | "FC";
@@ -7853,14 +7863,14 @@ const styles = StyleSheet.create({
   liveWorkspace: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
 
   // 垂直布局：頂部面板（客隊打線 24% / 動態比分 52% / 主隊打線 24%）
-  recordTopPanel: { flexDirection: "row", gap: 8, alignItems: "stretch", maxHeight: 185 },
-  recordTopPanelCol: { flex: 0.24, minWidth: 0, gap: 4 },
-  recordTopPanelCenter: { flex: 0.52, minWidth: 0, gap: 4 },
+  recordTopPanel: { flexDirection: "row", gap: 8, alignItems: "stretch", maxHeight: 185, height: 185, backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 8 },
+  recordTopPanelCol: { flex: 0.24, minWidth: 0, gap: 4, height: "100%" },
+  recordTopPanelCenter: { flex: 0.52, minWidth: 0, gap: 4, height: "100%" },
 
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
   recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
   recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6, justifyContent: "flex-start" },
-  recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8 },
+  recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8, maxHeight: 390 },
   recordMatchupTop: { gap: 6 },
   recordMatchupBottom: { gap: 6 },
 
@@ -7876,8 +7886,8 @@ const styles = StyleSheet.create({
   inningRailHorizontalScrollContent: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 2 },
 
   // 中央投打對決資訊
-  centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch" },
-  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 74 },
+  centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch", maxHeight: 380 },
+  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "center", gap: 6, height: 72, maxHeight: 72 },
   centralDuelPitcherCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4, justifyContent: "space-between" },
   pitcherHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   pitcherHeaderBadge: { color: BRAND.white, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
@@ -7896,10 +7906,10 @@ const styles = StyleSheet.create({
   batterHandText: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
   // 下側左右雙分割
-  centralDuelLowerSplit: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "stretch" },
+  centralDuelLowerSplit: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "flex-start" },
   centralDuelWasedaBsoColumn: { flex: 1.3, gap: 8, justifyContent: "flex-start" },
   centralDuelBsoBoxTop: { gap: 8, padding: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10 },
-  centralDuelWasedaBoxBottom: { width: "100%", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, minHeight: 180, justifyContent: "center", alignItems: "center" },
+  centralDuelWasedaBoxBottom: { width: "100%", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, minHeight: 180, maxHeight: 220, justifyContent: "center", alignItems: "center" },
   centralDuelNextQueueRight: { flex: 1.0, alignItems: "stretch" },
 
   bsoLargeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -8015,7 +8025,7 @@ const styles = StyleSheet.create({
   summaryCompactMeta: { color: BRAND.muted, fontSize: 10, lineHeight: 13, fontWeight: "700" },
   summaryDetailMeta: { color: BRAND.muted, fontSize: 10, lineHeight: 13, fontWeight: "700", textAlign: "center" },
   atBatRecordPanel: { flex: 1, minWidth: 0 },
-  currentAtBatPanel: { width: "100%", flex: 1, borderWidth: 1, borderColor: "#93C5FD", backgroundColor: "#F8FBFF", borderRadius: 10, padding: 8, gap: 6 },
+  currentAtBatPanel: { width: "100%", borderWidth: 1, borderColor: "#93C5FD", backgroundColor: "#F8FBFF", borderRadius: 10, padding: 8, gap: 6, alignSelf: "center" },
   currentAtBatHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   currentAtBatName: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
   currentAtBatSync: { color: BRAND.blue, fontSize: 9, fontWeight: "900", backgroundColor: "#DBEAFE", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
