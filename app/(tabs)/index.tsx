@@ -3107,17 +3107,21 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
                     <Text style={styles.runnerActionRailTitle}>跑壘事件</Text>
                     <Text style={styles.runnerActionRailHint}>觸控強化按鈕 · 依壘況推進</Text>
                   </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.runnerActionHorizontalScroll}>
-                    <RunnerActionButton label="1→2 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!firstRunner} onPress={() => onRunnerAction("SB", 1)} onLongPress={onOpenSymbolHelp} />
-                    <RunnerActionButton label="2→3 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!secondRunner} onPress={() => onRunnerAction("SB", 2)} onLongPress={onOpenSymbolHelp} />
-                    <RunnerActionButton label="3→本 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!thirdRunner} onPress={() => onRunnerAction("SB", 3)} onLongPress={onOpenSymbolHelp} />
-                    <RunnerActionButton label="盜壘失敗" mark="CS" help={RUNNER_SYMBOL_HELP.CS} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("CS")} onLongPress={onOpenSymbolHelp} emphasis />
-                    <RunnerActionButton label="進壘" mark="↑" help={RUNNER_SYMBOL_HELP.ADV} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => onRunnerAction("ADV")} onLongPress={onOpenSymbolHelp} />
-                    <RunnerActionButton label="暴投" mark="WP" help={RUNNER_SYMBOL_HELP.WP} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("WP")} onLongPress={onOpenSymbolHelp} />
-                    <RunnerActionButton label="捕逸" mark="PB" help={RUNNER_SYMBOL_HELP.PB} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("PB")} onLongPress={onOpenSymbolHelp} />
-                    <RunnerActionButton label="投手犯規" mark="BK" help={RUNNER_SYMBOL_HELP.BK} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("BK")} onLongPress={onOpenSymbolHelp} />
-                    <RunnerActionButton label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!canUndo} onPress={onUndo} onLongPress={onOpenSymbolHelp} emphasis />
-                  </ScrollView>
+                  <View style={styles.runnerActionGridTwoRows}>
+                    <View style={styles.runnerActionRowGroup}>
+                      <RunnerActionButton label="1→2 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!firstRunner} onPress={() => onRunnerAction("SB", 1)} onLongPress={onOpenSymbolHelp} />
+                      <RunnerActionButton label="2→3 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!secondRunner} onPress={() => onRunnerAction("SB", 2)} onLongPress={onOpenSymbolHelp} />
+                      <RunnerActionButton label="3→本 盜壘" mark="S" help={RUNNER_SYMBOL_HELP.SB} disabled={!thirdRunner} onPress={() => onRunnerAction("SB", 3)} onLongPress={onOpenSymbolHelp} />
+                      <RunnerActionButton label="盜壘失敗" mark="CS" help={RUNNER_SYMBOL_HELP.CS} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("CS")} onLongPress={onOpenSymbolHelp} emphasis />
+                      <RunnerActionButton label="進壘" mark="↑" help={RUNNER_SYMBOL_HELP.ADV} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => onRunnerAction("ADV")} onLongPress={onOpenSymbolHelp} />
+                    </View>
+                    <View style={styles.runnerActionRowGroup}>
+                      <RunnerActionButton label="暴投" mark="WP" help={RUNNER_SYMBOL_HELP.WP} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("WP")} onLongPress={onOpenSymbolHelp} />
+                      <RunnerActionButton label="捕逸" mark="PB" help={RUNNER_SYMBOL_HELP.PB} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("PB")} onLongPress={onOpenSymbolHelp} />
+                      <RunnerActionButton label="投手犯規" mark="BK" help={RUNNER_SYMBOL_HELP.BK} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("BK")} onLongPress={onOpenSymbolHelp} />
+                      <RunnerActionButton label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!canUndo} onPress={onUndo} onLongPress={onOpenSymbolHelp} emphasis />
+                    </View>
+                  </View>
                 </View>
               }
             />
@@ -3377,20 +3381,20 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
     // 客場 vs 主場的 active 底色與邊框
     const activeStyle = isCurrent ? {
       backgroundColor: isAway ? "#DBEAFE" : "#FFEDD5",
-      borderWidth: 1.5,
+      borderWidth: 1,
       borderColor: isAway ? BRAND.blue : "#EA580C",
     } : null;
 
     // 客場使用藍色，主場使用橘色
     const activeTextCol = isAway ? BRAND.blue : "#C2410C";
-    const activeTextStyle = isCurrent ? { color: activeTextCol, fontWeight: "900" as const, fontSize: 15 } : { fontWeight: "800" as const, fontSize: 14 };
+    const activeTextStyle = isCurrent ? { color: activeTextCol, fontWeight: "900" as const, fontSize: 11 } : { fontWeight: "800" as const, fontSize: 10.5 };
 
     return (
       <View key={player.id || `${side}-${index}`} style={[styles.lineupRowItem, activeStyle]}>
         <Text style={[styles.lineupOrderText, activeTextStyle]}>{index + 1}</Text>
         <Text style={[styles.lineupPosText, activeTextStyle]}>{formatChinesePosition(player.position)}</Text>
-        <Text numberOfLines={1} style={[styles.lineupNameText, activeTextStyle, { fontWeight: "900", fontSize: 14 }]}>{player.name}</Text>
-        <Text style={[styles.lineupNumberText, activeTextStyle]}>#{player.number}</Text>
+        <Text numberOfLines={1} style={[styles.lineupNameText, activeTextStyle]}>{player.name}</Text>
+        <Text style={[styles.lineupNumberText, activeTextStyle]}>{player.number}</Text>
         <Text style={[styles.lineupHandText, activeTextStyle]}>{formatPlayerHand(player)}</Text>
       </View>
     );
@@ -3398,7 +3402,7 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
 
   return (
     <View style={[styles.liveLineupColumn, { backgroundColor: teamSurfaceColor(team, side), borderColor: accentColor }]}>
-      <Text style={[styles.liveLineupColumnTitle, { color: accentColor, fontWeight: "900", fontSize: 13 }]}>{team.name} ({side === "away" ? "客" : "主"})</Text>
+      <Text style={[styles.liveLineupColumnTitle, { color: accentColor, fontWeight: "900", fontSize: 11 }]}>{team.name} ({side === "away" ? "客" : "主"})</Text>
       <View style={styles.lineupListWrap}>
         {lineup.map((p, idx) => renderPlayerRow(p, idx, game.half === side && batter?.id === p?.id))}
       </View>
@@ -6686,20 +6690,20 @@ const styles = StyleSheet.create({
   liveLineupSubRow: { flexDirection: "row", gap: 8 },
   liveLineupTeamCol: { flex: 1, minWidth: 0, gap: 4 },
   liveLineupTeamHeader: { fontSize: 10, fontWeight: "900" },
-  liveLineupColumn: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6, flex: 1, minWidth: 0 },
-  liveLineupColumnTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingBottom: 4 },
-  lineupListWrap: { gap: 4 },
-  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: 3, paddingHorizontal: 2, borderRadius: 4 },
+  liveLineupColumn: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, gap: 4, flex: 1, minWidth: 0 },
+  liveLineupColumnTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingBottom: 2 },
+  lineupListWrap: { gap: 1.5 },
+  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: 1, paddingHorizontal: 2, borderRadius: 4 },
   lineupRowItemActive: { backgroundColor: "#EFF6FF", borderWidth: 0.5, borderColor: "#BFDBFE" },
   lineupOrderText: { color: BRAND.muted, fontSize: 8, fontWeight: "900", width: 10, textAlign: "center" },
   lineupOrderTextActive: { color: BRAND.blue },
-  lineupPosText: { color: BRAND.muted, fontSize: 7.5, fontWeight: "900", width: 14, textAlign: "center" },
+  lineupPosText: { color: BRAND.muted, fontSize: 7.5, fontWeight: "900", width: 12, textAlign: "center" },
   lineupPosTextActive: { color: BRAND.blue },
-  lineupNameText: { color: BRAND.ink, fontSize: 8.5, flex: 1, minWidth: 24, fontWeight: "700" },
+  lineupNameText: { color: BRAND.ink, fontSize: 8.5, flex: 1, minWidth: 20, fontWeight: "700" },
   lineupNameTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupNumberText: { color: BRAND.muted, fontSize: 8, width: 16, fontWeight: "700", textAlign: "right" },
+  lineupNumberText: { color: BRAND.muted, fontSize: 8, width: 14, fontWeight: "700", textAlign: "right" },
   lineupNumberTextActive: { color: BRAND.blue, fontWeight: "900" },
-  lineupHandText: { color: BRAND.muted, fontSize: 7, fontWeight: "800", width: 12, textAlign: "center" },
+  lineupHandText: { color: BRAND.muted, fontSize: 7, fontWeight: "800", width: 10, textAlign: "center" },
   lineupHandTextActive: { color: BRAND.blue, fontWeight: "900" },
 
   /* 任務二：投手區塊與打者區塊樣式 */
@@ -7848,10 +7852,10 @@ const styles = StyleSheet.create({
   liveWasedaLegendItem: { color: BRAND.muted, fontSize: 9, fontWeight: "700" },
   liveWorkspace: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
 
-  // 垂直布局：頂部面板（客隊打線 15% / 動態比分 70% / 主隊打線 15%）
-  recordTopPanel: { flexDirection: "row", gap: 8, alignItems: "stretch" },
-  recordTopPanelCol: { flex: 0.15, minWidth: 0, gap: 6 },
-  recordTopPanelCenter: { flex: 0.70, minWidth: 0, gap: 6 },
+  // 垂直布局：頂部面板（客隊打線 24% / 動態比分 52% / 主隊打線 24%）
+  recordTopPanel: { flexDirection: "row", gap: 8, alignItems: "stretch", maxHeight: 185 },
+  recordTopPanelCol: { flex: 0.24, minWidth: 0, gap: 4 },
+  recordTopPanelCenter: { flex: 0.52, minWidth: 0, gap: 4 },
 
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
   recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
@@ -7909,6 +7913,8 @@ const styles = StyleSheet.create({
   runnerActionRailTitle: { color: "#FDE68A", fontSize: 11, fontWeight: "900" },
   runnerActionRailHint: { color: "#A7F3D0", fontSize: 9, fontWeight: "800" },
   runnerActionHorizontalScroll: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+  runnerActionGridTwoRows: { gap: 4, paddingVertical: 2 },
+  runnerActionRowGroup: { flexDirection: "row", gap: 4, justifyContent: "space-between", width: "100%" },
 
   // PLAY-BY-PLAY 下拉滾動
   playByPlayScroll: { flex: 1, maxHeight: 220 },
@@ -7985,13 +7991,13 @@ const styles = StyleSheet.create({
   baseZoomCell: { width: "48.9%", minWidth: 0, flexGrow: 1, alignItems: "center", gap: 3, backgroundColor: BRAND.white, borderRadius: 10, borderWidth: 1, borderColor: BRAND.line, padding: 5 },
   baseZoomCellLabel: { color: BRAND.navy, fontSize: 11, lineHeight: 14, fontWeight: "900" },
   baseZoomHint: { color: BRAND.muted, fontSize: 9, lineHeight: 13, textAlign: "center", fontWeight: "700" },
-  runnerActionButton: { minWidth: 92, flexGrow: 1, minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: 8, borderWidth: 1.5, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", paddingHorizontal: 12, paddingVertical: 10 },
-  runnerActionButtonVertical: { minHeight: 44, paddingHorizontal: 10 },
+  runnerActionButton: { minWidth: 50, flexGrow: 1, minHeight: 34, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, borderRadius: 6, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", paddingHorizontal: 6, paddingVertical: 5 },
+  runnerActionButtonVertical: { minHeight: 34, paddingHorizontal: 6 },
   runnerActionButtonEmphasis: { backgroundColor: "#FFF7ED", borderColor: "#FDBA74" },
-  runnerActionMark: { color: BRAND.blue, fontSize: 14, fontWeight: "900" },
-  runnerActionMarkVertical: { fontSize: 13 },
-  runnerActionText: { color: BRAND.navy, fontSize: 12, fontWeight: "900" },
-  runnerActionTextVertical: { fontSize: 11, flexShrink: 1 },
+  runnerActionMark: { color: BRAND.blue, fontSize: 11, fontWeight: "900" },
+  runnerActionMarkVertical: { fontSize: 10 },
+  runnerActionText: { color: BRAND.navy, fontSize: 11, fontWeight: "900" },
+  runnerActionTextVertical: { fontSize: 10, flexShrink: 1 },
   actionButtonDisabled: { opacity: 0.4 },
   liveMatchupRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#F8FAFC", borderRadius: 8, padding: 5 },
   liveMatchupPlayer: { color: BRAND.navy, fontSize: 10, fontWeight: "900", flex: 1, textAlign: "right" },
