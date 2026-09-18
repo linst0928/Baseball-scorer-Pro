@@ -3387,7 +3387,7 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
 
     // 客場使用藍色，主場使用橘色
     const activeTextCol = isAway ? BRAND.blue : "#C2410C";
-    const activeTextStyle = isCurrent ? { color: activeTextCol, fontWeight: "900" as const, fontSize: 11 } : { fontWeight: "800" as const, fontSize: 10.5 };
+    const activeTextStyle = isCurrent ? { color: activeTextCol, fontWeight: "900" as const, fontSize: 10 } : { fontWeight: "800" as const, fontSize: 9.2 };
 
     return (
       <View key={player.id || `${side}-${index}`} style={[styles.lineupRowItem, activeStyle]}>
@@ -6703,7 +6703,7 @@ const styles = StyleSheet.create({
   liveLineupColumn: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, gap: 4, flex: 1, minWidth: 0, overflow: "hidden" },
   liveLineupColumnTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingBottom: 2 },
   lineupListWrap: { flex: 1, justifyContent: "space-between" },
-  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: 1, paddingHorizontal: 2, borderRadius: 4 },
+  lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: 0, paddingHorizontal: 2, borderRadius: 4 },
   lineupRowItemActive: { backgroundColor: "#EFF6FF", borderWidth: 0.5, borderColor: "#BFDBFE" },
   lineupOrderText: { color: BRAND.muted, fontSize: 8, fontWeight: "900", width: 10, textAlign: "center" },
   lineupOrderTextActive: { color: BRAND.blue },
@@ -6724,9 +6724,9 @@ const styles = StyleSheet.create({
   pitcherMetaGroup: { gap: 2 },
   pitcherTeamName: { color: BRAND.muted, fontSize: 10, fontWeight: "700" },
   pitcherNameText: { color: BRAND.ink, fontSize: 14, fontWeight: "900" },
-  pitcherLimitBox: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignItems: "flex-end" },
-  pitcherLimitPitches: { fontSize: 13, fontWeight: "900" },
-  pitcherLimitDesc: { fontSize: 10, fontWeight: "700", marginTop: 1 },
+  pitcherLimitBox: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%" },
+  pitcherLimitPitches: { fontSize: 11, fontWeight: "900" },
+  pitcherLimitDesc: { fontSize: 9, fontWeight: "700" },
   pitcherHistoriesRow: { flexDirection: "row", gap: 8, borderTopWidth: 0.5, borderTopColor: BRAND.line, paddingTop: 6, marginTop: 4, flexWrap: "wrap" },
   pitcherHistoryChipText: { fontSize: 9, color: BRAND.muted, fontWeight: "700" },
   pitcherHistoryChipTextActive: { color: BRAND.navy, fontWeight: "900" },
@@ -7887,7 +7887,7 @@ const styles = StyleSheet.create({
 
   // 中央投打對決資訊
   centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch", flex: 1, justifyContent: "space-between" },
-  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "stretch", gap: 6, minHeight: 76 },
+  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "stretch", gap: 6, height: 76 },
   centralDuelPitcherCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4, justifyContent: "space-between" },
   pitcherHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   pitcherHeaderBadge: { color: BRAND.white, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
@@ -7908,8 +7908,8 @@ const styles = StyleSheet.create({
   // 下側左右雙分割
   centralDuelLowerSplit: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "stretch", flex: 1 },
   centralDuelWasedaBsoColumn: { flex: 1.3, gap: 8, justifyContent: "space-between", alignItems: "stretch" },
-  centralDuelBsoBoxTop: { gap: 6, padding: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, minHeight: 88, justifyContent: "center" },
-  centralDuelWasedaBoxBottom: { width: "100%", flex: 1, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, justifyContent: "center", alignItems: "center", overflow: "hidden" },
+  centralDuelBsoBoxTop: { gap: 6, padding: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, height: 72, justifyContent: "center" },
+  centralDuelWasedaBoxBottom: { width: "100%", flex: 1, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 4, justifyContent: "center", alignItems: "center", overflow: "hidden" },
   centralDuelNextQueueRight: { flex: 1.0, alignItems: "stretch" },
 
   bsoLargeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
