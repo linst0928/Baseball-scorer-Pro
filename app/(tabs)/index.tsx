@@ -3078,8 +3078,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
           <LiveLineupColumn team={away} side="away" game={game} batter={batter} />
         </View>
         <View style={styles.recordTopPanelCenter}>
-          <View style={styles.liveTeamIdentityRow}><View style={[styles.liveTeamIdentityCard, { backgroundColor: teamSurfaceColor(away, "away") }]}><Text style={styles.liveTeamIdentitySide}>客場(先攻)／先攻</Text><TeamLogoName team={away} textStyle={styles.liveTeamIdentityName} logoSize={26} /></View><View style={[styles.liveTeamIdentityCard, styles.liveTeamIdentityCardHome, { backgroundColor: teamSurfaceColor(home, "home") }]}><Text style={styles.liveTeamIdentitySide}>主場(先守)／後攻</Text><TeamLogoName team={home} textStyle={styles.liveTeamIdentityName} logoSize={26} align="right" /></View></View>
-          <ScoreBoard game={game} away={away} home={home} fontScale={1.3} />
+          <ScoreBoard game={game} away={away} home={home} fontScale={1.25} />
           {game.status === "setup" ? <View style={styles.setupCard}><Text style={styles.setupTitle}>球員名單與比賽資訊已就緒</Text><Text style={styles.setupText}>客場(先攻)先攻，記錄員可以從第一球開始建立完整比賽紀錄。</Text><Button label="開始第一局" onPress={onStart} /></View> : null}
         </View>
         <View style={styles.recordTopPanelCol}>
@@ -3815,12 +3814,12 @@ function LiveInfieldPanel({ game, pitchDraft, batter, pitcher, battingPlayers, s
           </View>
         </View>
 
-        {/* 本壘 (Bottom Center) */}
-        <View style={[styles.liveRunnerAbsoluteSlot, { top: "80%", left: "50%", transform: [{ translateX: -46 }, { translateY: -40 }] }]}>
+        {/* 本壘 (Bottom Center) - 打席資訊移至打席格右邊防白邊 */}
+        <View style={[styles.liveRunnerAbsoluteSlot, { top: "78%", left: "50%", flexDirection: "row", alignItems: "center", gap: 6, transform: [{ translateX: -70 }, { translateY: -34 }] }]}>
           <View style={styles.liveRunnerScoreCell}>
             <WasedaBaseCell {...quadrants[0]} dense style={{ borderWidth: 0 }} />
           </View>
-          <View style={styles.liveRunnerPlayerTag}>
+          <View style={[styles.liveRunnerPlayerTag, { maxWidth: 110 }]}>
             <Text style={styles.liveRunnerPlayerTagText} numberOfLines={1}>{batterLabel}</Text>
           </View>
         </View>
@@ -6888,7 +6887,7 @@ const styles = StyleSheet.create({
   wbcImportTitle: { color: BRAND.ink, fontSize: 15, fontWeight: "900", marginTop: 3 },
   wbcImportText: { color: BRAND.muted, fontSize: 11, lineHeight: 17, marginTop: 3 },
   scoreCard: { backgroundColor: BRAND.white, borderRadius: 12, borderWidth: 1, borderColor: BRAND.line, padding: 8 },
-  photoScoreboard: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, overflow: "hidden" },
+  photoScoreboard: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, overflow: "hidden", height: "100%", justifyContent: "space-between" },
   photoScoreboardCaption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: BRAND.line },
   photoScoreboardTitle: { color: BRAND.navy, fontSize: 15, fontWeight: "900" },
   photoScoreboardMeta: { color: BRAND.muted, fontSize: 11, fontWeight: "700" },
@@ -7868,8 +7867,8 @@ const styles = StyleSheet.create({
   recordTopPanelCenter: { flex: 0.52, minWidth: 0, gap: 4, height: "100%" },
 
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
-  recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
-  recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6, justifyContent: "flex-start" },
+  recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "stretch" },
+  recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6, justifyContent: "space-between" },
   recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8, alignSelf: "stretch" },
   recordMatchupTop: { gap: 6 },
   recordMatchupBottom: { gap: 6 },
@@ -7887,8 +7886,8 @@ const styles = StyleSheet.create({
 
   // 中央投打對決資訊
   centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch", flex: 1, justifyContent: "space-between" },
-  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "stretch", gap: 6, height: 76 },
-  centralDuelPitcherCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4, justifyContent: "space-between" },
+  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "stretch", gap: 6, height: 80 },
+  centralDuelPitcherCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 6, gap: 2, justifyContent: "space-between" },
   pitcherHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   pitcherHeaderBadge: { color: BRAND.white, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   pitcherMainRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
@@ -7898,7 +7897,7 @@ const styles = StyleSheet.create({
   centralDuelVsBadge: { backgroundColor: BRAND.navy, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
   centralDuelVsText: { color: BRAND.white, fontSize: 12, fontWeight: "900" },
 
-  centralDuelBatterCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4, justifyContent: "space-between" },
+  centralDuelBatterCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 6, gap: 2, justifyContent: "space-between" },
   batterHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   batterHeaderBadge: { backgroundColor: BRAND.white, borderWidth: 1, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   batterMainRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
@@ -7908,7 +7907,7 @@ const styles = StyleSheet.create({
   // 下側左右雙分割
   centralDuelLowerSplit: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "stretch", flex: 1 },
   centralDuelWasedaBsoColumn: { flex: 1.3, gap: 8, justifyContent: "space-between", alignItems: "stretch" },
-  centralDuelBsoBoxTop: { gap: 6, padding: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, height: 72, justifyContent: "center" },
+  centralDuelBsoBoxTop: { gap: 4, padding: 6, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, height: 68, minHeight: 68, justifyContent: "center" },
   centralDuelWasedaBoxBottom: { width: "100%", flex: 1, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 4, justifyContent: "center", alignItems: "center", overflow: "hidden" },
   centralDuelNextQueueRight: { flex: 1.0, alignItems: "stretch" },
 
@@ -7935,10 +7934,10 @@ const styles = StyleSheet.create({
   liveRunnerActionRowBelow: { width: "100%" },
 
   // 後續棒次待打擊區
-  batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, gap: 6, flex: 1 },
-  batterQueueTitle: { color: BRAND.navy, fontSize: 12, fontWeight: "900", marginBottom: 4 },
-  batterQueueColumn: { flexDirection: "column", gap: 6, flex: 1 },
-  batterQueueVerticalCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 6, minHeight: 80 },
+  batterQueueSection: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, gap: 4, flex: 1, justifyContent: "space-between" },
+  batterQueueTitle: { color: BRAND.navy, fontSize: 12, fontWeight: "900", marginBottom: 2 },
+  batterQueueColumn: { flexDirection: "column", gap: 4, flex: 1, justifyContent: "space-between" },
+  batterQueueVerticalCard: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 8, padding: 4, minHeight: 64 },
   batterQueueIdentity: { gap: 2, flex: 1 },
   batterQueueOrder: { color: BRAND.blue, fontSize: 12, fontWeight: "900" },
   batterQueueName: { color: BRAND.ink, fontSize: 14, fontWeight: "900" },
