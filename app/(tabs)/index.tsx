@@ -3847,12 +3847,12 @@ function CurrentAtBatPanel({ game, pitchDraft, batter, completedAtBat, completed
   const displayBatter = displayedCompletedAtBat ? completedBatter ?? batter : batter;
   const preview = selectedResult ? formatRecordColumnNotation(selectedResult, fieldingPosition, recordColumn) : "";
   return (
-    <View style={[styles.currentAtBatPanel, { flex: 1, justifyContent: "space-between" }]}>
+    <View style={[styles.currentAtBatPanel, { flex: 1, justifyContent: "space-between", padding: 4, gap: 4 }]}>
       <View style={styles.currentAtBatHeader}>
         <Text style={styles.currentAtBatName}>{playerIdentityLabel(displayBatter, "#— 本次打者")}</Text>
         <Text style={styles.currentAtBatSync}>{displayedCompletedAtBat ? "剛完成 · 已同步" : "與左下連動"}</Text>
       </View>
-      <View style={{ flex: 1, width: "100%", aspectRatio: 1.15, alignSelf: "center", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+      <View style={{ flex: 1, width: "100%", justifyContent: "center", alignItems: "center", overflow: "visible" }}>
         <WasedaPersonalRecordCell size="large" label={displayedCompletedAtBat ? "剛完成個人紀錄欄｜球數欄、外圈、內圈" : "本次個人紀錄欄｜球數欄、外圈、內圈"} note="早稻田式" event={displayedCompletedAtBat} pitchState={hasLiveDraft ? pitchDraft : undefined} result={hasLiveDraft ? selectedResult ?? undefined : undefined} recordColumn={hasLiveDraft ? recordColumn : undefined} notation={hasLiveDraft ? preview : undefined} outsBefore={hasLiveDraft ? game.outs : undefined} />
       </View>
     </View>
