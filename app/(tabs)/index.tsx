@@ -3403,9 +3403,9 @@ function LiveLineupColumn({ team, side, game, batter }: { team: Team; side: Team
   return (
     <View style={[styles.liveLineupColumn, { backgroundColor: teamSurfaceColor(team, side), borderColor: accentColor }]}>
       <Text style={[styles.liveLineupColumnTitle, { color: accentColor, fontWeight: "900", fontSize: 11 }]}>{team.name} ({side === "away" ? "客" : "主"})</Text>
-      <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled contentContainerStyle={styles.lineupListWrap}>
+      <View style={styles.lineupListWrap}>
         {lineup.map((p, idx) => renderPlayerRow(p, idx, game.half === side && batter?.id === p?.id))}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -3847,12 +3847,12 @@ function CurrentAtBatPanel({ game, pitchDraft, batter, completedAtBat, completed
   const displayBatter = displayedCompletedAtBat ? completedBatter ?? batter : batter;
   const preview = selectedResult ? formatRecordColumnNotation(selectedResult, fieldingPosition, recordColumn) : "";
   return (
-    <View style={styles.currentAtBatPanel}>
+    <View style={[styles.currentAtBatPanel, { flex: 1, justifyContent: "space-between" }]}>
       <View style={styles.currentAtBatHeader}>
         <Text style={styles.currentAtBatName}>{playerIdentityLabel(displayBatter, "#— 本次打者")}</Text>
         <Text style={styles.currentAtBatSync}>{displayedCompletedAtBat ? "剛完成 · 已同步" : "與左下連動"}</Text>
       </View>
-      <View style={{ width: "100%", aspectRatio: 1.25, alignSelf: "center", justifyContent: "center", overflow: "hidden" }}>
+      <View style={{ flex: 1, width: "100%", aspectRatio: 1.15, alignSelf: "center", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
         <WasedaPersonalRecordCell size="large" label={displayedCompletedAtBat ? "剛完成個人紀錄欄｜球數欄、外圈、內圈" : "本次個人紀錄欄｜球數欄、外圈、內圈"} note="早稻田式" event={displayedCompletedAtBat} pitchState={hasLiveDraft ? pitchDraft : undefined} result={hasLiveDraft ? selectedResult ?? undefined : undefined} recordColumn={hasLiveDraft ? recordColumn : undefined} notation={hasLiveDraft ? preview : undefined} outsBefore={hasLiveDraft ? game.outs : undefined} />
       </View>
     </View>
@@ -6700,9 +6700,9 @@ const styles = StyleSheet.create({
   liveLineupSubRow: { flexDirection: "row", gap: 8 },
   liveLineupTeamCol: { flex: 1, minWidth: 0, gap: 4 },
   liveLineupTeamHeader: { fontSize: 10, fontWeight: "900" },
-  liveLineupColumn: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, gap: 4, flex: 1, minWidth: 0 },
+  liveLineupColumn: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, gap: 4, flex: 1, minWidth: 0, overflow: "hidden" },
   liveLineupColumnTitle: { color: BRAND.navy, fontSize: 10, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: BRAND.line, paddingBottom: 2 },
-  lineupListWrap: { gap: 1.5 },
+  lineupListWrap: { flex: 1, justifyContent: "space-between" },
   lineupRowItem: { flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: 1, paddingHorizontal: 2, borderRadius: 4 },
   lineupRowItemActive: { backgroundColor: "#EFF6FF", borderWidth: 0.5, borderColor: "#BFDBFE" },
   lineupOrderText: { color: BRAND.muted, fontSize: 8, fontWeight: "900", width: 10, textAlign: "center" },
@@ -7870,7 +7870,7 @@ const styles = StyleSheet.create({
   // 垂直布局：中間區塊 1（左側壘包與跑壘紀錄，右側投打對決 + 後續兩棒）
   recordMiddleBlock1: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
   recordMiddleBlock1Left: { flex: 1, minWidth: 0, gap: 6, justifyContent: "flex-start" },
-  recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8, maxHeight: 390 },
+  recordMiddleBlock1Right: { flex: 1.25, minWidth: 0, gap: 8, alignSelf: "stretch" },
   recordMatchupTop: { gap: 6 },
   recordMatchupBottom: { gap: 6 },
 
@@ -7886,8 +7886,8 @@ const styles = StyleSheet.create({
   inningRailHorizontalScrollContent: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 2 },
 
   // 中央投打對決資訊
-  centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch", maxHeight: 380 },
-  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "center", gap: 6, height: 72, maxHeight: 72 },
+  centralDuelPanel: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, padding: 10, gap: 8, alignSelf: "stretch", flex: 1, justifyContent: "space-between" },
+  centralDuelMatchupHeader: { flexDirection: "row", alignItems: "stretch", gap: 6, minHeight: 76 },
   centralDuelPitcherCard: { flex: 1, height: "100%", borderWidth: 1.5, borderRadius: 10, padding: 8, gap: 4, justifyContent: "space-between" },
   pitcherHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   pitcherHeaderBadge: { color: BRAND.white, fontSize: 11, fontWeight: "900", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
@@ -7906,10 +7906,10 @@ const styles = StyleSheet.create({
   batterHandText: { color: BRAND.muted, fontSize: 11, fontWeight: "800" },
 
   // 下側左右雙分割
-  centralDuelLowerSplit: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "flex-start" },
-  centralDuelWasedaBsoColumn: { flex: 1.3, gap: 8, justifyContent: "flex-start" },
-  centralDuelBsoBoxTop: { gap: 8, padding: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10 },
-  centralDuelWasedaBoxBottom: { width: "100%", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 8, minHeight: 180, maxHeight: 220, justifyContent: "center", alignItems: "center" },
+  centralDuelLowerSplit: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "stretch", flex: 1 },
+  centralDuelWasedaBsoColumn: { flex: 1.3, gap: 8, justifyContent: "space-between", alignItems: "stretch" },
+  centralDuelBsoBoxTop: { gap: 6, padding: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, minHeight: 88, justifyContent: "center" },
+  centralDuelWasedaBoxBottom: { width: "100%", flex: 1, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: BRAND.line, borderRadius: 10, padding: 6, justifyContent: "center", alignItems: "center", overflow: "hidden" },
   centralDuelNextQueueRight: { flex: 1.0, alignItems: "stretch" },
 
   bsoLargeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
