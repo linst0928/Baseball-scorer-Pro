@@ -585,7 +585,7 @@ function TeamPill({ team, side }: { team: Team; side: TeamSide }) {
   );
 }
 
-function ScoreBoard({ game, away, home, fontScale = 1 }: { game: Game; away: Team; home: Team; fontScale?: number }) {
+function ScoreBoard({ game, away, home, fontScale = 1, style }: { game: Game; away: Team; home: Team; fontScale?: number; style?: any }) {
   const rows = getInningRows(game);
   const totals = (side: TeamSide) => rows.reduce((sum, row) => sum + row[side], 0);
   const hits = (side: TeamSide) => game.events.filter((event) => event.half === side && ["1B", "2B", "3B", "HR"].includes(event.result)).length;
@@ -595,7 +595,7 @@ function ScoreBoard({ game, away, home, fontScale = 1 }: { game: Game; away: Tea
   const scoreboardTeamNameStyle = { ...styles.photoScoreboardTeamName, fontSize: scaledFontSize(13) };
   const scoreboardSideStyle = { ...styles.photoScoreboardSide, fontSize: scaledFontSize(12) };
   return (
-    <View style={styles.photoScoreboard}>
+    <View style={[styles.photoScoreboard, style]}>
       <View style={styles.photoScoreboardCaption}>
         <Text style={[styles.photoScoreboardTitle, { fontSize: scaledFontSize(15) }]}>主客場比分</Text>
         <Text style={[styles.photoScoreboardMeta, { fontSize: scaledFontSize(11) }]}>{game.status === "final" ? "FINAL" : `第 ${game.inning} 局${game.half === "away" ? "上" : "下"}`} · 預定 {game.maxInnings} 局</Text>
@@ -3078,7 +3078,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
           <LiveLineupColumn team={away} side="away" game={game} batter={batter} />
         </View>
         <View style={styles.recordTopPanelCenter}>
-          <ScoreBoard game={game} away={away} home={home} fontScale={1.25} />
+          <ScoreBoard game={game} away={away} home={home} fontScale={1.25} style={{ flex: 1, height: "100%", justifyContent: "space-between" }} />
           {game.status === "setup" ? <View style={styles.setupCard}><Text style={styles.setupTitle}>球員名單與比賽資訊已就緒</Text><Text style={styles.setupText}>客場(先攻)先攻，記錄員可以從第一球開始建立完整比賽紀錄。</Text><Button label="開始第一局" onPress={onStart} /></View> : null}
         </View>
         <View style={styles.recordTopPanelCol}>
@@ -6887,7 +6887,7 @@ const styles = StyleSheet.create({
   wbcImportTitle: { color: BRAND.ink, fontSize: 15, fontWeight: "900", marginTop: 3 },
   wbcImportText: { color: BRAND.muted, fontSize: 11, lineHeight: 17, marginTop: 3 },
   scoreCard: { backgroundColor: BRAND.white, borderRadius: 12, borderWidth: 1, borderColor: BRAND.line, padding: 8 },
-  photoScoreboard: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, overflow: "hidden", height: "100%", justifyContent: "space-between" },
+  photoScoreboard: { backgroundColor: BRAND.white, borderWidth: 1, borderColor: BRAND.line, borderRadius: 12, overflow: "hidden" },
   photoScoreboardCaption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: BRAND.line },
   photoScoreboardTitle: { color: BRAND.navy, fontSize: 15, fontWeight: "900" },
   photoScoreboardMeta: { color: BRAND.muted, fontSize: 11, fontWeight: "700" },
