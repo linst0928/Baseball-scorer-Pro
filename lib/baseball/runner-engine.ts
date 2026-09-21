@@ -1,4 +1,5 @@
 import type { Game, RunnerState, AtBatResult } from "./types";
+import { calculateForceState, determineOutType, type ForceState, type OutType } from "./force-play";
 
 export type ForcedAdvanceResult = {
   /** 壘包更新後的狀態快照 */
@@ -91,40 +92,42 @@ export function checkTimePlayCondition({
   baseOfOut,
   runnersBefore,
   outsBefore,
+  runnerId,
+  forceState: customForceState,
 }: {
   result: AtBatResult | "SPECIAL_OUT";
   /** 該名跑者出局的壘包或打者出局位置 */
   baseOfOut: 1 | 2 | 3 | 4;
   runnersBefore: RunnerState;
   outsBefore: number;
+  runnerId?: string;
+  forceState?: ForceState;
 }): TimePlayCheckResult {
   // 只有在本次出局為第 3 出局時，才有 Time Play 判定需求
   if (outsBefore !== 2) {
     return { requireTimePlayConfirmation: false, isForcePlayOut: false };
   }
 
-  // 判定是否為「封殺出局」：
-  // 打者在一壘出局，或被迫進壘的跑者在被迫前進的目標壘包出局
+  // 若打者擊出球（G 或 E）且在 1 壘前出局，或者打者成為跑者觸發 Force Chain
+  const batterBecomesRunner = result === "G" || result === "E" || result === "1B" || result === "2B" || result === "3B" || result === "HR" || result === "FC";
+  const forceState = customForceState ?? calculateForceState(runnersBefore, batterBecomesRunner);
+
   let isForcePlayOut = false;
 
-  if (result === "G" || result === "E") {
-    if (baseOfOut === 1) {
+  if (runnerId) {
+    const determinedOutType = determineOutType(runnerId, baseOfOut, forceState, baseOfOut === 1 && batterBecomesRunner);
+    isForcePlayOut = determinedOutType === "FORCE_OUT";
+  } else {
+    // 未傳入 runnerId 時備用相容判定
+    if (batterBecomesRunner && baseOfOut === 1) {
+      isForcePlayOut = true;
+    } else if (baseOfOut === 2 && runnersBefore.first) {
+      isForcePlayOut = true;
+    } else if (baseOfOut === 3 && runnersBefore.first && runnersBefore.second) {
+      isForcePlayOut = true;
+    } else if (baseOfOut === 4 && runnersBefore.first && runnersBefore.second && runnersBefore.third) {
       isForcePlayOut = true;
     }
-  }
-
-  // 若跑者在強制推進狀態下出局：
-  // 1. 一壘跑者在二壘出局且強迫推進中
-  if (baseOfOut === 2 && runnersBefore.first) {
-    isForcePlayOut = true;
-  }
-  // 2. 二壘跑者在三壘出局且一二壘均有人強迫推進中
-  if (baseOfOut === 3 && runnersBefore.first && runnersBefore.second) {
-    isForcePlayOut = true;
-  }
-  // 3. 三壘跑者在本壘出局且滿壘強迫推進中
-  if (baseOfOut === 4 && runnersBefore.first && runnersBefore.second && runnersBefore.third) {
-    isForcePlayOut = true;
   }
 
   // 規則：如果第 3 出局是封殺，得分一律不算，無須 Time Play 彈窗詢問

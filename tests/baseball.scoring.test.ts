@@ -596,7 +596,7 @@ describe("棒球紀錄法核心邏輯", () => {
 
     const after = updateGameAfterSpecialEvent(game, { id: "third-out-cs", inning: 1, half: "away", type: "CS", runnerId: caughtRunner.id, pitcherId: pitcher.id, fromBase: 1, toBase: 2, runsScored: 0, outsBefore: 2, notation: "CS 1→2", timestamp: "2026-08-15T10:02:00.000Z" }, { first: null, second: runnerAtSecond.id, third: null }, 0, 1);
     expect(after.half).toBe("home");
-    expect(after.events.find((event) => event.id === "walk-first")?.runnerAdvances).toContainEqual({ id: "third-out-cs", type: "CS", fromBase: 1, toBase: 2, outNumber: 3, notation: "CS 1→2" });
+    expect(after.events.find((event) => event.id === "walk-first")?.runnerAdvances).toContainEqual({ id: "third-out-cs", type: "CS", fromBase: 1, toBase: 2, outNumber: 3, outType: "TAG_OUT", notation: "CS 1→2" });
     expect(after.events.find((event) => event.id === "walk-second")?.runnerAdvances).toContainEqual({ id: "third-out-cs-lob-2", type: "LOB", fromBase: 2, notation: "l" });
   });
 

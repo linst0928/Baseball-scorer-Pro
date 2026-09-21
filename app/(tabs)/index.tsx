@@ -1147,9 +1147,10 @@ function App() {
       customRunnerAdvances.forEach((adv) => {
         const runnerId = adv.fromBase === 1 ? activeGame.runners.first : adv.fromBase === 2 ? activeGame.runners.second : activeGame.runners.third;
         if (!runnerId) return;
-        if (adv.fromBase === 1 && nextRunners.first === runnerId) nextRunners.first = null;
-        if (adv.fromBase === 2 && nextRunners.second === runnerId) nextRunners.second = null;
-        if (adv.fromBase === 3 && nextRunners.third === runnerId) nextRunners.third = null;
+        // 該跑者不論在 nextRunners 的哪個位置，一律清空，確保在 nextRunners 中「唯一存在」而不重疊分身
+        if (nextRunners.first === runnerId) nextRunners.first = null;
+        if (nextRunners.second === runnerId) nextRunners.second = null;
+        if (nextRunners.third === runnerId) nextRunners.third = null;
       });
       customRunnerAdvances.forEach((adv) => {
         const runnerId = adv.fromBase === 1 ? activeGame.runners.first : adv.fromBase === 2 ? activeGame.runners.second : activeGame.runners.third;

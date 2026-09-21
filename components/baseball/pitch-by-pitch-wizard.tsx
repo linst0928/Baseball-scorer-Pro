@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
 import type { Game, PitchState, RecordColumn, AtBatResult, PitchOutcome, Player } from "@/lib/baseball/types";
 import { useScoringHistory, type GameSnapshot, deepCloneGame, deepCloneSnapshot } from "@/lib/baseball/scoring-history-reducer";
 import { buildStrictRunnerQueue, resolveForcedAdvances, checkTimePlayCondition } from "@/lib/baseball/runner-engine";
+import { calculateForceState, determineOutType, type ForceState } from "@/lib/baseball/force-play";
 
 export type PitchByPitchWizardProps = {
   initialSnapshot: GameSnapshot;
@@ -363,6 +364,8 @@ export function PitchByPitchWizard({
         baseOfOut: (targetBase || currentBase) as 1 | 2 | 3 | 4,
         runnersBefore: present.game.runners,
         outsBefore: tempOuts,
+        runnerId,
+        forceState: present.game.forceState,
       });
 
       if (nextOuts >= 3) {
@@ -625,38 +628,99 @@ export function PitchByPitchWizard({
         )}
 
         {/* Step 3: 壘上跑者強制循序清算卡片 */}
-        {step === 3 && currentResolvingRunner && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>【第三階段：壘上跑者強制進退壘清算】</Text>
-            <View style={styles.runnerFocusCard}>
-              <Text style={styles.runnerFocusTitle}>正在清算：{currentResolvingRunner.base} 壘跑者</Text>
-              <Text style={styles.runnerFocusHint}>
-                (依據 3壘 ➔ 2壘 ➔ 1壘 單向防呆佇列，當前為第 {runnerQueueIndex + 1}/{runnerQueue.length} 位跑者)
-              </Text>
+        {step === 3 && currentResolvingRunner && (() => {
+          const currentForceState = calculateForceState(
+            present.game.runners,
+            Boolean(atBatResult && atBatResult !== "K" && atBatResult !== "F")
+          );
+          const currentRunnerStatus = currentResolvingRunner.base === 1
+            ? currentForceState.runners.first
+            : currentResolvingRunner.base === 2
+            ? currentForceState.runners.second
+            : currentForceState.runners.third;
+          const isRunnerForced = Boolean(currentRunnerStatus?.isForced);
+          const targetForceBase = currentRunnerStatus?.forceTargetBase;
 
-              <View style={styles.runnerActionRow}>
-                <Pressable
-                  onPress={() => resolveRunnerAction("HOLD")}
-                  style={[styles.gridButton, styles.neutralButton]}
-                >
-                  <Text style={styles.neutralButtonText}>留在原壘包</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => resolveRunnerAction("SCORE")}
-                  style={[styles.gridButton, styles.successButton]}
-                >
-                  <Text style={styles.successButtonText}>推進回本壘得分</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => resolveRunnerAction("OUT")}
-                  style={[styles.gridButton, styles.dangerButton]}
-                >
-                  <Text style={styles.dangerButtonText}>出局 (Out)</Text>
-                </Pressable>
+          return (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>【第三階段：壘上跑者強制進退壘清算】</Text>
+              <View style={[styles.runnerFocusCard, isRunnerForced && styles.runnerForcedCard]}>
+                <View style={styles.runnerHeaderRow}>
+                  <Text style={styles.runnerFocusTitle}>正在清算：{currentResolvingRunner.base} 壘跑者</Text>
+                  <View style={[styles.forceBadge, isRunnerForced ? styles.forceBadgeActive : styles.forceBadgePassive]}>
+                    <Text style={[styles.forceBadgeText, isRunnerForced ? styles.forceBadgeTextActive : styles.forceBadgeTextPassive]}>
+                      {isRunnerForced ? `⚡ 強迫進壘 ➔ ${targetForceBase === 4 ? "本壘" : `${targetForceBase}壘`}` : "🏃 自主進壘"}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.runnerFocusHint}>
+                  {isRunnerForced
+                    ? `(此跑者因打者成為跑者失去原壘佔有權，被迫前往 ${targetForceBase === 4 ? "本壘" : `${targetForceBase}壘`}，守備持球觸壘即可封殺)`
+                    : `(一壘未形成推擠鏈，跑者享有原壘停留權，前往下一個壘包守備須觸殺)`}
+                </Text>
+
+                <View style={styles.runnerActionGrid}>
+                  <Pressable
+                    onPress={() => resolveRunnerAction("HOLD")}
+                    style={[styles.actionBtn, styles.neutralButton]}
+                  >
+                    <Text style={styles.neutralButtonText}>留在原壘包</Text>
+                  </Pressable>
+
+                  {currentResolvingRunner.base === 1 && (
+                    <Pressable
+                      onPress={() => resolveRunnerAction("ADVANCE", 2)}
+                      style={[styles.actionBtn, isRunnerForced ? styles.primaryActionBtn : styles.neutralButton]}
+                    >
+                      <Text style={isRunnerForced ? styles.primaryActionBtnText : styles.neutralButtonText}>
+                        {isRunnerForced ? "強迫推進至 2 壘 ★" : "推進至 2 壘"}
+                      </Text>
+                    </Pressable>
+                  )}
+
+                  {currentResolvingRunner.base === 1 && (
+                    <Pressable
+                      onPress={() => resolveRunnerAction("ADVANCE", 3)}
+                      style={[styles.actionBtn, styles.neutralButton]}
+                    >
+                      <Text style={styles.neutralButtonText}>進佔 3 壘</Text>
+                    </Pressable>
+                  )}
+
+                  {currentResolvingRunner.base === 2 && (
+                    <Pressable
+                      onPress={() => resolveRunnerAction("ADVANCE", 3)}
+                      style={[styles.actionBtn, isRunnerForced ? styles.primaryActionBtn : styles.neutralButton]}
+                    >
+                      <Text style={isRunnerForced ? styles.primaryActionBtnText : styles.neutralButtonText}>
+                        {isRunnerForced ? "強迫推進至 3 壘 ★" : "推進至 3 壘"}
+                      </Text>
+                    </Pressable>
+                  )}
+
+                  <Pressable
+                    onPress={() => resolveRunnerAction("SCORE")}
+                    style={[styles.actionBtn, (isRunnerForced && currentResolvingRunner.base === 3) ? styles.primaryActionBtn : styles.successButton]}
+                  >
+                    <Text style={(isRunnerForced && currentResolvingRunner.base === 3) ? styles.primaryActionBtnText : styles.successButtonText}>
+                      {isRunnerForced && currentResolvingRunner.base === 3 ? "滿壘強迫擠回得分 ★" : "推進回本壘得分"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => resolveRunnerAction("OUT", targetForceBase || (currentResolvingRunner.base === 1 ? 2 : currentResolvingRunner.base === 2 ? 3 : 4))}
+                    style={[styles.actionBtn, styles.dangerButton]}
+                  >
+                    <Text style={styles.dangerButtonText}>
+                      {isRunnerForced ? `封殺出局 (Force Out at ${targetForceBase === 4 ? "Home" : `${targetForceBase}B`})` : "觸殺出局 (Tag Out)"}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
-          </View>
-        )}
+          );
+        })()}
 
         {/* Step 4: 預覽確認與結算卡片 */}
         {step === 4 && (
@@ -736,9 +800,21 @@ const styles = StyleSheet.create({
   numberText: { fontSize: 10, color: "#475569" },
   numberTextActive: { fontSize: 10, color: "#FFF", fontWeight: "bold" },
   runnerFocusCard: { backgroundColor: "#FFFBEB", borderWidth: 1, borderColor: "#FEF3C7", borderRadius: 8, padding: 12, gap: 8 },
+  runnerForcedCard: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+  runnerHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  forceBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+  forceBadgeActive: { backgroundColor: "#DC2626" },
+  forceBadgePassive: { backgroundColor: "#E2E8F0" },
+  forceBadgeText: { fontSize: 10, fontWeight: "bold" },
+  forceBadgeTextActive: { color: "#FFF" },
+  forceBadgeTextPassive: { color: "#475569" },
   runnerFocusTitle: { fontSize: 13, fontWeight: "900", color: "#92400E" },
   runnerFocusHint: { fontSize: 10, color: "#B45309" },
   runnerActionRow: { flexDirection: "row", gap: 6, marginTop: 6 },
+  runnerActionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
+  actionBtn: { flexGrow: 1, flexBasis: "47%", minHeight: 40, borderRadius: 6, justifyContent: "center", alignItems: "center", paddingHorizontal: 6 },
+  primaryActionBtn: { backgroundColor: "#2563EB" },
+  primaryActionBtnText: { color: "#FFF", fontSize: 11, fontWeight: "bold" },
   neutralButton: { backgroundColor: "#F8FAFC" },
   neutralButtonText: { color: "#475569", fontSize: 11, fontWeight: "bold" },
   successButton: { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" },

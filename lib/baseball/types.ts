@@ -1,3 +1,5 @@
+import { calculateForceState, determineOutType, evaluateThirdOutRunSettlement, type ForceState, type OutType } from "./force-play";
+
 export type TeamSide = "home" | "away";
 export type GameStatus = "setup" | "live" | "final";
 export type AtBatResult = "1B" | "2B" | "3B" | "HR" | "BB" | "HBP" | "K" | "F" | "G" | "E";
@@ -266,6 +268,8 @@ export type AtBatEvent = {
   /** 跑者後續進壘／盜壘事件，附加到讓該跑者上壘的來源打席，供各紀錄格同步顯示。 */
   runnerAdvances?: RunnerAdvanceRecord[];
   source?: AtBatSource;
+  outType?: OutType;
+  forceState?: ForceState;
   timestamp: string;
 };
 
@@ -293,6 +297,7 @@ export type RunnerAdvanceRecord = {
   toBase?: 2 | 3 | 4;
   /** 跑者出局時的該半局出局順序，供來源打席內圈同步呈現。 */
   outNumber?: 1 | 2 | 3;
+  outType?: OutType;
   notation: string;
   /** 貢獻此進壘之打者 ID，日後計算打點 (RBI) 依據 */
   advancedByBatterId?: string;
@@ -364,6 +369,7 @@ export type Game = {
   homeBatterIndex: number;
   score: ScoreByInning[];
   runners: RunnerState;
+  forceState?: ForceState;
   events: AtBatEvent[];
   specialEvents: SpecialEvent[];
   substitutions: Substitution[];
@@ -1709,12 +1715,14 @@ export function updateGameAfterSpecialEvent(game: Game, event: SpecialEvent, run
   const sourceAtBat = event.runnerId
     ? [...game.events].reverse().find((atBat) => atBat.batterId === event.runnerId)
     : undefined;
-  const linkedEvent = sourceAtBat ? { ...event, sourceAtBatId: sourceAtBat.id } : event;
+  const outType: OutType | undefined = event.type === "CS" ? "TAG_OUT" : undefined;
+  const linkedEvent = sourceAtBat ? { ...event, sourceAtBatId: sourceAtBat.id, outType } : { ...event, outType };
   const advance: RunnerAdvanceRecord = {
     id: linkedEvent.id,
     type: linkedEvent.type,
     fromBase: linkedEvent.fromBase,
     toBase: linkedEvent.toBase,
+    outType,
     ...(linkedEvent.type === "CS" ? { outNumber: Math.min(linkedEvent.outsBefore + 1, 3) as 1 | 2 | 3 } : {}),
     notation: linkedEvent.notation,
   };
@@ -1722,20 +1730,23 @@ export function updateGameAfterSpecialEvent(game: Game, event: SpecialEvent, run
     ? game.events.map((atBat) => atBat.id === sourceAtBat.id
       ? {
         ...atBat,
-        // 跑者因特殊事件回本時，得分圓點必須留在該跑者的來源打席；
-        // BK 本身不計為下一棒的一顆投球，也不會產生打點。
         runsScored: runs > 0 ? (atBat.runsScored ?? 0) + runs : atBat.runsScored,
         runnerAdvances: [...(atBat.runnerAdvances ?? []), advance],
       }
       : atBat)
     : game.events;
+
+  const currentRunners = halfEnded ? { first: null, second: null, third: null } : runnerState;
+  const nextForceState = calculateForceState(currentRunners, false);
+
   return {
     ...game,
     status: "live",
     inning: nextInning,
     half: nextHalf,
     outs: halfEnded ? 0 : nextOuts,
-    runners: halfEnded ? { first: null, second: null, third: null } : runnerState,
+    runners: currentRunners,
+    forceState: nextForceState,
     score: nextScore,
     events: halfEnded ? markLeftOnBase(eventsWithAdvance, runnerState, linkedEvent.id) : eventsWithAdvance,
     specialEvents: halfEnded
@@ -1752,7 +1763,39 @@ export function updateGameAfterEvent(
   runs: number,
   customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>,
 ): Game {
-  const nextScore = ensureScoreThroughInning(game.score, event.inning).map((row) => row.inning === event.inning ? { ...row, [event.half]: row[event.half] + runs } : row);
+  const isFieldersChoice = event.recordColumn?.fieldingPlay === "FC";
+  const fieldersChoiceRunnerOut = isFieldersChoice && Boolean(game.runners.first);
+  const batterOut = isAtBatOut(event) && !isFieldersChoice;
+  const fieldingOuts = event.recordColumn?.fieldingPlay === "DP" ? 2 : event.recordColumn?.fieldingPlay === "TP" ? 3 : fieldersChoiceRunnerOut ? 1 : batterOut ? 1 : 0;
+  const nextOuts = Math.min(3, game.outs + fieldingOuts + (isSacrificeFlyRunnerOutAtHome(event.recordColumn) ? 1 : 0));
+
+  // 計算打者是否成為跑者
+  const batterBecomesRunner = ["1B", "2B", "3B", "HR", "BB", "HBP", "E"].includes(event.result) || isFieldersChoice || event.result === "G";
+  const forceState = calculateForceState(game.runners, batterBecomesRunner, event.batterId);
+
+  // 出局型態判定
+  let primaryOutType: OutType | undefined = event.outType;
+  if (!primaryOutType) {
+    if (event.result === "K") primaryOutType = "STRIKEOUT";
+    else if (event.result === "F") primaryOutType = "FLY_OUT";
+    else if (event.result === "G") primaryOutType = "FORCE_OUT";
+  }
+
+  // 判定第三出局得分權限 (Force Out 得分無效)
+  let effectiveRuns = runs;
+  if (nextOuts >= 3) {
+    const isThirdOutForce = primaryOutType === "FORCE_OUT" || (fieldingOuts > 0 && batterBecomesRunner);
+    const thirdOutEvaluation = evaluateThirdOutRunSettlement(
+      isThirdOutForce ? "FORCE_OUT" : (primaryOutType ?? "TAG_OUT"),
+      1,
+      false
+    );
+    if (!thirdOutEvaluation.runsAllowed) {
+      effectiveRuns = 0;
+    }
+  }
+
+  const nextScore = ensureScoreThroughInning(game.score, event.inning).map((row) => row.inning === event.inning ? { ...row, [event.half]: row[event.half] + effectiveRuns } : row);
   const forcedBaseOnBallsAdvances = getForcedBaseOnBallsAdvances(game.runners, event.result, event.id, {
     droppedThirdStrike: event.droppedThirdStrike,
     outs: game.outs,
@@ -1768,11 +1811,7 @@ export function updateGameAfterEvent(
       runnerId,
     },
   }));
-  const isFieldersChoice = event.recordColumn?.fieldingPlay === "FC";
-  const fieldersChoiceRunnerOut = isFieldersChoice && Boolean(game.runners.first);
-  const batterOut = isAtBatOut(event) && !isFieldersChoice;
-  const fieldingOuts = event.recordColumn?.fieldingPlay === "DP" ? 2 : event.recordColumn?.fieldingPlay === "TP" ? 3 : fieldersChoiceRunnerOut ? 1 : batterOut ? 1 : 0;
-  const nextOuts = Math.min(3, game.outs + fieldingOuts + (isSacrificeFlyRunnerOutAtHome(event.recordColumn) ? 1 : 0));
+
   const runnerOutCount = Math.max(0, fieldingOuts - (batterOut ? 1 : 0));
   const runnerOuts = ([
     [1, game.runners.first],
@@ -1782,17 +1821,24 @@ export function updateGameAfterEvent(
     .filter((entry): entry is readonly [1 | 2 | 3, string] => Boolean(entry[1]))
     .slice(0, runnerOutCount);
   const runnerIdsOut = runnerOuts.map(([, runnerId]) => runnerId);
-  const runnerOutAdvances = runnerOuts.map(([fromBase, runnerId], index) => ({
-    runnerId,
-    advance: {
-      id: `${event.id}-runner-out-${runnerId}`,
-      type: "ADV" as const,
-      fromBase,
-      toBase: Math.min(fromBase + 1, 4) as 2 | 3 | 4,
-      outNumber: Math.min(game.outs + (batterOut ? 1 : 0) + index + 1, 3) as 1 | 2 | 3,
-      notation: `${event.recordColumn?.fieldingPlay ?? "守備"} ${fromBase}壘跑者出局`,
-    },
-  }));
+
+  const runnerOutAdvances = runnerOuts.map(([fromBase, runnerId], index) => {
+    const targetBase = Math.min(fromBase + 1, 4) as 2 | 3 | 4;
+    const runnerOutType = determineOutType(runnerId, targetBase, forceState, false);
+    return {
+      runnerId,
+      advance: {
+        id: `${event.id}-runner-out-${runnerId}`,
+        type: "ADV" as const,
+        fromBase,
+        toBase: targetBase,
+        outNumber: Math.min(game.outs + (batterOut ? 1 : 0) + index + 1, 3) as 1 | 2 | 3,
+        outType: runnerOutType,
+        notation: `${event.recordColumn?.fieldingPlay ?? "守備"} ${fromBase}壘跑者出局`,
+      },
+    };
+  });
+
   const settledRunners = runnerIdsOut.length === 0
     ? runnerState
     : {
@@ -1800,6 +1846,7 @@ export function updateGameAfterEvent(
       second: runnerState.second && runnerIdsOut.includes(runnerState.second) ? null : runnerState.second,
       third: runnerState.third && runnerIdsOut.includes(runnerState.third) ? null : runnerState.third,
     };
+
   const runnerOutSourceIndexes = new Map<string, number>();
   runnerOutAdvances.forEach(({ runnerId }) => {
     for (let index = game.events.length - 1; index >= 0; index -= 1) {
@@ -1830,6 +1877,7 @@ export function updateGameAfterEvent(
       }
     }
   });
+
   const eventsWithRunnerAdvances = game.events.map((atBat, index) => {
     const runnerOut = runnerOutAdvances.find((entry) => runnerOutSourceIndexes.get(entry.runnerId) === index);
     const forcedAdvances = forcedBaseOnBallsAdvances
@@ -1845,25 +1893,38 @@ export function updateGameAfterEvent(
     ];
     return advances.length > 0 ? { ...atBat, runnerAdvances: [...(atBat.runnerAdvances ?? []), ...advances] } : atBat;
   });
+
   const halfEnded = nextOuts >= 3;
   const nextHalf: TeamSide = halfEnded ? (game.half === "away" ? "home" : "away") : game.half;
   const nextInning = halfEnded && game.half === "home" ? game.inning + 1 : game.inning;
   const nextScoreFilled = nextScore.map((row) => row.inning <= nextInning ? row : row);
   const nextAwayBatterIndex = game.half === "away" ? game.awayBatterIndex + 1 : game.awayBatterIndex;
   const nextHomeBatterIndex = game.half === "home" ? game.homeBatterIndex + 1 : game.homeBatterIndex;
+
+  const currentRunners = halfEnded ? { first: null, second: null, third: null } : settledRunners;
+  const nextForceState = calculateForceState(currentRunners, false);
+
+  const eventWithForceState: AtBatEvent = {
+    ...event,
+    runsScored: effectiveRuns,
+    outType: primaryOutType,
+    forceState,
+  };
+
   return {
     ...game,
     status: "live",
     inning: nextInning,
     half: nextHalf,
     outs: halfEnded ? 0 : nextOuts,
-    runners: halfEnded ? { first: null, second: null, third: null } : settledRunners,
+    runners: currentRunners,
+    forceState: nextForceState,
     awayBatterIndex: nextAwayBatterIndex,
     homeBatterIndex: nextHomeBatterIndex,
     score: nextScoreFilled,
-    events: halfEnded ? markLeftOnBase([...eventsWithRunnerAdvances, event], settledRunners, event.id) : [...eventsWithRunnerAdvances, event],
+    events: halfEnded ? markLeftOnBase([...eventsWithRunnerAdvances, eventWithForceState], settledRunners, event.id) : [...eventsWithRunnerAdvances, eventWithForceState],
     specialEvents: halfEnded
-      ? appendInningEndAnnotation(game.specialEvents ?? [], event)
+      ? appendInningEndAnnotation(game.specialEvents ?? [], eventWithForceState)
       : game.specialEvents ?? [],
     updatedAt: new Date().toISOString(),
   };
