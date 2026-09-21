@@ -109,7 +109,7 @@ export function checkTimePlayCondition({
   }
 
   // 若打者擊出球（G 或 E）且在 1 壘前出局，或者打者成為跑者觸發 Force Chain
-  const batterBecomesRunner = result === "G" || result === "E" || result === "1B" || result === "2B" || result === "3B" || result === "HR" || result === "FC";
+  const batterBecomesRunner = result === "G" || result === "E" || result === "1B" || result === "2B" || result === "3B" || result === "HR";
   const forceState = customForceState ?? calculateForceState(runnersBefore, batterBecomesRunner);
 
   let isForcePlayOut = false;
