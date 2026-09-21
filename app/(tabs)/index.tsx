@@ -1394,6 +1394,41 @@ function App() {
     if (isBuntFoulStrikeout(kind, pitchDraft.strikes) || next.strikes >= 3) setSelectedResult("K");
   }, [pitchDraft, recordOutcome, selectedPitchType, selectedPitchZone]);
 
+  const undoLastPitch = useCallback(() => {
+    const locations = pitchDraft.locations ?? [];
+    if (locations.length === 0) return;
+    const nextLocations = locations.slice(0, -1);
+    let balls = 0;
+    let strikes = 0;
+    for (const loc of nextLocations) {
+      const kind = loc.outcome;
+      if (kind === "ball") {
+        balls++;
+      } else {
+        const addsStrike = kind === "strike" || kind === "swingingStrike" || kind === "foulTip" || kind === "missedBunt" || ((kind === "foul" || kind === "buntFoul") && strikes < 2);
+        if (addsStrike) strikes++;
+      }
+    }
+    const nextDraft: PitchDraft = {
+      balls,
+      strikes,
+      total: nextLocations.length,
+      locations: nextLocations,
+    };
+    setPitchDraft(nextDraft);
+
+    if (selectedResult === "BB" && balls < 4) {
+      setSelectedResult(null);
+    } else if (selectedResult === "K") {
+      const lastLoc = nextLocations.at(-1);
+      const isBuntK = lastLoc && isBuntFoulStrikeout(lastLoc.outcome, strikes - 1);
+      if (strikes < 3 && !isBuntK) {
+        setSelectedResult(null);
+      }
+    }
+    announceOperationFeedback("restore", "已回復上一球", `已退回至第 ${nextLocations.length} 球；球數為 ${balls} 壞球 ${strikes} 好球。`);
+  }, [announceOperationFeedback, pitchDraft.locations, selectedResult]);
+
   const finishGame = useCallback(() => {
     if (!activeGame || activeGame.status === "final") return;
     Alert.alert(
@@ -1679,7 +1714,7 @@ function App() {
             />
           ) : null}
           {tab === "record" ? (
-            <RecordView game={activeGame} games={data.games} away={awayTeam} home={homeTeam} myTeam={primaryTeam} mySide={primarySide} battingTeam={currentBattingTeam} pitchingTeam={currentPitchingTeam} batter={currentBatter} pitcher={currentPitcher} teamPerformance={currentBattingPerformance} awayPerformance={awayPerformance} homePerformance={homePerformance} pitchDraft={pitchDraft} fieldingPosition={fieldingPosition} selectedResult={selectedResult} selectedPitchType={selectedPitchType} selectedPitchZone={selectedPitchZone} recordColumnDraft={recordColumnDraft} recentEvents={recentEvents} canUndo={(gameHistoryRef.current[activeGame.id] ?? []).length > 0} onUndo={undoLastEvent} onRunnerAction={recordRunnerAction} onSubstitute={(role: SubstitutionType = "代打") => { setSubstitutionPreset(role); setShowSubstitution(true); }} onSpecialEvent={() => setShowSpecialEvent(true)} onStart={startGame} onPitch={recordPitch} onSelectResult={setSelectedResult} onClearSelectedResult={() => setSelectedResult(null)} onOutcome={recordOutcome} onPosition={setFieldingPosition} onRecordColumnChange={setRecordColumnDraft} onPitchType={setSelectedPitchType} onPitchZone={setSelectedPitchZone} onEdit={() => setShowEditGame(true)} onFinish={finishGame} onOpenSymbolReference={() => setShowSymbolReference(true)} onOpenSymbolHelp={setSymbolHelp} onUpdatePlayer={updatePlayer} />
+            <RecordView game={activeGame} games={data.games} away={awayTeam} home={homeTeam} myTeam={primaryTeam} mySide={primarySide} battingTeam={currentBattingTeam} pitchingTeam={currentPitchingTeam} batter={currentBatter} pitcher={currentPitcher} teamPerformance={currentBattingPerformance} awayPerformance={awayPerformance} homePerformance={homePerformance} pitchDraft={pitchDraft} fieldingPosition={fieldingPosition} selectedResult={selectedResult} selectedPitchType={selectedPitchType} selectedPitchZone={selectedPitchZone} recordColumnDraft={recordColumnDraft} recentEvents={recentEvents} canUndo={(gameHistoryRef.current[activeGame.id] ?? []).length > 0} onUndo={undoLastEvent} canUndoPitch={(pitchDraft.locations?.length ?? 0) > 0} onUndoPitch={undoLastPitch} onRunnerAction={recordRunnerAction} onSubstitute={(role: SubstitutionType = "代打") => { setSubstitutionPreset(role); setShowSubstitution(true); }} onSpecialEvent={() => setShowSpecialEvent(true)} onStart={startGame} onPitch={recordPitch} onSelectResult={setSelectedResult} onClearSelectedResult={() => setSelectedResult(null)} onOutcome={recordOutcome} onPosition={setFieldingPosition} onRecordColumnChange={setRecordColumnDraft} onPitchType={setSelectedPitchType} onPitchZone={setSelectedPitchZone} onEdit={() => setShowEditGame(true)} onFinish={finishGame} onOpenSymbolReference={() => setShowSymbolReference(true)} onOpenSymbolHelp={setSymbolHelp} onUpdatePlayer={updatePlayer} />
           ) : null}
           {tab === "gameLog" && scorebookGame && scorebookAwayTeam && scorebookHomeTeam ? (
             <SingleGameRecord
@@ -2470,7 +2505,15 @@ function IntegratedManagementCard({
       {subView === "playerList" && selected && (
         <View style={[styles.teamManagementBox, { backgroundColor: interfacePalette.background, borderColor: interfacePalette.border, gap: 8 }]}>
           <Text style={{ fontSize: 13, fontWeight: "900", color: interfacePalette.foreground }}>球員管理：{selected.name}</Text>
-          <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={{ maxHeight: 220 }}
+            contentContainerStyle={{ paddingRight: 2 }}
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
+            bounces={true}
+            overScrollMode="always"
+          >
             <View style={{ gap: 4 }}>
               {selected.players.map((player) => {
                 const positions = Array.isArray(player.preferredPositions) && player.preferredPositions.length > 0
@@ -2724,7 +2767,15 @@ function PrimaryTeamRosterCard({
         </View>
       </View>
 
-      <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ maxHeight: 280 }}
+        contentContainerStyle={{ paddingRight: 2 }}
+        showsVerticalScrollIndicator={true}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        bounces={true}
+        overScrollMode="always"
+      >
         <View style={{ gap: 2 }}>
           {rosterPlayers.map((player) => {
             const stat = recent10StatsMap.get(player.id);
@@ -2939,9 +2990,17 @@ function HomeView({
               {hasRecentSearch ? <Button label="清除" onPress={() => setRecentSearch({ dateFrom: "", dateTo: "", competition: "" })} variant="ghost" compact /> : null}
             </View>
             {pendingDeletedGame ? <View style={styles.recentUndoBar}><Text numberOfLines={1} style={styles.recentUndoText}>已刪除「{pendingDeletedGame.name}」</Text><Button label="復原" onPress={onRestoreDeletedGame} variant="secondary" compact /></View> : null}
-            <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={{ maxHeight: 220 }}
+              contentContainerStyle={{ paddingRight: 2 }}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              bounces={true}
+              overScrollMode="always"
+            >
               <View style={styles.gameList}>
-                {recentGames.slice(0, 5).map((game) => {
+                {recentGames.map((game) => {
                   const away = data.teams.find((team) => team.id === game.awayTeamId);
                   const home = data.teams.find((team) => team.id === game.homeTeamId);
                   return (
@@ -3012,7 +3071,7 @@ function HomeView({
   );
 }
 
-function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitchingTeam, batter, pitcher, teamPerformance, awayPerformance, homePerformance, pitchDraft, fieldingPosition, selectedResult, selectedPitchType, selectedPitchZone, recordColumnDraft, recentEvents, canUndo, onUndo, onRunnerAction, onSubstitute, onSpecialEvent, onStart, onPitch, onSelectResult, onClearSelectedResult, onOutcome, onPosition, onRecordColumnChange, onPitchType, onPitchZone, onEdit, onFinish, onOpenSymbolReference, onOpenSymbolHelp, onUpdatePlayer }: { game: Game; games: Game[]; away: Team; home: Team; myTeam: Team; mySide: TeamSide | null; battingTeam: Team; pitchingTeam: Team; batter?: Player; pitcher?: Player; teamPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; awayPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; homePerformance: ReturnType<typeof getTeamPerformanceSummary> | null; pitchDraft: PitchDraft; fieldingPosition: string; selectedResult: AtBatResult | null; selectedPitchType: PitchType; selectedPitchZone: PitchLocation["zone"]; recordColumnDraft: RecordColumn; recentEvents: Array<{ id: string; batterName: string; notation: string; inning: number; half: TeamSide; result: AtBatResult; pitches: { balls: number; strikes: number; total: number } }>; canUndo: boolean; onUndo: () => void; onRunnerAction: (type: "SB" | "CS" | "ADV" | "WP" | "PB" | "BK", base?: 1 | 2 | 3, targetBase?: 2 | 3 | 4) => void; onSubstitute: (role?: "代打" | "代跑" | "換投" | "換守") => void; onSpecialEvent: () => void; onStart: () => void; onPitch: (kind: PitchOutcome) => void; onSelectResult: (result: AtBatResult) => void; onClearSelectedResult: () => void; onOutcome: (result: AtBatResult, pitchOverride?: any, recordColumnOverride?: RecordColumn, customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>) => void; onPosition: (position: string) => void; onRecordColumnChange: (value: RecordColumn) => void; onPitchType: (type: PitchType) => void; onPitchZone: (zone: PitchLocation["zone"]) => void; onEdit: () => void; onFinish: () => void; onOpenSymbolReference: () => void; onOpenSymbolHelp: (help: SymbolHelp) => void; onUpdatePlayer: (teamId: string, playerId: string, patch: Partial<Player>) => void }) {
+function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitchingTeam, batter, pitcher, teamPerformance, awayPerformance, homePerformance, pitchDraft, fieldingPosition, selectedResult, selectedPitchType, selectedPitchZone, recordColumnDraft, recentEvents, canUndo, onUndo, canUndoPitch, onUndoPitch, onRunnerAction, onSubstitute, onSpecialEvent, onStart, onPitch, onSelectResult, onClearSelectedResult, onOutcome, onPosition, onRecordColumnChange, onPitchType, onPitchZone, onEdit, onFinish, onOpenSymbolReference, onOpenSymbolHelp, onUpdatePlayer }: { game: Game; games: Game[]; away: Team; home: Team; myTeam: Team; mySide: TeamSide | null; battingTeam: Team; pitchingTeam: Team; batter?: Player; pitcher?: Player; teamPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; awayPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; homePerformance: ReturnType<typeof getTeamPerformanceSummary> | null; pitchDraft: PitchDraft; fieldingPosition: string; selectedResult: AtBatResult | null; selectedPitchType: PitchType; selectedPitchZone: PitchLocation["zone"]; recordColumnDraft: RecordColumn; recentEvents: Array<{ id: string; batterName: string; notation: string; inning: number; half: TeamSide; result: AtBatResult; pitches: { balls: number; strikes: number; total: number } }>; canUndo: boolean; onUndo: () => void; canUndoPitch?: boolean; onUndoPitch?: () => void; onRunnerAction: (type: "SB" | "CS" | "ADV" | "WP" | "PB" | "BK", base?: 1 | 2 | 3, targetBase?: 2 | 3 | 4) => void; onSubstitute: (role?: "代打" | "代跑" | "換投" | "換守") => void; onSpecialEvent: () => void; onStart: () => void; onPitch: (kind: PitchOutcome) => void; onSelectResult: (result: AtBatResult) => void; onClearSelectedResult: () => void; onOutcome: (result: AtBatResult, pitchOverride?: any, recordColumnOverride?: RecordColumn, customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>) => void; onPosition: (position: string) => void; onRecordColumnChange: (value: RecordColumn) => void; onPitchType: (type: PitchType) => void; onPitchZone: (zone: PitchLocation["zone"]) => void; onEdit: () => void; onFinish: () => void; onOpenSymbolReference: () => void; onOpenSymbolHelp: (help: SymbolHelp) => void; onUpdatePlayer: (teamId: string, playerId: string, patch: Partial<Player>) => void }) {
   const firstRunner = Boolean(game.runners.first);
   const secondRunner = Boolean(game.runners.second);
   const thirdRunner = Boolean(game.runners.third);
@@ -3118,7 +3177,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
                       <RunnerActionButton label="暴投" mark="WP" help={RUNNER_SYMBOL_HELP.WP} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("WP")} onLongPress={onOpenSymbolHelp} />
                       <RunnerActionButton label="捕逸" mark="PB" help={RUNNER_SYMBOL_HELP.PB} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("PB")} onLongPress={onOpenSymbolHelp} />
                       <RunnerActionButton label="投手犯規" mark="BK" help={RUNNER_SYMBOL_HELP.BK} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("BK")} onLongPress={onOpenSymbolHelp} />
-                      <RunnerActionButton label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!canUndo} onPress={onUndo} onLongPress={onOpenSymbolHelp} emphasis />
+                      <RunnerActionButton label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!(canUndoPitch ?? canUndo)} onPress={onUndoPitch ?? onUndo} onLongPress={onOpenSymbolHelp} emphasis />
                     </View>
                   </View>
                 </View>
@@ -3162,8 +3221,8 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
           onPitchZone={onPitchZone}
           onPitch={onPitch}
           onOpenSymbolHelp={onOpenSymbolHelp}
-          onUndo={onUndo}
-          canUndo={canUndo}
+          onUndo={onUndoPitch ?? onUndo}
+          canUndo={canUndoPitch ?? canUndo}
           selectedResult={selectedResult}
           droppedThirdStrikeSelected={droppedThirdStrikeSelected}
           droppedThirdStrikeEligibility={droppedThirdStrikeEligibility}
@@ -4162,14 +4221,17 @@ function InningAtBatRail({ events, players }: { events: Game["events"]; players:
   );
 }
 
-function LegacyRecordView({ game, away, home, myTeam, mySide, battingTeam, pitchingTeam, batter, pitcher, teamPerformance, awayPerformance, homePerformance, pitchDraft, fieldingPosition, selectedResult, selectedPitchType, selectedPitchZone, recentEvents, canUndo, onUndo, onSubstitute, onSpecialEvent, onStart, onPitch, onOutcome, onPosition, onPitchType, onPitchZone, onEdit, onFinish }: { game: Game; away: Team; home: Team; myTeam: Team; mySide: TeamSide | null; battingTeam: Team; pitchingTeam: Team; batter?: Player; pitcher?: Player; teamPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; awayPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; homePerformance: ReturnType<typeof getTeamPerformanceSummary> | null; pitchDraft: PitchDraft; fieldingPosition: string; selectedResult: AtBatResult; selectedPitchType: PitchType; selectedPitchZone: PitchLocation["zone"]; recentEvents: Array<{ id: string; batterName: string; notation: string; inning: number; half: TeamSide; result: AtBatResult; pitches: { balls: number; strikes: number; total: number } }>; canUndo: boolean; onUndo: () => void; onSubstitute: () => void; onSpecialEvent: () => void; onStart: () => void; onPitch: (kind: PitchOutcome) => void; onOutcome: (result: AtBatResult) => void; onPosition: (position: string) => void; onPitchType: (type: PitchType) => void; onPitchZone: (zone: PitchLocation["zone"]) => void; onEdit: () => void; onFinish: () => void }) {
+function LegacyRecordView({ game, away, home, myTeam, mySide, battingTeam, pitchingTeam, batter, pitcher, teamPerformance, awayPerformance, homePerformance, pitchDraft, fieldingPosition, selectedResult, selectedPitchType, selectedPitchZone, recentEvents, canUndo, onUndo, canUndoPitch, onUndoPitch, onSubstitute, onSpecialEvent, onStart, onPitch, onOutcome, onPosition, onPitchType, onPitchZone, onEdit, onFinish }: { game: Game; away: Team; home: Team; myTeam: Team; mySide: TeamSide | null; battingTeam: Team; pitchingTeam: Team; batter?: Player; pitcher?: Player; teamPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; awayPerformance: ReturnType<typeof getTeamPerformanceSummary> | null; homePerformance: ReturnType<typeof getTeamPerformanceSummary> | null; pitchDraft: PitchDraft; fieldingPosition: string; selectedResult: AtBatResult; selectedPitchType: PitchType; selectedPitchZone: PitchLocation["zone"]; recentEvents: Array<{ id: string; batterName: string; notation: string; inning: number; half: TeamSide; result: AtBatResult; pitches: { balls: number; strikes: number; total: number } }>; canUndo: boolean; onUndo: () => void; canUndoPitch?: boolean; onUndoPitch?: () => void; onSubstitute: () => void; onSpecialEvent: () => void; onStart: () => void; onPitch: (kind: PitchOutcome) => void; onOutcome: (result: AtBatResult) => void; onPosition: (position: string) => void; onPitchType: (type: PitchType) => void; onPitchZone: (zone: PitchLocation["zone"]) => void; onEdit: () => void; onFinish: () => void }) {
   const swipeResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 24 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
     onPanResponderRelease: (_, gesture) => {
-      if (gesture.dx > 70 && canUndo) onUndo();
+      if (gesture.dx > 70 && (canUndoPitch ? onUndoPitch?.() : canUndo)) {
+        if (canUndoPitch && onUndoPitch) onUndoPitch();
+        else if (canUndo) onUndo();
+      }
       if (gesture.dx < -70) onSpecialEvent();
     },
-  }), [canUndo, onSpecialEvent, onUndo]);
+  }), [canUndo, canUndoPitch, onSpecialEvent, onUndo, onUndoPitch]);
 
   return (
     <View style={styles.pageGap}>
@@ -4184,7 +4246,7 @@ function LegacyRecordView({ game, away, home, myTeam, mySide, battingTeam, pitch
         <BaseballDiamond runners={game.runners} />
         <LiveWasedaInfield game={game} pitchDraft={pitchDraft} batter={batter} />
         <View style={styles.teamPerspectiveCard}><View><Text style={styles.teamPerspectiveEyebrow}>球隊整體表現 · 早稻田紀錄法</Text><Text style={styles.teamPerspectiveTitle}>{myTeam.name} · {mySide === "home" ? "主場(先守)" : mySide === "away" ? "客場(先攻)" : "未加入本場"}</Text></View><View style={styles.teamPerspectiveStats}><Text style={styles.teamPerspectiveStat}>R {teamPerformance?.runs ?? 0}</Text><Text style={styles.teamPerspectiveStat}>H {teamPerformance?.hits ?? 0}</Text><Text style={styles.teamPerspectiveStat}>BB {teamPerformance?.walks ?? 0}</Text><Text style={styles.teamPerspectiveStat}>K {teamPerformance?.strikeouts ?? 0}</Text><Text style={styles.teamPerspectiveStat}>SB {teamPerformance?.stolenBases ?? 0}</Text></View><Text style={styles.teamPerspectiveHint}>下方按鈕是目前打者的個人逐球輸入；此卡同步顯示 {battingTeam.name} 的團隊累計。</Text></View>
-        <PitchTrackingControls selectedType={selectedPitchType} pitchZone={selectedPitchZone} onType={onPitchType} onPitchZone={onPitchZone} onPitch={onPitch} />
+        <PitchTrackingControls selectedType={selectedPitchType} pitchZone={selectedPitchZone} pitchHistory={pitchDraft.locations ?? []} onType={onPitchType} onPitchZone={onPitchZone} onPitch={onPitch} onUndo={onUndoPitch ?? onUndo} canUndo={canUndoPitch ?? canUndo} />
         <Text style={styles.inputLabel}>個人逐球輸入 · 早稻田紀錄法</Text>
         <View style={styles.pitchRow}><Button label="壞球 —" onPress={() => onPitch("ball")} variant="secondary" /><Button label="好球 ○" onPress={() => onPitch("strike")} variant="secondary" /><Button label="界外 △" onPress={() => onPitch("foul")} variant="ghost" /></View>
         <Text style={styles.inputLabel}>擊球結果 · 先選守備位置</Text>
@@ -4195,7 +4257,7 @@ function LegacyRecordView({ game, away, home, myTeam, mySide, battingTeam, pitch
         <Text style={styles.gestureHint}>向右滑回復上一球　·　向左滑開啟特殊事件</Text>
       </View>
       <View style={styles.recentCard}><SectionTitle eyebrow="PLAY-BY-PLAY" title="最近紀錄" action={<Text style={styles.eventCount}>{game.events.length + (game.specialEvents ?? []).length} 筆</Text>} />{recentEvents.length === 0 && (game.specialEvents ?? []).length === 0 ? <Text style={styles.emptyText}>尚未有逐球結果，從上方選擇好球、壞球、擊球結果或特殊事件。</Text> : <>{recentEvents.map((event) => <View key={event.id} style={styles.eventRow}><View style={styles.eventInning}><Text style={styles.eventInningNumber}>{event.inning}</Text><Text style={styles.eventInningHalf}>{event.half === "away" ? "上" : "下"}</Text></View><View style={styles.eventMain}><Text style={styles.eventBatter}>{event.batterName}</Text><Text style={styles.eventMeta}>{event.pitches.total} 球 · {event.result}</Text></View><Text style={styles.eventNotation}>{event.notation}</Text></View>)}{(game.specialEvents ?? []).slice(-8).reverse().map((event) => <View key={event.id} style={styles.eventRow}><View style={[styles.eventInning, styles.specialEventInning]}><Text style={styles.eventInningNumber}>{event.inning}</Text><Text style={styles.eventInningHalf}>{event.half === "away" ? "上" : "下"}</Text></View><View style={styles.eventMain}><Text style={styles.eventBatter}>{SPECIAL_EVENT_LABELS[event.type]}</Text><Text style={styles.eventMeta}>{event.runsScored ? `${event.runsScored} 分 · ` : ""}特殊事件</Text></View><Text style={styles.eventNotation}>{event.notation}</Text></View>)}</>}</View>
-      <View style={styles.recordFooter}><Button label="回復上一球" onPress={onUndo} variant="ghost" disabled={!canUndo} compact /><Button label="換人紀錄" onPress={onSubstitute} variant="secondary" compact /><Button label="編輯賽事與備註" onPress={onEdit} variant="secondary" compact /><Button label={game.status === "final" ? "已完成" : "結束比賽"} onPress={onFinish} variant={game.status === "final" ? "secondary" : "danger"} compact /></View>
+      <View style={styles.recordFooter}><Button label="回復上一球" onPress={onUndoPitch ?? onUndo} variant="ghost" disabled={!(canUndoPitch ?? canUndo)} compact /><Button label="換人紀錄" onPress={onSubstitute} variant="secondary" compact /><Button label="編輯賽事與備註" onPress={onEdit} variant="secondary" compact /><Button label={game.status === "final" ? "已完成" : "結束比賽"} onPress={onFinish} variant={game.status === "final" ? "secondary" : "danger"} compact /></View>
     </View>
   );
 }
@@ -5715,16 +5777,43 @@ function OnboardingTutorialModal({ visible, step, onChangeStep, onOpenSymbols, o
   return <Modal visible={visible} animationType="fade" transparent onRequestClose={onComplete}><View style={styles.tutorialBackdrop}><View style={styles.tutorialSheet}><View style={styles.tutorialHeader}><View><Text style={styles.tutorialEyebrow}>FIRST TIME GUIDE</Text><Text style={styles.tutorialHeaderTitle}>五步完成早稻田紀錄</Text></View><Pressable accessibilityRole="button" accessibilityLabel="略過新手教學" onPress={onComplete}><Text style={styles.tutorialSkip}>略過</Text></Pressable></View><View style={styles.tutorialProgress}>{ONBOARDING_STEPS.map((_, index) => <View key={index} style={[styles.tutorialProgressDot, index <= step && styles.tutorialProgressDotActive]} />)}</View><View style={styles.tutorialBody}><View style={styles.tutorialMark}><Text style={styles.tutorialMarkText}>{current.mark}</Text></View><View style={styles.tutorialCopy}><Text style={styles.tutorialStep}>步驟 {step + 1}／{ONBOARDING_STEPS.length}</Text><Text style={styles.tutorialTitle}>{current.title}</Text><Text style={styles.tutorialText}>{current.text}</Text><View style={styles.tutorialNote}><Text style={styles.tutorialNoteText}>{current.note}</Text></View></View></View><View style={styles.tutorialActions}>{step > 0 ? <View style={styles.tutorialActionFlex}><Button label="上一步" variant="secondary" onPress={() => onChangeStep(step - 1)} /></View> : <View style={styles.tutorialActionFlex} />}{finalStep ? <View style={styles.tutorialActionFlex}><Button label="開啟速查表" onPress={onOpenSymbols} /></View> : <View style={styles.tutorialActionFlex}><Button label="下一步" onPress={() => onChangeStep(step + 1)} /></View>}</View>{finalStep ? <Pressable accessibilityRole="button" onPress={onComplete} style={styles.tutorialFinishLink}><Text style={styles.tutorialFinishText}>直接開始記錄</Text></Pressable> : null}</View></View></Modal>;
 }
 
+export const normalizePositionToCode = (pos: unknown): string | null => {
+  if (pos === null || pos === undefined) return null;
+  const s = String(pos).trim().toUpperCase();
+  const mapping: Record<string, string> = {
+    "1": "1", "P": "1", "PITCHER": "1", "投手": "1", "投": "1", "LHP": "1", "RHP": "1", "SP": "1", "RP": "1", "CP": "1",
+    "2": "2", "C": "2", "CATCHER": "2", "捕手": "2", "捕": "2",
+    "3": "3", "1B": "3", "FIRSTBASE": "3", "FIRSTBASEMAN": "3", "一壘手": "3", "一壘": "3", "一": "3",
+    "4": "4", "2B": "4", "SECONDBASE": "4", "SECONDBASEMAN": "4", "二壘手": "4", "二壘": "4", "二": "4",
+    "5": "5", "3B": "5", "THIRDBASE": "5", "THIRDBASEMAN": "5", "三壘手": "5", "三壘": "5", "三": "5",
+    "6": "6", "SS": "6", "SHORTSTOP": "6", "游擊手": "6", "游擊": "6", "遊擊手": "6", "遊擊": "6", "游": "6",
+    "7": "7", "LF": "7", "LEFTFIELD": "7", "LEFTFIELDER": "7", "左外野手": "7", "左外野": "7", "左外": "7", "左": "7",
+    "8": "8", "CF": "8", "CENTERFIELD": "8", "CENTERFIELDER": "8", "中外野手": "8", "中外野": "8", "中外": "8", "中": "8",
+    "9": "9", "RF": "9", "RIGHTFIELD": "9", "RIGHTFIELDER": "9", "右外野手": "9", "右外野": "9", "右外": "9", "右": "9",
+  };
+  return mapping[s] || null;
+};
+
 function TopDownLineupField({ team, lineup, conflictedPositions = [], highlightedPositions = [], style }: { team: Team; lineup: GameLineup; conflictedPositions?: string[]; highlightedPositions?: string[]; style?: StyleProp<ViewStyle> }) {
-  const playersForPosition = (number: string) => Object.entries(lineup.defensivePositions)
-    .filter(([, position]) => FIELD_POSITIONS.find((fieldPosition) => fieldPosition.number === position || fieldPosition.label === position)?.number === number)
-    .map(([playerId]) => team.players.find((player) => player.id === playerId))
-    .filter((player): player is Player => Boolean(player));
+  const playersForPosition = (number: string) => {
+    // 嚴格讀取先發九人名單（避免以打序索引定點），並透過字典精確定點
+    return (lineup.battingOrderIds || [])
+      .map((playerId) => team.players.find((p) => p.id === playerId))
+      .filter((player): player is Player => {
+        if (!player) return false;
+        // 優先讀取先發排定守位，如果沒有，則依次讀取其守位屬性
+        const assignedPos = lineup.defensivePositions?.[player.id];
+        const posValue = assignedPos !== undefined ? assignedPos : ((player as any).positionCode ?? (player as any).positionId ?? player.position);
+        const mappedCode = normalizePositionToCode(posValue);
+        return mappedCode === number;
+      });
+  };
 
   return <ImageBackground source={COMMON_DEFENSE_BLANK_FIELD_IMAGE} resizeMode="contain" style={[styles.topDownField, style]} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（常用守備位置空白圖）`}>
     {FIELD_POSITION_LAYOUT.map((spot) => {
       const players = playersForPosition(spot.number);
-      const conflicted = conflictedPositions.includes(spot.number);
+      // 防呆機制：如果傳入的 conflictedPositions 包含該守位，或者當前點位算出來有大於 1 位球員，即視為重複衝突
+      const conflicted = conflictedPositions.includes(spot.number) || players.length > 1;
       const highlighted = highlightedPositions.includes(spot.number);
       const nodeText = conflicted ? "重複" : players.length ? players.map((player) => player.name).join("/") : spot.number;
       return <View key={spot.number} style={[styles.topDownFieldMarker, players.length ? styles.topDownFieldMarkerFilled : styles.topDownFieldMarkerEmpty, highlighted && styles.topDownFieldMarkerChanged, conflicted && styles.topDownFieldMarkerConflict, { top: `${spot.top}%`, left: `${spot.left}%` }]}>
@@ -6112,8 +6201,11 @@ function NewGameModal({ visible, form, teams, games, onChange, onCreateTeam, onC
     function confirmationStage() {
       const getPositionShortLabel = (assignedPosition?: string) => {
         if (!assignedPosition) return "未排";
-        const position = FIELD_POSITIONS.find((candidate) => candidate.number === assignedPosition || candidate.label === assignedPosition);
-        if (!position) return assignedPosition === RESERVE_POSITION || assignedPosition === RESERVE_POSITION_LABEL ? "後" : "未排";
+        // 使用與球場圖完全一致的映射邏輯進行標準化轉換
+        const code = normalizePositionToCode(assignedPosition);
+        if (!code) return assignedPosition === RESERVE_POSITION || assignedPosition === RESERVE_POSITION_LABEL ? "後" : "未排";
+        const position = FIELD_POSITIONS.find((candidate) => candidate.number === code);
+        if (!position) return "未排";
         const shortMap: Record<string, string> = {
           投手: "投",
           捕手: "捕",

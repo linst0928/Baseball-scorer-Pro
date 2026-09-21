@@ -190,6 +190,7 @@ function createImportedGame({
   opponentInnings,
   venue,
   notes,
+  weather = "sunny",
 }: {
   id: string;
   opponentId: string;
@@ -201,6 +202,7 @@ function createImportedGame({
   opponentInnings: number[];
   venue: string;
   notes: string;
+  weather?: "sunny" | "cloudy" | "drizzle";
 }): Game {
   const opponent = opponentById[opponentId];
   const homeTeamId = fuxingSide === "home" ? FUXING_TEAM.id : opponent.id;
@@ -217,7 +219,7 @@ function createImportedGame({
     competition: FUXING_COMPETITION,
     venue,
     date,
-    weather: "sunny",
+    weather,
     status: "final",
     homeTeamId,
     awayTeamId,
@@ -247,48 +249,52 @@ export const FUXING_2026_GAMES: Game[] = [
     opponentId: "team-zhongxiao",
     date: "2026-07-21 08:30",
     fuxingSide: "away",
-    fuxingRuns: 2,
-    opponentRuns: 3,
-    fuxingInnings: [0, 0, 2],
-    opponentInnings: [2, 0, 1],
+    fuxingRuns: 6,
+    opponentRuns: 0,
+    fuxingInnings: [6],
+    opponentInnings: [0],
     venue: "迷馬力（東）",
-    notes: "對手：忠孝國小。首局上下雨且一局下暫停；紀錄另註記忠孝國小未攜帶證件而判負。行政判決與表上 2：3 比分衝突，因此保留表上逐局與比分，不自動改寫為行政判決結果。",
+    weather: "cloudy",
+    notes: "對手：忠孝國小。因對手未攜帶證件判負（裁定勝），行政判決裁定為 6：0。",
   }),
   createImportedGame({
     id: "fuxing67-20260721-1430-qiaozitou",
     opponentId: "team-qiaozitou",
     date: "2026-07-21 14:30",
     fuxingSide: "home",
-    fuxingRuns: 2,
-    opponentRuns: 0,
-    fuxingInnings: [2, 0, 0],
-    opponentInnings: [0, 0, 0],
+    fuxingRuns: 15,
+    opponentRuns: 2,
+    fuxingInnings: [2, 5, 8],
+    opponentInnings: [0, 0, 2],
     venue: "迷馬力（東）",
-    notes: "對手：橋仔頭社區。PDF 逐局與正式總分為橋仔頭社區 0：2 復興少棒67；同份打擊摘要的 RBI 合計為 13，與比分不一致，故不以該摘要建立個人統計或逐球紀錄。",
+    weather: "sunny",
+    notes: "對手：橋仔頭社區。表上逐局與比分：橋仔頭 0、0、2（共 2 分）；復興 2、5、8（共 15 分），終場 2：15。3局提前結束比賽。",
   }),
   createImportedGame({
     id: "fuxing67-20260722-1000-strong-cruise",
     opponentId: "team-strong-cruise",
     date: "2026-07-22 10:00",
     fuxingSide: "home",
-    fuxingRuns: 8,
-    opponentRuns: 0,
-    fuxingInnings: [8, 0, 0],
-    opponentInnings: [0, 0, 0],
+    fuxingRuns: 19,
+    opponentRuns: 4,
+    fuxingInnings: [8, 9, 2],
+    opponentInnings: [0, 0, 4],
     venue: "迷馬力（西）",
-    notes: "對手：強棒（巡航）。PDF 逐局與正式總分為強棒（巡航）0：8 復興少棒67；打擊摘要的 RBI 合計為 19，與比分不一致，故不以該摘要建立個人統計或逐球紀錄。",
+    weather: "sunny",
+    notes: "對手：強棒（巡航）。逐局與比分：強棒 0、0、4（共 4 分）；復興 8、9、2（共 19 分），終場 4：19。3局提前結束比賽。",
   }),
   createImportedGame({
     id: "fuxing67-20260723-0830-acan-star",
     opponentId: "team-acan-star",
     date: "2026-07-23 08:30",
     fuxingSide: "away",
-    fuxingRuns: 2,
-    opponentRuns: 0,
-    fuxingInnings: [0, 0, 0, 2],
-    opponentInnings: [0, 0, 0, 0],
+    fuxingRuns: 3,
+    opponentRuns: 4,
+    fuxingInnings: [1, 0, 0, 2],
+    opponentInnings: [2, 0, 0, 2],
     venue: "迷瑪力（西）",
-    notes: "對手：閃耀之星。PDF 逐局與最終比分為復興少棒67 2：0 閃耀之星；打擊摘要的 RBI 合計為 3，與比分不完全相符，故不以該摘要建立個人統計或逐球紀錄。",
+    weather: "sunny",
+    notes: "對手：閃耀之星。逐局與比分：復興 1、0、0、2（共 3 分）；閃耀之星 2、0、0、2（共 4 分），終場 3：4。4局時間到達結束比賽。",
   }),
   createImportedGame({
     id: "fuxing67-20260723-1030-zhongzhuang",
@@ -298,9 +304,10 @@ export const FUXING_2026_GAMES: Game[] = [
     fuxingRuns: 4,
     opponentRuns: 3,
     fuxingInnings: [4, 0, 0, 0, 0, 0],
-    opponentInnings: [0, 0, 0, 1, 2, 0],
+    opponentInnings: [0, 0, 0, 0, 1, 2],
     venue: "迷馬力（西）",
-    notes: "對手：中正國小。逐局比分可驗證為復興少棒67 4／0／0／0／0／0、對手 0／0／0／0／1／2。PDF 統計僅保留於來源註記，不建立個人統計或逐球紀錄。",
+    weather: "sunny",
+    notes: "對手：中正國小（原中庄）。季軍賽6局不限時間。逐局與比分：復興 4、0、0、0、0、0（共 4 分）；中正 0、0、0、0、1、2（共 3 分），終場 4：3。",
   }),
   createImportedGame({
     id: "fuxing67-20260723-1300-longhua",
@@ -312,13 +319,13 @@ export const FUXING_2026_GAMES: Game[] = [
     fuxingInnings: [2, 2, 3, 1, 0],
     opponentInnings: [4, 0, 0, 0, 0],
     venue: "迷馬力（西）",
-    notes: "對手：龍華國小。復興少棒67為客隊，PDF 可辨識復興逐局 2／2／3／1／0，局內小計為 8；PDF 表頭卻標示 0：0，且對手逐局未完整辨識。因此保留既有內建候選總比分 8：4 與其舊有對手逐局分配，不宣稱此兩欄由 PDF 證實，亦不建立個人統計或逐球紀錄。",
+    weather: "sunny",
+    notes: "對手：龍華國小。逐局與比分：復興 2、2, 3, 1, 0（小計 8 分）；對手（龍華） 4、0、0、0、0（小計 4 分），終場 8：4。5局時間到達結束比賽。",
   }),
 ];
 
 /**
- * 僅以下五場的最終比分與雙方逐局均可由已核對的 PDF 文字層確認。
- * 龍華一戰的對手逐局仍屬既有候選值，故刻意不納入 CSV 匯出白名單。
+ * 六場的最終比分與雙方逐局均已由已核對並與使用者確認。
  */
 export const FUXING_2026_VERIFIED_SCORE_GAME_IDS = [
   "fuxing67-20260721-0830-zhongxiao",
@@ -326,6 +333,7 @@ export const FUXING_2026_VERIFIED_SCORE_GAME_IDS = [
   "fuxing67-20260722-1000-strong-cruise",
   "fuxing67-20260723-0830-acan-star",
   "fuxing67-20260723-1030-zhongzhuang",
+  "fuxing67-20260723-1300-longhua",
 ] as const;
 
 const verifiedScoreGameIdSet = new Set<string>(FUXING_2026_VERIFIED_SCORE_GAME_IDS);

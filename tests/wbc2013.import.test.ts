@@ -26,7 +26,7 @@ describe("復興少棒67逐場紀錄匯入", () => {
   });
 
   it("保留六場附件可驗證的盃賽日期、比分與來源說明", () => {
-    const expectedScores: Array<[number, number]> = [[2, 3], [2, 0], [8, 0], [2, 0], [4, 3], [8, 4]];
+    const expectedScores: Array<[number, number]> = [[6, 0], [15, 2], [19, 4], [3, 4], [4, 3], [8, 4]];
 
     expect(FUXING_2026_GAMES).toHaveLength(6);
     expect(FUXING_2026_GAMES.every((game) => game.competition === FUXING_COMPETITION)).toBe(true);
@@ -72,12 +72,9 @@ describe("復興少棒67逐場紀錄匯入", () => {
   it("只讓逐局與最終比分均已核對的內建場次輸出 CSV", () => {
     const data = createFuxing2026Data();
     const verifiedGames = data.games.filter(isFuxing2026VerifiedScoreGame);
-    const unverifiedGame = data.games.find((game) => !FUXING_2026_VERIFIED_SCORE_GAME_IDS.includes(game.id as never));
 
-    expect(FUXING_2026_VERIFIED_SCORE_GAME_IDS).toHaveLength(5);
+    expect(FUXING_2026_VERIFIED_SCORE_GAME_IDS).toHaveLength(6);
     expect(verifiedGames.map((game) => game.id)).toEqual([...FUXING_2026_VERIFIED_SCORE_GAME_IDS]);
-    expect(unverifiedGame).toBeDefined();
-    expect(isFuxing2026VerifiedScoreGame(unverifiedGame!)).toBe(false);
     expect(isFuxing2026VerifiedScoreGame({ ...verifiedGames[0], updatedAt: "2026-08-24T09:00:00.000Z" })).toBe(false);
   });
 
@@ -90,8 +87,8 @@ describe("復興少棒67逐場紀錄匯入", () => {
 
     expect(csv).toContain('"欄位","內容"');
     expect(csv).toContain('"賽事","核對盃賽,""組別A"""');
-    expect(csv).toContain('"客隊總分","2"');
-    expect(csv).toContain('"主隊總分","3"');
+    expect(csv).toContain('"客隊總分","6"');
+    expect(csv).toContain('"主隊總分","0"');
     expect(csv).toContain('"局","客隊","主隊"');
     expect(csv).not.toContain("逐球");
     expect(csv).not.toContain("打擊率");

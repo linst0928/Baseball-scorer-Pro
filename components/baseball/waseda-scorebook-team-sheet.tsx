@@ -64,12 +64,9 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
   const isSubstitutionInningFilterActive = showSubstitutionInningsOnly && hasSubstitutionInnings;
   const visibleInnings = isSubstitutionInningFilterActive ? substitutionVisibleInnings : projection.innings;
 
-  // 計算各打序(1-9)對應守備位置在此場比賽發生的失誤次數
-  const battingOrderErrors = useMemo(() => {
-    const errorsByOrder = new Map<number, number>();
-    for (let order = 1; order <= 9; order++) {
-      errorsByOrder.set(order, 0);
-    }
+  // 計算每位球員在此場比賽守備時發生的失誤次數
+  const playerErrors = useMemo(() => {
+    const errorsByPlayer = new Map<string, number>();
 
     const defenseEvents = game.events.filter((e) => e.half !== side);
     const playerPositions = new Map<string, string>();
@@ -90,22 +87,34 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
       }
 
       projection.battingOrders.forEach((order) => {
-        const orderPlayerIds = new Set(order.entries.map((e) => e.playerId).filter(Boolean));
-        let match = false;
-        if (errorPos) {
-          orderPlayerIds.forEach((pId) => {
-            if (pId && playerPositions.get(pId) === errorPos) {
-              match = true;
-            }
-          });
-        }
-        if (match) {
-          errorsByOrder.set(order.battingOrder, (errorsByOrder.get(order.battingOrder) || 0) + 1);
-        }
+        order.entries.forEach((e) => {
+          if (!e.playerId) return;
+          const pos = playerPositions.get(e.playerId) || e.substitution?.position;
+
+          let match = false;
+          if (errorPos) {
+            match = pos === errorPos ||
+              (errorPos === "1" && (pos === "投手" || pos === "投" || pos === "P")) ||
+              (errorPos === "2" && (pos === "捕手" || pos === "捕" || pos === "C")) ||
+              (errorPos === "3" && (pos === "一壘" || pos === "一" || pos === "1B")) ||
+              (errorPos === "4" && (pos === "二壘" || pos === "二" || pos === "2B")) ||
+              (errorPos === "5" && (pos === "三壘" || pos === "三" || pos === "3B")) ||
+              (errorPos === "6" && (pos === "游擊" || pos === "游" || pos === "SS")) ||
+              (errorPos === "7" && (pos === "左外" || pos === "左" || pos === "LF")) ||
+              (errorPos === "8" && (pos === "中外" || pos === "中" || pos === "CF")) ||
+              (errorPos === "9" && (pos === "右外" || pos === "右" || pos === "RF"));
+          } else {
+            match = true;
+          }
+
+          if (match) {
+            errorsByPlayer.set(e.playerId, (errorsByPlayer.get(e.playerId) || 0) + 1);
+          }
+        });
       });
     });
 
-    return errorsByOrder;
+    return errorsByPlayer;
   }, [game.events, lineup?.defensivePositions, projection.battingOrders, side]);
 
   const entryDescription = (entry: WasedaScorebookEntry, battingOrder: number) => {
@@ -259,7 +268,25 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                 </View>;
               })}
               <View style={[styles.errorColumn, { height: sharedRowHeight }]}>
-                <Text style={styles.errorColumnValue}>{battingOrderErrors.get(order.battingOrder) || 0}</Text>
+                <View style={styles.errorEntryLane}>
+                  {displayedEntries.map((entry, entryIndex) => {
+                    const isEmptyReserve = entry.kind === "reserve" && !entry.playerId;
+                    const count = entry.playerId ? (playerErrors.get(entry.playerId) || 0) : "";
+                    return (
+                      <View
+                        key={`error-${order.battingOrder}-${entry.entryIndex}-${entry.playerId ?? "reserve"}`}
+                        style={[
+                          styles.errorEntryCell,
+                          entryIndex < displayedEntries.length - 1 && styles.errorEntryCellDivider,
+                        ]}
+                      >
+                        <Text style={[styles.errorColumnValue, isEmptyReserve && styles.emptyEntryText]}>
+                          {isEmptyReserve ? "" : count}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             </View>
           </View>;
@@ -498,7 +525,10 @@ const styles = StyleSheet.create({
   headerOrder: { width: 30, textAlign: "center" },
   inningHeader: { minHeight: 42, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
   errorHeader: { width: 70, minHeight: 42, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#475569", backgroundColor: "#0F172A" },
-  errorColumn: { width: 70, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#CBD5E1", backgroundColor: "#FFFFFF" },
+  errorColumn: { width: 70, borderLeftWidth: 1, borderColor: "#CBD5E1", backgroundColor: "#FFFFFF" },
+  errorEntryLane: { flex: 1 },
+  errorEntryCell: { flex: 1, minHeight: 22, alignItems: "center", justifyContent: "center" },
+  errorEntryCellDivider: { borderBottomWidth: 1, borderColor: "#CBD5E1" },
   errorColumnValue: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
   statsErrorTotalCell: { width: 70, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#475569", backgroundColor: "#0F172A", paddingHorizontal: 4 },
   inningNumber: { color: "#FFFFFF", fontSize: 14, fontWeight: "900", lineHeight: 16 },

@@ -202,7 +202,8 @@ export function WasedaPersonalRecordCell({
   const liveSize = size === "live";
   const compactSize = size === "compact";
   const largeSize = size === "large";
-  const sizeStyle = largeSize ? styles.large : compactSize ? styles.compact : liveSize ? styles.live : size === "rail" ? styles.rail : styles.regular;
+  const railSize = size === "rail";
+  const sizeStyle = largeSize ? styles.large : compactSize ? styles.compact : liveSize ? styles.live : railSize ? styles.rail : styles.regular;
   const hitAdvanceSegments = getHitAdvanceSegments(finalResult);
   const syncedRunnerAdvances = runnerAdvances
     .filter((advance): advance is typeof advance & { fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 } => Boolean(advance.fromBase && advance.toBase))
@@ -259,16 +260,16 @@ export function WasedaPersonalRecordCell({
   return (
     <View style={[styles.wrap, sizeStyle, style]}>
       {label ? <View style={styles.heading}><Text numberOfLines={1} style={styles.headingLabel}>{label}</Text>{headingNote ? <Text numberOfLines={1} style={styles.headingNote}>{headingNote}</Text> : null}</View> : null}
-      <View style={[styles.cell, compactSize && styles.cellCompact, liveSize && styles.cellLive, largeSize && styles.cellLarge]}>
-        <View style={[styles.pitchColumn, compactSize && styles.pitchColumnCompact, liveSize && styles.pitchColumnLive, largeSize && styles.pitchColumnLarge]}>
+      <View style={[styles.cell, compactSize && styles.cellCompact, liveSize && styles.cellLive, largeSize && styles.cellLarge, railSize && styles.cellRail]}>
+        <View style={[styles.pitchColumn, compactSize && styles.pitchColumnCompact, liveSize && styles.pitchColumnLive, largeSize && styles.pitchColumnLarge, railSize && styles.pitchColumnRail]}>
           {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.zoneLabel}>球數欄</Text> : null}
-          <View accessibilityLabel={`逐球紀錄，共 ${pitchMarkItems.length} 球`} style={[styles.pitchMarkGrid, compactSize && styles.pitchMarkGridCompact, liveSize && styles.pitchMarkGridLive, largeSize && styles.pitchMarkGridLarge]}>
+          <View accessibilityLabel={`逐球紀錄，共 ${pitchMarkItems.length} 球`} style={[styles.pitchMarkGrid, compactSize && styles.pitchMarkGridCompact, liveSize && styles.pitchMarkGridLive, largeSize && styles.pitchMarkGridLarge, railSize && styles.pitchMarkGridRail]}>
             {(pitchMarkItems.length ? pitchMarkItems : ["·"]).map((mark, index) => (
-              <Text {...scorebookGlyphFitProps} key={`${mark}-${index}`} numberOfLines={1} style={[styles.pitchMarkCell, compactSize && styles.pitchMarkCellCompact, liveSize && styles.pitchMarkCellLive, largeSize && styles.pitchMarkCellLarge]}>{mark}</Text>
+              <Text {...scorebookGlyphFitProps} key={`${mark}-${index}`} numberOfLines={1} style={[styles.pitchMarkCell, compactSize && styles.pitchMarkCellCompact, liveSize && styles.pitchMarkCellLive, largeSize && styles.pitchMarkCellLarge, railSize && styles.pitchMarkCellRail]}>{mark}</Text>
             ))}
           </View>
         </View>
-        <View style={[styles.outerArea, compactSize && styles.outerAreaCompact, liveSize && styles.outerAreaLive, largeSize && styles.outerAreaLarge]}>
+        <View style={[styles.outerArea, compactSize && styles.outerAreaCompact, liveSize && styles.outerAreaLive, largeSize && styles.outerAreaLarge, railSize && styles.outerAreaRail]}>
           {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.outerLabel}>外圈</Text> : null}
           {pitchingChangeBadge ? <View pointerEvents="none" accessibilityLabel={`換投標記：第${pitchingChangeBadge.inning}局 ︺ P ${pitchingChangeBadge.pitcherLabel ?? "新投手"}`} style={[styles.pitchingChangeBadge, liveSize && styles.pitchingChangeBadgeLive]}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.pitchingChangeBadgeCode, liveSize && styles.pitchingChangeBadgeCodeLive]}>︺ P</Text><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.pitchingChangeBadgePitcher, liveSize && styles.pitchingChangeBadgePitcherLive]}>{pitchingChangeBadge.pitcherLabel ?? "新投手"}</Text></View> : null}
           {replacementBadge ? <View pointerEvents="none" accessibilityLabel={`替換交接：第${replacementBadge.inning}局起 ${replacementBadge.code}${replacementHandoffLabel ? `；${replacementHandoffLabel}` : typeof replacementPitchTotal === "number" ? `；本席 ${replacementPitchTotal} 球（非精確交接）` : ""}`} style={[styles.replacementBadge, liveSize && styles.replacementBadgeLive]}><View style={styles.replacementBadgeHeader}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeCode, liveSize && styles.replacementBadgeCodeLive]}>{replacementBadge.code}</Text><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeHandoff, liveSize && styles.replacementBadgeHandoffLive]}>交接</Text></View><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeInning, liveSize && styles.replacementBadgeInningLive]}>第{replacementBadge.inning}局起</Text>{replacementHandoffLabel ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>{replacementHandoffLabel}</Text> : typeof replacementPitchTotal === "number" ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>本席 {replacementPitchTotal} 球</Text> : null}</View> : null}
@@ -376,26 +377,31 @@ const styles = StyleSheet.create({
   cellCompact: { minHeight: 68 },
   cellLive: { minHeight: 70 },
   cellLarge: { minHeight: 140 },
+  cellRail: { minHeight: 86, height: 86 },
   pitchColumn: { width: 29, paddingVertical: 3, alignItems: "center", borderRightWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white },
   pitchColumnCompact: { width: 22, paddingVertical: 2 },
   pitchColumnLive: { width: 23, paddingVertical: 2 },
   pitchColumnLarge: { width: 38, paddingVertical: 4 },
+  pitchColumnRail: { width: 22, paddingVertical: 2, height: 86 },
   zoneLabel: { color: COLORS.muted, fontSize: 6, fontWeight: "900", writingDirection: "ltr" },
   /** 每欄最多14球、兩欄共28球；直式由上而下讀取，維持緊湊橫式工作台高度。 */
   pitchMarkGrid: { width: 20, height: 82, marginTop: 2, flexDirection: "column", flexWrap: "wrap", alignContent: "flex-start", overflow: "hidden" },
   pitchMarkGridCompact: { width: 16, height: 62, marginTop: 1 },
   pitchMarkGridLive: { width: 16, height: 62, marginTop: 1 },
   pitchMarkGridLarge: { width: 26, height: 110, marginTop: 4 },
+  pitchMarkGridRail: { width: 16, height: 78, marginTop: 2 },
   pitchMarkCell: { width: 10, height: 11, color: COLORS.ink, fontSize: 9.5, fontWeight: "900", lineHeight: 11, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   pitchMarkCellCompact: { width: 8, height: 8.8, fontSize: 8, fontWeight: "900", lineHeight: 8.8, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   pitchMarkCellLive: { width: 8, height: 8.8, fontSize: 8, fontWeight: "900", lineHeight: 8.8, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   pitchMarkCellLarge: { width: 12, height: 14, fontSize: 13, lineHeight: 14, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
+  pitchMarkCellRail: { width: 8, height: 10, fontSize: 9.5, lineHeight: 10, includeFontPadding: false, textAlign: "center", textAlignVertical: "center" },
   /** 最外層 wrap 已提供紙本格線；外圈僅承載符號，避免再畫一層重複方框。 */
   outerArea: { flex: 1, minHeight: 96, position: "relative", overflow: "hidden", backgroundColor: "transparent", borderWidth: 0 },
   /** 緊湊格維持 68px 高的單一紙本方格，不加內嵌外框。 */
   outerAreaCompact: { minHeight: 68, borderWidth: 0 },
   outerAreaLive: { minHeight: 70 },
   outerAreaLarge: { minHeight: 140 },
+  outerAreaRail: { minHeight: 86, height: 86, borderWidth: 0 },
   outerLabel: { position: "absolute", top: 3, left: 4, color: COLORS.muted, fontSize: 6, fontWeight: "900" },
   pitchingChangeBadge: { position: "absolute", top: 3, left: 4, maxWidth: "34%", paddingHorizontal: 1, paddingVertical: 1, borderWidth: 1, borderColor: "#F59E0B", borderRadius: 4, backgroundColor: "transparent", zIndex: 12 },
   pitchingChangeBadgeLive: { top: 2, left: 2, paddingHorizontal: 1, paddingVertical: 0 },

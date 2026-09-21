@@ -1498,4 +1498,27 @@ describe("單場早稻田紀錄表資料投影", () => {
     expect(source).toContain("wizardConfirmationFieldImage");
     expect(source).toContain("nodeText = conflicted ? \"重複\" : players.length ? players.map((player) => player.name).join(\"/\") : spot.number");
   });
+
+  it("先發球場示意圖支援精確守備位置代碼字典映射(Position Code Mapping)與重複防呆", () => {
+    const source = readFileSync(resolve(process.cwd(), "app/(tabs)/index.tsx"), "utf8");
+
+    // 驗證存在標準字典映射函數
+    expect(source).toContain("export const normalizePositionToCode");
+    expect(source).toContain('"3B": "5"');
+    expect(source).toContain('"2B": "4"');
+    expect(source).toContain('"SS": "6"');
+    expect(source).toContain('"LF": "7"');
+    expect(source).toContain('"CF": "8"');
+    expect(source).toContain('"RF": "9"');
+    expect(source).toContain('"1B": "3"');
+    expect(source).toContain('"C": "2"');
+    expect(source).toContain('"P": "1"');
+
+    // 驗證球場點位定址嚴格使用守位屬性代碼映射而非打序 index
+    expect(source).toContain("normalizePositionToCode(posValue)");
+    expect(source).toContain("mappedCode === number");
+
+    // 驗證防呆機制：多於 1 位球員分配至同守位時自動標示為衝突重複
+    expect(source).toContain("const conflicted = conflictedPositions.includes(spot.number) || players.length > 1;");
+  });
 });

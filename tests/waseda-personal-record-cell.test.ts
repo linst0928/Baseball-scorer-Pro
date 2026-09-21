@@ -135,4 +135,17 @@ describe("早稻田個人打席格的球性與傳接分區", () => {
     // 逐球欄字體放大與每欄最多 7 球 (共 14 球)
     expect(source).toContain('pitchMarkCell: { width: 10, height: 11, color: COLORS.ink, fontSize: 9.5');
   });
+
+  it("已上場打者導軌(rail)尺寸具備專屬內部分區樣式，避免傳接與記號溢出被裁切", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/baseball/waseda-personal-record-cell.tsx"), "utf8");
+
+    expect(source).toContain("const railSize = size === \"rail\";");
+    expect(source).toContain("railSize && styles.cellRail");
+    expect(source).toContain("railSize && styles.pitchColumnRail");
+    expect(source).toContain("railSize && styles.pitchMarkGridRail");
+    expect(source).toContain("railSize && styles.pitchMarkCellRail");
+    expect(source).toContain("railSize && styles.outerAreaRail");
+    expect(source).toContain("cellRail: { minHeight: 86, height: 86 }");
+    expect(source).toContain("outerAreaRail: { minHeight: 86, height: 86, borderWidth: 0 }");
+  });
 });

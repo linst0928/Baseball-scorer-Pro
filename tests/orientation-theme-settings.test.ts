@@ -87,6 +87,9 @@ describe("Android 橫式與設定配色回饋", () => {
     expect(teamSheet).toContain("長按修改第${order.battingOrder}棒第${entryIndex + 1}格球員");
     expect(teamSheet).toContain("長按修改第${order.battingOrder}棒第${entryIndex + 1}格守備位置");
     expect(teamSheet).toContain("sharedDefenseEditTarget");
+    expect(teamSheet).toContain("const playerErrors");
+    expect(teamSheet).toContain("errorEntryLane");
+    expect(teamSheet).toContain("errorEntryCell");
     expect(teamSheet).toContain("const substitutionInnings");
     expect(teamSheet).toContain("const visibleInnings");
     expect(teamSheet).toContain("僅替換局：");
