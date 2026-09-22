@@ -158,7 +158,7 @@ export function WasedaPersonalRecordCell({
   const isSacrificeFly = modifiers.some((mod) => /高飛犧牲打|SF/i.test(mod));
   const sacrificeShape = isSacrificeBunt ? "square" : isSacrificeFly ? "triangle" : "none";
   const droppedThirdStrike = finalResult === "K" && Boolean(
-    event?.droppedThirdStrike || modifiers.some((modifier) => /不死三振|dropped\s*third|K\+/i.test(modifier)),
+    event?.droppedThirdStrike || modifiers.some((modifier) => /不死三振|dropped\s*third|K\+|N/i.test(modifier)),
   );
   const out = finalResult ? OUT_RESULTS.includes(finalResult) && !droppedThirdStrike : false;
   const runnerAdvances = event?.runnerAdvances ?? [];
@@ -171,14 +171,29 @@ export function WasedaPersonalRecordCell({
     : pickoffOut
       ? `PO·${["I", "II", "III"][(pickoffOut.outNumber ?? 1) - 1]}`
       : undefined;
-  const onBaseMarks = [
-    finalResult === "BB" ? "BB" : null,
-    finalResult === "HBP" ? "DB" : null,
-    finalResult === "IBB" ? "DIB" : null,
-    finalResult === "K" ? (droppedThirdStrike ? "ꓘ" : "K") : null,
-    finalResult === "E" ? "E" : null,
-    runnerNotation && /\b(?:WP|PB|BK)\b/.test(runnerNotation) ? runnerNotation : null,
+  
+  // 右上角：暴投 WP, 捕逸 PB, 牽制 PO, 投手犯規 BK, 妨礙跑壘 OB, 雙殺 DP, 三殺 TP
+  const topRightMarks = [
+    runnerNotation && /\b(?:WP|PB|BK|PO|OB)\b/.test(runnerNotation) ? runnerNotation : null,
+    modifiers.includes("WP") ? "WP" : null,
+    modifiers.includes("PB") ? "PB" : null,
+    modifiers.includes("BK") ? "BK" : null,
+    modifiers.includes("OB") ? "OB" : null,
   ].filter(Boolean).join("·");
+
+  // 右下角打席結果：BB, D (觸身), DB (敬遠), K, N (不死三振), 2F (妨礙打擊), IP2 (妨礙守備), FC
+  const bottomRightResultMarks = [
+    finalResult === "BB" ? "BB" : null,
+    finalResult === "HBP" ? "D" : null,
+    finalResult === "IBB" ? "DB" : null,
+    finalResult === "K" ? (droppedThirdStrike ? "N" : "K") : null,
+    finalResult === "E" ? "E" : null,
+    modifiers.some((m) => /妨礙打擊|2F/i.test(m)) ? "2F" : null,
+    modifiers.some((m) => /妨礙守備|IP2/i.test(m)) ? "IP2" : null,
+    finalRecord?.fieldingPlay === "FC" ? "FC" : null,
+  ].filter(Boolean).join("·");
+
+  const onBaseMarks = [topRightMarks, bottomRightResultMarks].filter(Boolean).join("·");
   const leftTop = [hit ? finalResult : null].filter(Boolean).join("·");
   const battedBallTrajectory = getRecordTrajectoryMark(finalRecord?.trajectory);
   const battedBallPosition = finalRecord?.battedBallPosition ?? (battedBallTrajectory ? finalNotation.match(/[1-9]/)?.[0] : undefined);
@@ -199,7 +214,7 @@ export function WasedaPersonalRecordCell({
   const lowerRight = finalRecord && finalResult
     ? getFieldingSequenceNotation(finalResult, finalRecord)
     : finalRecord?.fieldingSequence || (!battedBallTrajectory && !hit && !onBaseMarks && !runnerNotation ? finalNotation : "");
-  const allowedInnerMarks = new Set(["—", "○", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "④", "ℓ", "CS", "PO", "ꓘ"]);
+  const allowedInnerMarks = new Set(["—", "○", "●", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "④", "ℓ", "CS", "PO", "N", "//", "///"]);
   const requestedInnerMark = innerMarkOverride ?? correction?.innerMark;
   const safeInnerOverride = requestedInnerMark && allowedInnerMarks.has(requestedInnerMark) ? requestedInnerMark : undefined;
   /**
@@ -207,7 +222,7 @@ export function WasedaPersonalRecordCell({
    * 安打種類保留在外圈與紅色壘線，絕不寫入中央。
    */
   const innerMark = safeInnerOverride
-    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "ꓘ" : (out && typeof finalOutsBefore === "number" ? ["I", "II", "III"][Math.min(finalOutsBefore, 2)] : (finalRuns > 0 ? "○" : "—")))));
+    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "N" : (out && typeof finalOutsBefore === "number" ? ["I", "II", "III"][Math.min(finalOutsBefore, 2)] : (finalRuns > 0 ? "○" : "—")))));
   const rbi = Math.max(0, Math.min(finalRecord?.rbi ?? 0, 4));
   const liveSize = size === "live";
   const compactSize = size === "compact";
@@ -281,12 +296,32 @@ export function WasedaPersonalRecordCell({
         </View>
         <View style={[styles.outerArea, compactSize && styles.outerAreaCompact, liveSize && styles.outerAreaLive, largeSize && styles.outerAreaLarge, railSize && styles.outerAreaRail]}>
           {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.outerLabel}>外圈</Text> : null}
+          {replacementBadge && (replacementBadge.code === "PH" || replacementBadge.code === "PR") ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.replacementSideMarker,
+                replacementBadge.code === "PR" ? (
+                  replacementBadge.baseLocation === "2B"
+                    ? styles.replacementSideMarkerPR2B
+                    : replacementBadge.baseLocation === "3B"
+                    ? styles.replacementSideMarkerPR3B
+                    : styles.replacementSideMarkerPR1B
+                ) : styles.replacementSideMarkerPH,
+              ]}
+            >
+              <Text style={styles.replacementWavyGlyph}>︴</Text>
+              <Text numberOfLines={1} style={styles.replacementSideText}>
+                {replacementBadge.code} {replacementBadge.playerName ?? ""}
+              </Text>
+            </View>
+          ) : null}
           {pitchingChangeBadge ? <View pointerEvents="none" accessibilityLabel={`換投標記：第${pitchingChangeBadge.inning}局 ︺ P ${pitchingChangeBadge.pitcherLabel ?? "新投手"}`} style={[styles.pitchingChangeBadge, liveSize && styles.pitchingChangeBadgeLive]}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.pitchingChangeBadgeCode, liveSize && styles.pitchingChangeBadgeCodeLive]}>︺ P</Text><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.pitchingChangeBadgePitcher, liveSize && styles.pitchingChangeBadgePitcherLive]}>{pitchingChangeBadge.pitcherLabel ?? "新投手"}</Text></View> : null}
           {replacementBadge ? <View pointerEvents="none" accessibilityLabel={`替換交接：第${replacementBadge.inning}局起 ${replacementBadge.code}${replacementHandoffLabel ? `；${replacementHandoffLabel}` : typeof replacementPitchTotal === "number" ? `；本席 ${replacementPitchTotal} 球（非精確交接）` : ""}`} style={[styles.replacementBadge, liveSize && styles.replacementBadgeLive]}><View style={styles.replacementBadgeHeader}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeCode, liveSize && styles.replacementBadgeCodeLive]}>{replacementBadge.code}</Text><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeHandoff, liveSize && styles.replacementBadgeHandoffLive]}>交接</Text></View><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeInning, liveSize && styles.replacementBadgeInningLive]}>第{replacementBadge.inning}局起</Text>{replacementHandoffLabel ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>{replacementHandoffLabel}</Text> : typeof replacementPitchTotal === "number" ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>本席 {replacementPitchTotal} 球</Text> : null}</View> : null}
           {correction?.outerMark && !hasStructuredOuterCorrection ? <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.outerCorrectionMark, liveSize && styles.outerCorrectionMarkLive, largeSize && styles.outerCorrectionMarkLarge]}>{correction.outerMark}</Text> : <>
             <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.leftTop, liveSize && styles.leftTopLive, largeSize && styles.leftTopLarge, hit && styles.redText]}>{outerMarks?.leftTop ?? leftTop ?? ""}</Text>
             <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[batterReachesFirst ? styles.batterFirstBaseMark : styles.rightTop, liveSize && (batterReachesFirst ? styles.batterFirstBaseMarkLive : styles.rightTopLive), largeSize && (batterReachesFirst ? styles.batterFirstBaseMarkLarge : styles.rightTopLarge)]}>{outerMarks?.rightTop ?? onBaseMarks}</Text>
-            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, liveSize && styles.leftBottomLive, largeSize && styles.leftBottomLarge]}>{outerMarks?.leftBottom ?? (rbi > 0 ? (["①", "②", "③", "④"][rbi - 1] ?? "") : "")}</Text>
+            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, styles.redText, liveSize && styles.leftBottomLive, largeSize && styles.leftBottomLarge]}>{outerMarks?.leftBottom ?? (finalRuns > 0 || rbi > 0 ? (["①", "②", "③", "④"][Math.max(finalRuns, rbi) - 1] ?? "") : "")}</Text>
             <View accessibilityLabel={displayedFieldingNotation ? `右下角傳接符號：${displayedFieldingNotation}` : "右下角傳接符號"} style={[styles.rightBottom, liveSize && styles.rightBottomLive, largeSize && styles.rightBottomLarge, displayedFieldingNotation && styles.rightBottomHasFielding]}>
               <SacrificeShapeContainer shape={sacrificeShape}>
                 {compactBattedBallNotation ? <Pressable
@@ -342,8 +377,12 @@ export function WasedaPersonalRecordCell({
               <View key={segment} style={[styles.hitAdvanceLine, hitSegmentStyle(segment)]} />
             ))}
             <View style={[styles.innerSquare, liveSize && styles.innerSquareLive, largeSize && styles.innerSquareLarge]}>
-              {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.innerLabel}>內圈</Text> : null}
-              <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.innerMark, liveSize && styles.innerMarkLive, largeSize && styles.innerMarkLarge, innerMark.length > 3 && styles.innerMarkLong, (innerMark === "○" || innerMark === "●") && styles.innerScoreMark]}>{innerMark}</Text>
+              {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.zoneLabel}>內圈</Text> : null}
+              {innerMark === "ꓘ" ? (
+                <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.innerMark, styles.reversedK, liveSize && styles.innerMarkLive, largeSize && styles.innerMarkLarge]}>K</Text>
+              ) : (
+                <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.innerMark, liveSize && styles.innerMarkLive, largeSize && styles.innerMarkLarge, innerMark.length > 3 && styles.innerMarkLong, (innerMark === "○" || innerMark === "●") && styles.innerScoreMark]}>{innerMark}</Text>
+              )}
             </View>
           </View>
           {showEmptyHint ? <View pointerEvents="none" style={styles.emptyHintOverlay}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.emptyHintText}>{emptyHint}</Text></View> : null}
@@ -418,6 +457,50 @@ const styles = StyleSheet.create({
   outerAreaLarge: { minHeight: 140 },
   outerAreaRail: { minHeight: 86, height: 86, borderWidth: 0 },
   outerLabel: { position: "absolute", top: 3, left: 4, color: COLORS.muted, fontSize: 6, fontWeight: "900" },
+  replacementSideMarker: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 15,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    borderRadius: 3,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderWidth: 1,
+  },
+  replacementSideMarkerPH: {
+    right: 2,
+    top: 4,
+    borderColor: "#A78BFA",
+  },
+  replacementSideMarkerPR1B: {
+    right: 2,
+    top: 4,
+    borderColor: "#34D399",
+  },
+  replacementSideMarkerPR2B: {
+    left: 2,
+    top: 4,
+    borderColor: "#34D399",
+  },
+  replacementSideMarkerPR3B: {
+    left: 2,
+    bottom: 4,
+    borderColor: "#34D399",
+  },
+  replacementWavyGlyph: {
+    fontSize: 9,
+    lineHeight: 10,
+    color: "#2563EB",
+    fontWeight: "900",
+    marginRight: 1,
+  },
+  replacementSideText: {
+    fontSize: 7,
+    lineHeight: 8,
+    fontWeight: "900",
+    color: "#1E293B",
+  },
   pitchingChangeBadge: { position: "absolute", top: 3, left: 4, maxWidth: "34%", paddingHorizontal: 1, paddingVertical: 1, borderWidth: 1, borderColor: "#F59E0B", borderRadius: 4, backgroundColor: "transparent", zIndex: 12 },
   pitchingChangeBadgeLive: { top: 2, left: 2, paddingHorizontal: 1, paddingVertical: 0 },
   pitchingChangeBadgeCode: { color: "#92400E", fontSize: 7, fontWeight: "900", lineHeight: 8 },
@@ -538,6 +621,7 @@ const styles = StyleSheet.create({
   emptyHintOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   emptyHintText: { color: "#9AA9B9", backgroundColor: "transparent", fontSize: 10, fontWeight: "800" },
   redText: { color: COLORS.red },
+  reversedK: { transform: [{ scaleX: -1 }] },
 });
 
 function hitSegmentStyle(segment: HitAdvanceSegment) {

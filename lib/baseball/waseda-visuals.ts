@@ -68,19 +68,28 @@ export function getRunnerAdvanceLines({
 }): RunnerAdvanceLine[] {
   if (runnerAdvance?.fromBase !== undefined && runnerAdvance.toBase !== undefined) {
     const segment = BASE_ADVANCE_SEGMENTS[`${runnerAdvance.fromBase}-${runnerAdvance.toBase}` as keyof typeof BASE_ADVANCE_SEGMENTS];
-    if (!segment || runnerAdvance.type === "PO") return [];
+    if (!segment) return [];
     if (getHitAdvanceSegments(result).includes(segment)) return [];
+    
     const stolenBase = runnerAdvance.type === "SB";
     const caughtStealing = runnerAdvance.type === "CS";
+    const pickoff = runnerAdvance.type === "PO";
     const balk = runnerAdvance.type === "BK";
-    const customLabel = runnerAdvance.advancedByOrder !== undefined ? `(${runnerAdvance.advancedByOrder})` : undefined;
+
+    if (pickoff) {
+      const defaultFielding = runnerAdvance.fromBase === 1 ? "PO1-3" : runnerAdvance.fromBase === 2 ? "PO2-5" : "PO3-4";
+      return [{ segment, hasArrow: false, label: defaultFielding, isCutLine: true }];
+    }
+
     if (caughtStealing) {
       return [{ segment, hasArrow: false, label: "CS", isCutLine: true }];
     }
+
+    const customLabel = runnerAdvance.advancedByOrder !== undefined ? `(${runnerAdvance.advancedByOrder})` : undefined;
     return [{ segment, hasArrow: stolenBase, label: stolenBase ? "SB" : balk ? "BK" : customLabel }];
   }
 
-  const droppedThirdStrike = result === "K" && modifiers.some((modifier) => /不死三振|dropped\s*third|K\+/i.test(modifier));
+  const droppedThirdStrike = result === "K" && modifiers.some((modifier) => /不死三振|dropped\s*third|K\+|N/i.test(modifier));
   if (result === "BB" || result === "HBP" || result === "E" || droppedThirdStrike) {
     return [{ segment: "home-to-first", hasArrow: false }];
   }

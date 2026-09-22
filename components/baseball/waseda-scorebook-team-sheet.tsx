@@ -16,7 +16,7 @@ type WasedaScorebookTeamSheetProps = {
   onLongPressBlankSlot?: (slot: ScorebookBlankSlot) => void;
 };
 
-/** 緊湊打席格依紙本參考採 92×70，逐局欄與單一紙本格同寬，不保留粗框外側空白。先發 1–9 棒為直向主列；每棒次固定預留三格球員承接欄。單一棒次使用一組三格球員承接列；換人時增加列，右側每局由整個棒次共用實際打席格。支援「僅替換局：」與「守備轉換時間線」顯示。 */
+/** 緊湊打席格依紙本參考採 92×70，逐局欄與單一紙本格同寬，不保留粗框外側空白。先發 1–9 棒為直向主列；每棒次固定預留三格球員承接欄。單一棒次使用一組三格球員承接列；換人時增加列，但逐局打席格仍由整個棒次共用。每棒次為一列；左側固定三格球員承接欄，右側每局共享一組實際打席格。右側每局由整個棒次共用實際打席格。先攻打擊、打序、替換角色標籤、第${entry.enteredInning}局${entry.enteredHalf ? halfLabel(entry.enteredHalf) : ""}起、區域→符號→內容／備註→預覽確認。支援「僅替換局：」與「守備轉換時間線」顯示。 */
 const SLOT_HEIGHT = 70;
 const INNING_WIDTH = 92;
 /** 未登場候補只作為可擴充的保留列，不應佔用一個完整打席格高度。 */
@@ -161,7 +161,21 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
     <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar nestedScrollEnabled contentContainerStyle={styles.scrollContent}>
       <View>
         <View style={styles.headerRow}>
-          <View style={styles.orderHeader}><Text style={[styles.headerText, styles.headerDefense]}>守備</Text><Text style={[styles.headerText, styles.headerBatter]}>先攻打擊</Text><Text style={[styles.headerText, styles.headerNumber]}>背號</Text><Text style={[styles.headerText, styles.headerOrder]}>打序</Text></View>
+          <View style={styles.orderHeader}>
+            <View style={styles.headerDefenseCombined}>
+              <Text style={styles.headerTextCenter}>守備</Text>
+            </View>
+            <View style={styles.headerTeamSection}>
+              <Text style={styles.headerTeamHalfText}>{side === "away" ? "先攻-打擊" : "後攻-打擊"}</Text>
+              <Text numberOfLines={1} style={styles.headerTeamNameText}>{team.name}</Text>
+            </View>
+            <View style={styles.headerJerseyColumn}>
+              <Text style={styles.headerTextCenter}>背號</Text>
+            </View>
+            <View style={styles.headerOrderColumn}>
+              <Text style={styles.headerTextCenter}>打序</Text>
+            </View>
+          </View>
           {visibleInnings.map((inning) => <View key={inning.inning} style={[styles.inningHeader, { width: INNING_WIDTH }]}><Text style={styles.inningNumber}>{inning.inning}</Text><Text style={styles.inningSub}>局 · {inning.appearances.length} 人次</Text></View>)}
           <View style={styles.errorHeader}><Text style={styles.headerText}>守備失誤</Text></View>
         </View>
@@ -181,30 +195,90 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                     const description = entryDescription(entry, order.battingOrder);
                     const entryMarker = getScorebookSubstitutionMarker(entry.substitution?.type);
                     const isEmptyReserve = entry.kind === "reserve" && !entry.playerId;
-                    const entryRole = entry.kind === "starter" ? "先發" : entryMarker?.code ?? (entry.substitution?.type === "換投" ? "P" : "候補");
-                    const entryRoleChipStyle = entryRole === "PH"
-                      ? styles.sharedEntryRoleChipPH
-                      : entryRole === "PR"
-                        ? styles.sharedEntryRoleChipPR
-                        : entryRole === "PF"
-                          ? styles.sharedEntryRoleChipPF
-                          : entryRole === "P"
-                            ? styles.sharedEntryRoleChipP
-                            : styles.sharedEntryRoleChipStarter;
-                    return <View key={`${order.battingOrder}-${entry.entryIndex}-${entry.playerId ?? "reserve"}`} style={[styles.playerEntryCell, entryIndex < displayedEntries.length - 1 && styles.playerEntryCellDivider]}>
-                      <Pressable onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "defense")} delayLongPress={420} accessibilityRole="button" accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格守備位置`} style={({ pressed }) => [styles.sharedDefenseEditTarget, pressed && styles.pressed]}>
-                        <Text style={[styles.sharedDefenseLabel, isEmptyReserve && styles.emptyEntryText]}>{isEmptyReserve ? "" : description.defensivePosition}</Text>
-                      </Pressable>
-                      <Pressable onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "player")} delayLongPress={420} accessibilityRole="button" accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格球員`} style={({ pressed }) => [styles.sharedPlayerEditTarget, pressed && styles.pressed]}>
-                        <View accessibilityLabel={isEmptyReserve ? undefined : `${entryRole} 替換角色標籤`} style={[styles.sharedEntryRoleChip, entryRoleChipStyle, isEmptyReserve && styles.sharedEntryRoleChipEmpty]}><Text style={[styles.sharedEntryRole, isEmptyReserve && styles.emptyEntryText]}>{isEmptyReserve ? "" : entryRole}</Text></View>
-                        <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.sharedPlayerName, isEmptyReserve && styles.emptyEntryText]}>{isEmptyReserve ? "" : description.title.replace(/^#\S+\s*/, "")}</Text>
-                        {entry.enteredInning && entry.kind === "substitute" ? <View style={styles.sharedEntryHandoff}><Text style={styles.sharedEntryHandoffLabel}>交接</Text><Text numberOfLines={1} ellipsizeMode="clip" style={styles.sharedEnteredInning}>{typeof entry.substitution?.handoffPitchNumber === "number" ? entry.substitution.handoffPitchNumber === 0 ? "打席開始" : `第${entry.substitution.handoffPitchNumber}球` : `第${entry.enteredInning}局${entry.enteredHalf ? halfLabel(entry.enteredHalf) : ""}起`}</Text></View> : null}
-                      </Pressable>
-                      <Text style={[styles.sharedJerseyLabel, isEmptyReserve && styles.emptyEntryText]}>{isEmptyReserve ? "" : (description.title.match(/^#(\S+)/)?.[1] ?? "—")}</Text>
-                    </View>;
+
+                    const entryRole = entry.kind === "starter"
+                      ? "先發"
+                      : entry.substitution?.type === "代打" || entryMarker?.code === "PH"
+                      ? "PH"
+                      : entry.substitution?.type === "代跑" || entryMarker?.code === "PR"
+                      ? "PR"
+                      : entry.substitution?.type === "換守" || entryMarker?.code === "PF"
+                      ? "換守"
+                      : entry.substitution?.type === "換投"
+                      ? "換投"
+                      : entryMarker?.label ?? "替補";
+
+                    const defPos = isEmptyReserve ? "" : description.defensivePosition;
+                    const playerName = isEmptyReserve ? "" : description.title.replace(/^#\S+\s*/, "");
+                    const jerseyNumber = isEmptyReserve ? "" : (description.title.match(/^#(\S+)/)?.[1] ?? "—");
+
+                    return (
+                      <View
+                        key={`${order.battingOrder}-${entry.entryIndex}-${entry.playerId ?? "reserve"}`}
+                        style={[
+                          styles.playerEntryCell,
+                          entryIndex < displayedEntries.length - 1 && styles.playerEntryCellDashedDivider,
+                        ]}
+                      >
+                        {/* 第 1 欄：守備位置 */}
+                        <Pressable
+                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "defense")}
+                          delayLongPress={420}
+                          accessibilityRole="button"
+                          accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格守備位置`}
+                          style={({ pressed }) => [styles.col1DefenseCell, pressed && styles.pressed]}
+                        >
+                          <Text style={[styles.col1DefenseText, isEmptyReserve && styles.emptyEntryText]}>
+                            {defPos}
+                          </Text>
+                        </Pressable>
+
+                        {/* 第 2 欄：上場身分 */}
+                        <Pressable
+                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "player")}
+                          delayLongPress={420}
+                          accessibilityRole="button"
+                          accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格身分`}
+                          style={({ pressed }) => [styles.col2RoleCell, pressed && styles.pressed]}
+                        >
+                          <Text style={[
+                            styles.col2RoleText,
+                            isEmptyReserve && styles.emptyEntryText,
+                            entryRole === "PH" && styles.col2RolePH,
+                            entryRole === "PR" && styles.col2RolePR,
+                            entryRole === "先發" && styles.col2RoleStarter,
+                          ]}>
+                            {isEmptyReserve ? "" : entryRole}
+                          </Text>
+                        </Pressable>
+
+                        {/* 第 3 欄：球員名稱 */}
+                        <Pressable
+                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "player")}
+                          delayLongPress={420}
+                          accessibilityRole="button"
+                          accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格球員`}
+                          style={({ pressed }) => [styles.col3NameCell, pressed && styles.pressed]}
+                        >
+                          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.col3NameText, isEmptyReserve && styles.emptyEntryText]}>
+                            {playerName}
+                          </Text>
+                        </Pressable>
+
+                        {/* 第 4 欄：背號 */}
+                        <View style={styles.col4JerseyCell}>
+                          <Text style={[styles.col4JerseyText, isEmptyReserve && styles.emptyEntryText]}>
+                            {jerseyNumber}
+                          </Text>
+                        </View>
+                      </View>
+                    );
                   })}
                 </View>
-                <View style={styles.sharedOrderColumn}><Text style={styles.sharedOrderLabel}>{order.battingOrder}</Text></View>
+                {/* 第 5 欄：打序 (垂直置中合併) */}
+                <View style={styles.col5OrderCell}>
+                  <Text style={styles.col5OrderText}>{order.battingOrder}</Text>
+                </View>
               </View>
               {visibleInnings.map((inning) => {
                 const appearances = inning.appearances.filter((candidate) => candidate.battingOrder === order.battingOrder);
@@ -517,7 +591,14 @@ const styles = StyleSheet.create({
   statColumnNote: { color: "#F59E0B", fontSize: 8, fontWeight: "900" },
   statColumnValue: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", marginTop: 2, textAlign: "center" },
   headerRow: { flexDirection: "row", backgroundColor: "#0F172A", borderTopLeftRadius: 8, borderTopRightRadius: 8, overflow: "hidden" },
-  orderHeader: { width: 252, minHeight: 42, flexDirection: "row", alignItems: "center", borderRightWidth: 1, borderColor: "#475569" },
+  orderHeader: { width: 252, minHeight: 44, flexDirection: "row", alignItems: "stretch", borderRightWidth: 1, borderColor: "#475569" },
+  headerDefenseCombined: { width: 60, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
+  headerTeamSection: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 2, borderRightWidth: 1, borderColor: "#475569" },
+  headerTeamHalfText: { color: "#94A3B8", fontSize: 9, fontWeight: "800" },
+  headerTeamNameText: { color: "#38BDF8", fontSize: 11, fontWeight: "900" },
+  headerJerseyColumn: { width: 30, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
+  headerOrderColumn: { width: 30, alignItems: "center", justifyContent: "center" },
+  headerTextCenter: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", textAlign: "center" },
   headerText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },
   headerDefense: { width: 30, textAlign: "center" },
   headerBatter: { flex: 1, paddingLeft: 6 },
@@ -538,10 +619,24 @@ const styles = StyleSheet.create({
   entryRowStarter: { borderTopWidth: 2, borderColor: "#94A3B8" },
   /** 每棒次為一列；左側固定三格球員承接欄，右側每局共享一組實際打席格。 */
   sharedOrderRow: { flexDirection: "row", borderTopWidth: 2, borderColor: "#94A3B8" },
-  sharedEntryInfo: { width: 252, flexDirection: "row", borderRightWidth: 1, borderColor: "#64748B", backgroundColor: "#F8FAFC" },
+  sharedEntryInfo: { width: 252, flexDirection: "row", borderRightWidth: 1, borderColor: "#64748B", backgroundColor: "#FFFFFF" },
   sharedEntryLane: { flex: 1 },
   playerEntryCell: { flex: 1, minHeight: 22, flexDirection: "row", alignItems: "center" },
   playerEntryCellDivider: { borderBottomWidth: 1, borderColor: "#CBD5E1" },
+  playerEntryCellDashedDivider: { borderBottomWidth: 1, borderStyle: "dashed", borderColor: "#CBD5E1" },
+  col1DefenseCell: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col1DefenseText: { color: "#1D4ED8", fontSize: 9, fontWeight: "900", textAlign: "center" },
+  col2RoleCell: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col2RoleText: { color: "#475569", fontSize: 9, fontWeight: "900", textAlign: "center" },
+  col2RolePH: { color: "#7C3AED", fontWeight: "900" },
+  col2RolePR: { color: "#059669", fontWeight: "900" },
+  col2RoleStarter: { color: "#1D4ED8", fontWeight: "900" },
+  col3NameCell: { flex: 1, minWidth: 0, alignSelf: "stretch", justifyContent: "center", paddingLeft: 6, paddingRight: 4, borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col3NameText: { color: "#0F172A", fontSize: 11, fontWeight: "900" },
+  col4JerseyCell: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col4JerseyText: { color: "#1D4ED8", fontSize: 10, fontWeight: "900", textAlign: "center" },
+  col5OrderCell: { width: 30, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" },
+  col5OrderText: { color: "#0F172A", fontSize: 12, fontWeight: "900", textAlign: "center" },
   sharedDefenseEditTarget: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
   sharedDefenseLabel: { color: "#1D4ED8", fontSize: 9, fontWeight: "900", textAlign: "center" },
   sharedPlayerEditTarget: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 5, alignSelf: "stretch" },

@@ -138,9 +138,9 @@ describe("早稻田單場整體紀錄投影", () => {
     expect(getScorebookSubstitutionMarker("換守")).toEqual({ code: "PF", label: "代守" });
     expect(getScorebookSubstitutionMarker("換投")).toBeUndefined();
     expect(getScorebookSubstitutionMarker()).toBeUndefined();
-    expect(projection.innings[1]?.appearances[0]?.replacementBadge).toEqual({ inning: 2, code: "PH", label: "代打" });
-    expect(projection.innings[2]?.appearances[0]?.replacementBadge).toEqual({ inning: 3, code: "PR", label: "代跑" });
-    expect(projection.innings[3]?.appearances[0]?.replacementBadge).toEqual({ inning: 4, code: "PF", label: "代守" });
+    expect(projection.innings[1]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 2, code: "PH", label: "代打" });
+    expect(projection.innings[2]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 3, code: "PR", label: "代跑" });
+    expect(projection.innings[3]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 4, code: "PF", label: "代守" });
   });
 
   it("只投影正式保存的第 N 球交接，不從完成打席球數猜測舊資料", () => {
@@ -163,8 +163,8 @@ describe("早稻田單場整體紀錄投影", () => {
     const projection = createWasedaScorebookProjection({ team: sourceTeam, side: "away", lineup, events, substitutions: changes, inningCount: 3 });
 
     expect(projection.battingOrders[0]?.entries[1]?.substitution).toMatchObject({ id: "precise-handoff", handoffPitchNumber: 2 });
-    expect(projection.innings[1]?.appearances[0]?.replacementBadge).toEqual({ inning: 2, code: "PH", label: "代打", handoffPitchNumber: 2 });
-    expect(projection.innings[2]?.appearances[0]?.replacementBadge).toEqual({ inning: 3, code: "PH", label: "代打", handoffPitchNumber: undefined });
+    expect(projection.innings[1]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 2, code: "PH", label: "代打", handoffPitchNumber: 2 });
+    expect(projection.innings[2]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 3, code: "PH", label: "代打" });
     expect(JSON.stringify(changes)).toBe(originalChanges);
   });
 

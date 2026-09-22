@@ -5,6 +5,8 @@ export type ScorebookSubstitutionBadge = {
   code: "PH" | "PR" | "PF";
   label: "代打" | "代跑" | "代守";
   inning: number;
+  playerName?: string;
+  baseLocation?: "1B" | "2B" | "3B";
   /** 僅由正式換人資料帶入；缺省時不得從完成打席球數反推。 */
   handoffPitchNumber?: number;
 };
@@ -136,6 +138,7 @@ const orderForUnmappedBatter = (orders: WasedaScorebookOrder[]) => {
  * 將既有比賽資料投影為早稻田式整體紀錄表格。此函式純讀取資料；事件、換人、先發名單及陣容皆不會被改寫。
  */
 export function createWasedaScorebookProjection(input: WasedaScorebookProjectionInput): WasedaScorebookProjection {
+  const playerMap = new Map(input.team.players.map((p) => [p.id, p]));
   const teamEvents = chronological(input.events.filter((event) => event.half === input.side));
   const starterIds = deriveStarterIds(input, teamEvents);
   const usesLineupFallback = !input.lineup?.battingOrderIds?.length;
@@ -254,6 +257,17 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
         const marker = entry && entry.enteredInning === inning
           ? getScorebookSubstitutionMarker(entry.substitution?.type)
           : undefined;
+        let baseLocation: "1B" | "2B" | "3B" | undefined;
+        if (marker && marker.code === "PR") {
+          const pos = entry?.substitution?.position || "";
+          if (/2B|2|二/.test(pos)) {
+            baseLocation = "2B";
+          } else if (/3B|3|三/.test(pos)) {
+            baseLocation = "3B";
+          } else {
+            baseLocation = "1B";
+          }
+        }
         return {
           event,
           eventId: event.id,
@@ -261,7 +275,13 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
           entryIndex: resolved.entryIndex,
           appearanceIndex,
           replacementBadge: marker && entry?.enteredInning
-            ? { ...marker, inning: entry.enteredInning, handoffPitchNumber: entry.substitution?.handoffPitchNumber }
+            ? {
+                ...marker,
+                inning: entry.enteredInning,
+                ...(entry.playerId && playerMap.get(entry.playerId)?.name ? { playerName: playerMap.get(entry.playerId)?.name } : {}),
+                ...(baseLocation ? { baseLocation } : {}),
+                ...(entry.substitution?.handoffPitchNumber !== undefined ? { handoffPitchNumber: entry.substitution.handoffPitchNumber } : {}),
+              }
             : undefined,
           pitchingChangeBadge: pitchingChangeByEventId.get(event.id),
         };
