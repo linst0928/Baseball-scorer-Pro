@@ -2,7 +2,7 @@ import { calculateForceState, determineOutType, evaluateThirdOutRunSettlement, t
 
 export type TeamSide = "home" | "away";
 export type GameStatus = "setup" | "live" | "final";
-export type AtBatResult = "1B" | "2B" | "3B" | "HR" | "BB" | "HBP" | "K" | "F" | "G" | "E";
+export type AtBatResult = "1B" | "2B" | "3B" | "HR" | "BB" | "HBP" | "K" | "F" | "G" | "E" | "IBB" | "DIB";
 /**
  * 跑壘特殊事件與純紀錄註記共用同一條可追溯時間線。
  * 後四種 annotation 僅為早稻田記錄法的書寫符號，絕不可參與統計或狀態結算。
@@ -604,6 +604,8 @@ export const RESULT_LABELS: Record<AtBatResult, string> = {
   F: "高飛球出局",
   G: "滾地球出局",
   E: "失誤上壘",
+  IBB: "敬遠",
+  DIB: "故意四壞",
 };
 
 export function createSeedPlayers(teamPrefix: string): Player[] {
