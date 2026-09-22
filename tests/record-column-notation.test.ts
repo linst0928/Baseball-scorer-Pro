@@ -4,13 +4,13 @@ import { FIELDING_SEQUENCE_PRESETS, formatRecordColumnNotation, getBattedBallNot
 import type { Game } from "../lib/baseball/types";
 
 describe("早稻田外圈擊球與守備符號", () => {
-  it("以球性與方向獨立合成左外野高飛球的 ⌒7", () => {
-    expect(getBattedBallNotation({ trajectory: "fly", battedBallPosition: "7" })).toBe("⌒7");
-    expect(formatRecordColumnNotation("F", "7", { trajectory: "fly", battedBallPosition: "7" })).toBe("⌒7");
+  it("以球性與方向獨立合成左外野高飛球的 ︵7", () => {
+    expect(getBattedBallNotation({ trajectory: "fly", battedBallPosition: "7" })).toBe("︵7");
+    expect(formatRecordColumnNotation("F", "7", { trajectory: "fly", battedBallPosition: "7" })).toBe("︵7");
   });
 
   it("保留安打結果並將球性方向置於守備位置上方的等價文字預覽", () => {
-    expect(formatRecordColumnNotation("2B", "7", { trajectory: "fly", battedBallPosition: "7" })).toBe("⌒7 2B");
+    expect(formatRecordColumnNotation("2B", "7", { trajectory: "fly", battedBallPosition: "7" })).toBe("︵7 2B");
   });
 
   it("將三壘手失誤後傳一壘呈現為 5Eー3，且可正規化舊版 E5-3 輸入", () => {
@@ -19,7 +19,7 @@ describe("早稻田外圈擊球與守備符號", () => {
   });
 
   it("允許擊球方向與守備處理並列，而不混用兩者語意", () => {
-    expect(formatRecordColumnNotation("E", "5", { trajectory: "ground", battedBallPosition: "5", fieldingSequence: "E5-3" })).toBe("＿5 5Eー3");
+    expect(formatRecordColumnNotation("E", "5", { trajectory: "ground", battedBallPosition: "5", fieldingSequence: "E5-3" })).toBe("︶5 5Eー3");
   });
 
   it("提供 FO／GO 與守備位置連動的即時範例", () => {
@@ -31,7 +31,7 @@ describe("早稻田外圈擊球與守備符號", () => {
     expect(getFieldingSequenceNotation("G", { fieldingSequence: "6-4-3", fieldingPlay: "DP" })).toBe("6ー4ー3 DP");
     expect(getFieldingSequenceNotation("F", { fieldingSequence: "5-4-3", fieldingPlay: "TP" })).toBe("5ー4ー3 TP");
     expect(getFieldingSequenceNotation("G", { fieldingSequence: "6", fieldingPlay: "FC" })).toBe("FC 6");
-    expect(formatRecordColumnNotation("G", "6", { trajectory: "ground", battedBallPosition: "6", fieldingSequence: "6-4-3", fieldingPlay: "DP" })).toBe("＿6 6ー4ー3 DP");
+    expect(formatRecordColumnNotation("G", "6", { trajectory: "ground", battedBallPosition: "6", fieldingSequence: "6-4-3", fieldingPlay: "DP" })).toBe("︶6 6ー4ー3 DP");
   });
 
   it("提供可一鍵帶入的 6ー3、4ー6ー3 DP 與 3A 常用傳接範本", () => {

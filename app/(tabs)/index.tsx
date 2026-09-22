@@ -393,7 +393,7 @@ type NewGameForm = {
 type SpecialDraft = {
   type: SpecialEventType;
   fromBase?: 1 | 2 | 3;
-  toBase?: 2 | 3 | 4;
+  toBase?: 1 | 2 | 3 | 4;
   /** 僅供攻方 O.C 與守方 T 的可選文字備註使用。 */
   reason?: string;
 };
@@ -455,13 +455,14 @@ type SymbolHelp = {
   tone?: "red" | "blue" | "navy";
 };
 
-const RUNNER_SYMBOL_HELP: Record<"SB" | "CS" | "ADV" | "WP" | "PB" | "BK" | "UNDO", SymbolHelp> = {
+const RUNNER_SYMBOL_HELP: Record<"SB" | "CS" | "ADV" | "WP" | "PB" | "BK" | "PO" | "UNDO", SymbolHelp> = {
   SB: { mark: "→ SB", name: "盜壘（SB）", area: "菱形邊線／外圈（藍字）", usage: "依已確認的 App 規則，跑者在投球間自行進壘時，沿對應壘線以藍色箭頭加 SB 表示前進方向。", example: "一壘跑者盜二壘：→ SB 1→2", tone: "blue" },
   CS: { mark: "CS", name: "盜壘失敗（CS）", area: "來源打席外圈／內圈", usage: "跑者嘗試盜壘後被觸殺或封殺；來源打席記錄 CS 並增加一個出局數。", example: "一壘跑者盜二壘遭刺殺：CS 1→2", tone: "blue" },
   ADV: { mark: "↑", name: "進壘", area: "菱形邊線／外圈（藍字）", usage: "非指定特殊事件的推進紀錄；用於依守備、傳球或其他原因前進。", example: "二壘跑者進三壘：2→3", tone: "blue" },
   WP: { mark: "WP", name: "暴投", area: "外圈右上（藍字）", usage: "投手投球失控造成跑者前進；同時屬投手特殊事件。", example: "WP，三壘跑者返本得分", tone: "blue" },
   PB: { mark: "PB", name: "捕逸", area: "外圈右上（藍字）", usage: "捕手未能正常接捕而使跑者前進；與暴投分開記錄。", example: "PB，二壘跑者進三壘", tone: "blue" },
   BK: { mark: "BK", name: "投手犯規（BK）", area: "外圈（藍字）", usage: "投手犯規使跑者推進；記錄 BK，並將壘上跑者依壘況前進。", example: "一壘跑者因 BK 進二壘", tone: "blue" },
+  PO: { mark: "PO", name: "牽制出局（PO）", area: "來源打席外圈／內圈", usage: "投手或守備員牽制壘上跑者出局；記錄 PO 並增加一個出局數。", example: "一壘跑者遭牽制出局：PO 1B", tone: "blue" },
   UNDO: { mark: "↶", name: "回復上一球", area: "操作功能", usage: "移除上一筆逐球或跑壘事件，並還原壘況、球數與個人紀錄欄。", example: "誤點界外球後立即回復", tone: "navy" },
 };
 
@@ -1214,11 +1215,11 @@ function App() {
     const toBase = draft.toBase ?? 2;
     const runnerByBase = { 1: activeGame.runners.first, 2: activeGame.runners.second, 3: activeGame.runners.third } as const;
     const runnerId = runnerByBase[fromBase];
-    if ((draft.type === "SB" || draft.type === "CS" || draft.type === "ADV") && !runnerId) {
+    if ((draft.type === "SB" || draft.type === "CS" || draft.type === "ADV" || draft.type === "PO") && !runnerId) {
       Alert.alert("目前沒有可記錄的跑者", "請先讓跑者進入指定壘包，再記錄盜壘或盜壘刺。");
       return;
     }
-    const movement = nextSpecialRunnerState(activeGame.runners, draft.type, fromBase, toBase);
+    const movement = nextSpecialRunnerState(activeGame.runners, draft.type, fromBase, draft.type === "PO" ? undefined : (toBase as 2 | 3 | 4));
     const event: SpecialEvent = {
       id: `special-${Date.now()}`,
       inning: activeGame.inning,
@@ -1227,7 +1228,9 @@ function App() {
       runnerId: isStatNeutralSpecialEvent(draft.type) ? undefined : runnerId ?? undefined,
       pitcherId: currentPitcher.id,
       fromBase: isStatNeutralSpecialEvent(draft.type) ? undefined : fromBase,
-      toBase: isStatNeutralSpecialEvent(draft.type) ? undefined : toBase,
+      toBase: (isStatNeutralSpecialEvent(draft.type) || draft.type === "PO") ? undefined : (toBase as 2 | 3 | 4),
+      pickoffBase: draft.type === "PO" ? ({ 1: "FIRST", 2: "SECOND", 3: "THIRD" } as const)[fromBase] : undefined,
+      outType: draft.type === "PO" ? "PICKOFF_OUT" : undefined,
       runsScored: movement.runs,
       outsBefore: activeGame.outs,
       notation: getSpecialEventNotation(draft.type, fromBase, toBase),
@@ -1292,14 +1295,14 @@ function App() {
     }, game));
   }, [activeGame, currentPitcher, fieldingPosition, pitchDraft, recordColumnDraft, selectedResult, updateActiveGame]);
 
-  const recordRunnerAction = useCallback((type: "SB" | "CS" | "ADV" | "WP" | "PB" | "BK", requestedBase?: 1 | 2 | 3, targetBase?: 2 | 3 | 4) => {
+  const recordRunnerAction = useCallback((type: "SB" | "CS" | "ADV" | "WP" | "PB" | "BK" | "PO", requestedBase?: 1 | 2 | 3, targetBase?: 2 | 3 | 4) => {
     if (!activeGame) return;
     if (type === "BK") {
       recordBalk();
       return;
     }
     const occupiedBase = requestedBase ?? (activeGame.runners.third ? 3 : activeGame.runners.second ? 2 : activeGame.runners.first ? 1 : 1);
-    const toBase = targetBase ?? (occupiedBase === 3 ? 4 : (occupiedBase + 1) as 2 | 3 | 4);
+    const toBase = type === "PO" ? occupiedBase : (targetBase ?? (occupiedBase === 3 ? 4 : (occupiedBase + 1) as 2 | 3 | 4));
     recordSpecialEvent({ type, fromBase: occupiedBase, toBase });
   }, [activeGame, recordBalk, recordSpecialEvent]);
 
@@ -3180,6 +3183,11 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
                       <RunnerActionButton label="投手犯規" mark="BK" help={RUNNER_SYMBOL_HELP.BK} disabled={!firstRunner && !secondRunner && !thirdRunner} onPress={() => setRunnerActionConfirmation("BK")} onLongPress={onOpenSymbolHelp} />
                       <RunnerActionButton label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!(canUndoPitch ?? canUndo)} onPress={onUndoPitch ?? onUndo} onLongPress={onOpenSymbolHelp} emphasis />
                     </View>
+                    <View style={styles.runnerActionRowGroup}>
+                      <RunnerActionButton label="一壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!firstRunner} onPress={() => onRunnerAction("PO", 1)} onLongPress={onOpenSymbolHelp} emphasis />
+                      <RunnerActionButton label="二壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!secondRunner} onPress={() => onRunnerAction("PO", 2)} onLongPress={onOpenSymbolHelp} emphasis />
+                      <RunnerActionButton label="三壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!thirdRunner} onPress={() => onRunnerAction("PO", 3)} onLongPress={onOpenSymbolHelp} emphasis />
+                    </View>
                   </View>
                 </View>
               }
@@ -4863,7 +4871,7 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
         notation: event.notation || getSpecialEventNotation(event.type, event.fromBase, event.toBase),
         resultLabel: SPECIAL_EVENT_LABELS[event.type],
         detail: `特殊事件 · ${event.outsBefore} 出局前${event.runsScored ? ` · ${event.runsScored} 分` : ""}${event.reason ? ` · 原因：${event.reason}` : ""}`,
-        detailLines: [`事件：${SPECIAL_EVENT_LABELS[event.type]}`, ...(event.reason ? [`暫停原因：${event.reason}`] : []), `跑者：${runner ? `#${runner.number} ${runner.name}` : "跑者／投捕"}`, `壘包：${event.fromBase ?? "-"} → ${event.toBase ?? "-"}`, `得分：${event.runsScored}`, `紀錄時間：${new Date(event.timestamp).toLocaleString("zh-TW")}`],
+        detailLines: [`事件：${SPECIAL_EVENT_LABELS[event.type]}`, ...(event.reason ? [`暫停原因：${event.reason}`] : []), `跑者：${runner ? `#${runner.number} ${runner.name}` : "跑者／投捕"}`, `壘包：${event.type === "PO" ? `${event.fromBase ?? "-"} 壘 (牽制出局)` : `${event.fromBase ?? "-"} → ${event.toBase ?? "-"}`}`, `得分：${event.runsScored}`, `紀錄時間：${new Date(event.timestamp).toLocaleString("zh-TW")}`],
         timestamp: event.timestamp,
       };
     });

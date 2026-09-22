@@ -40,7 +40,7 @@ describe("早稻田個人打席格的球性與傳接分區", () => {
     expect(source).toContain("outerMarks?.rightBottom ?? lowerRight");
     expect(source).toContain("getCompactBattedBallNotation");
     expect(source).toContain("POSITION_NAME_TO_SCOREBOOK_NUMBER");
-    expect(source).toContain('mark.type === "GO" ? "＿" : mark.type === "FO" ? "⌒" : mark.type');
+    expect(source).toContain('mark.type === "GO" ? "︶" : mark.type === "FO" ? "︵" : mark.type');
     expect(source).toContain("getCompactScorebookRoute");
     expect(source).toContain("右下角簡化符號：${compactBattedBallNotation}");
     expect(source).toContain("rightBottom: { position: \"absolute\", right: 3, bottom: 3");

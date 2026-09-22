@@ -16,6 +16,7 @@ import { getFieldingNotationDisplay } from "@/lib/baseball/fielding-notation-dis
 import { getFieldingNotationFontMetrics } from "@/lib/baseball/fielding-notation-font-scale";
 import { useFieldingNotationPreferences } from "@/lib/fielding-notation-preferences";
 import type { ScorebookPitchingChangeBadge, ScorebookSubstitutionBadge } from "@/lib/baseball/waseda-scorebook-projection";
+import { SacrificeShapeContainer } from "./sacrifice-shape-container";
 
 const COLORS = {
   ink: "#10243E",
@@ -68,7 +69,7 @@ function getCompactBattedBallNotation(
   mark: { type: string; position: string },
   fieldingNotation: string,
 ) {
-  const trajectory = mark.type === "GO" ? "＿" : mark.type === "FO" ? "⌒" : mark.type;
+  const trajectory = mark.type === "GO" ? "︶" : mark.type === "FO" ? "︵" : mark.type;
   const route = getCompactScorebookRoute(fieldingNotation || mark.position);
   return `${trajectory}${route}`;
 }
@@ -153,19 +154,28 @@ export function WasedaPersonalRecordCell({
     : undefined;
   const hit = finalResult ? HIT_RESULTS.includes(finalResult) : false;
   const modifiers = finalRecord?.modifiers ?? [];
+  const isSacrificeBunt = modifiers.some((mod) => /犧牲短打|SH|SAC/i.test(mod));
+  const isSacrificeFly = modifiers.some((mod) => /高飛犧牲打|SF/i.test(mod));
+  const sacrificeShape = isSacrificeBunt ? "square" : isSacrificeFly ? "triangle" : "none";
   const droppedThirdStrike = finalResult === "K" && Boolean(
     event?.droppedThirdStrike || modifiers.some((modifier) => /不死三振|dropped\s*third|K\+/i.test(modifier)),
   );
   const out = finalResult ? OUT_RESULTS.includes(finalResult) && !droppedThirdStrike : false;
   const runnerAdvances = event?.runnerAdvances ?? [];
   const caughtStealing = runnerAdvances.find((advance) => advance.type === "CS");
+  const pickoffOut = runnerAdvances.find((advance) => advance.type === "PO");
   const leftOnBase = runnerAdvances.some((advance) => advance.type === "LOB");
   const headingNote = [note, correction?.otherMark].filter(Boolean).join(" · ");
-  const runnerOutNotation = caughtStealing ? `CS·${["I", "II", "III"][(caughtStealing.outNumber ?? 1) - 1]}` : undefined;
+  const runnerOutNotation = caughtStealing
+    ? `CS·${["I", "II", "III"][(caughtStealing.outNumber ?? 1) - 1]}`
+    : pickoffOut
+      ? `PO·${["I", "II", "III"][(pickoffOut.outNumber ?? 1) - 1]}`
+      : undefined;
   const onBaseMarks = [
     finalResult === "BB" ? "BB" : null,
-    finalResult === "HBP" ? "HBP" : null,
-    finalResult === "K" ? (droppedThirdStrike ? "K+" : "K") : null,
+    finalResult === "HBP" ? "DB" : null,
+    finalResult === "IBB" ? "DIB" : null,
+    finalResult === "K" ? (droppedThirdStrike ? "ꓘ" : "K") : null,
     finalResult === "E" ? "E" : null,
     runnerNotation && /\b(?:WP|PB|BK)\b/.test(runnerNotation) ? runnerNotation : null,
   ].filter(Boolean).join("·");
@@ -189,7 +199,7 @@ export function WasedaPersonalRecordCell({
   const lowerRight = finalRecord && finalResult
     ? getFieldingSequenceNotation(finalResult, finalRecord)
     : finalRecord?.fieldingSequence || (!battedBallTrajectory && !hit && !onBaseMarks && !runnerNotation ? finalNotation : "");
-  const allowedInnerMarks = new Set(["—", "○", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "ℓ", "CS", "ꓘ"]);
+  const allowedInnerMarks = new Set(["—", "○", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "④", "ℓ", "CS", "PO", "ꓘ"]);
   const requestedInnerMark = innerMarkOverride ?? correction?.innerMark;
   const safeInnerOverride = requestedInnerMark && allowedInnerMarks.has(requestedInnerMark) ? requestedInnerMark : undefined;
   /**
@@ -278,31 +288,33 @@ export function WasedaPersonalRecordCell({
             <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[batterReachesFirst ? styles.batterFirstBaseMark : styles.rightTop, liveSize && (batterReachesFirst ? styles.batterFirstBaseMarkLive : styles.rightTopLive), largeSize && (batterReachesFirst ? styles.batterFirstBaseMarkLarge : styles.rightTopLarge)]}>{outerMarks?.rightTop ?? onBaseMarks}</Text>
             <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, liveSize && styles.leftBottomLive, largeSize && styles.leftBottomLarge]}>{outerMarks?.leftBottom ?? (rbi > 0 ? (["①", "②", "③", "④"][rbi - 1] ?? "") : "")}</Text>
             <View accessibilityLabel={displayedFieldingNotation ? `右下角傳接符號：${displayedFieldingNotation}` : "右下角傳接符號"} style={[styles.rightBottom, liveSize && styles.rightBottomLive, largeSize && styles.rightBottomLarge, displayedFieldingNotation && styles.rightBottomHasFielding]}>
-              {compactBattedBallNotation ? <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`放大查看右下角簡化符號：${compactBattedBallNotation}`}
-                accessibilityHint="開啟唯讀完整傳接序列放大檢視，不會修改賽事紀錄"
-                hitSlop={4}
-                onPress={(pressEvent) => {
-                  pressEvent.stopPropagation();
-                  setIsFieldingNotationOpen(true);
-                }}
-                style={({ pressed }) => [styles.fieldingTapTarget, pressed && styles.fieldingTapTargetPressed]}
-              >
-                <Text {...scorebookGlyphFitProps} ellipsizeMode="tail" numberOfLines={fieldingLineLimit} style={styles.compactBattedBallNotation}>{compactBattedBallNotation}</Text>
-              </Pressable> : displayedFieldingNotation ? <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`放大查看右下角傳接符號：${displayedFieldingNotation}`}
-                accessibilityHint="開啟唯讀傳接序列放大檢視，不會修改賽事紀錄"
-                hitSlop={4}
-                onPress={(pressEvent) => {
-                  pressEvent.stopPropagation();
-                  setIsFieldingNotationOpen(true);
-                }}
-                style={({ pressed }) => [styles.fieldingTapTarget, pressed && styles.fieldingTapTargetPressed]}
-              >
-                <Text {...scorebookGlyphFitProps} ellipsizeMode="tail" numberOfLines={fieldingLineLimit} style={[styles.fieldingNotation, fieldingDisplay.wasTruncated && styles.fieldingNotationTruncated]}>{fieldingDisplay.text}</Text>
-              </Pressable> : null}
+              <SacrificeShapeContainer shape={sacrificeShape}>
+                {compactBattedBallNotation ? <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`放大查看右下角簡化符號：${compactBattedBallNotation}`}
+                  accessibilityHint="開啟唯讀完整傳接序列放大檢視，不會修改賽事紀錄"
+                  hitSlop={4}
+                  onPress={(pressEvent) => {
+                    pressEvent.stopPropagation();
+                    setIsFieldingNotationOpen(true);
+                  }}
+                  style={({ pressed }) => [styles.fieldingTapTarget, pressed && styles.fieldingTapTargetPressed]}
+                >
+                  <Text {...scorebookGlyphFitProps} ellipsizeMode="tail" numberOfLines={fieldingLineLimit} style={styles.compactBattedBallNotation}>{compactBattedBallNotation}</Text>
+                </Pressable> : displayedFieldingNotation ? <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`放大查看右下角傳接符號：${displayedFieldingNotation}`}
+                  accessibilityHint="開啟唯讀傳接序列放大檢視，不會修改賽事紀錄"
+                  hitSlop={4}
+                  onPress={(pressEvent) => {
+                    pressEvent.stopPropagation();
+                    setIsFieldingNotationOpen(true);
+                  }}
+                  style={({ pressed }) => [styles.fieldingTapTarget, pressed && styles.fieldingTapTargetPressed]}
+                >
+                  <Text {...scorebookGlyphFitProps} ellipsizeMode="tail" numberOfLines={fieldingLineLimit} style={[styles.fieldingNotation, fieldingDisplay.wasTruncated && styles.fieldingNotationTruncated]}>{fieldingDisplay.text}</Text>
+                </Pressable> : null}
+              </SacrificeShapeContainer>
             </View>
           </>}
           <View style={[styles.diamondStage, largeSize && styles.diamondStageLarge]}>
@@ -318,7 +330,10 @@ export function WasedaPersonalRecordCell({
             ))}
             {runnerAdvanceLines.map((line) => (
               <View key={`runner-${line.segment}`} pointerEvents="none" style={styles.runnerAdvanceOverlay}>
-                <View style={[styles.runnerAdvanceLine, runnerSegmentStyle(line.segment)]} />
+                <View style={[styles.runnerAdvanceLine, runnerSegmentStyle(line.segment), line.isCutLine && { width: 14 }]} />
+                {line.isCutLine ? (
+                  <View style={[styles.cutLineTick, runnerCutTickStyle(line.segment)]} />
+                ) : null}
                 {line.hasArrow ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.runnerAdvanceArrow, runnerArrowStyle(line.segment)]}>▶</Text> : null}
                 {line.label ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.runnerAdvanceLabel, runnerLabelStyle(line.segment), line.label === "BK" && styles.runnerAdvanceLabelBK]}>{line.label}</Text> : null}
               </View>
@@ -519,6 +534,7 @@ const styles = StyleSheet.create({
   innerScoreMark: { color: COLORS.red, fontSize: 16, lineHeight: 16 },
   innerScoreMarkLarge: { fontSize: 24, lineHeight: 24 },
   innerMarkLong: { fontSize: 8.5, letterSpacing: -0.45 },
+  cutLineTick: { position: "absolute", width: 2.5, height: 8, borderRadius: 1, backgroundColor: COLORS.blue, zIndex: 5 },
   emptyHintOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   emptyHintText: { color: "#9AA9B9", backgroundColor: "transparent", fontSize: 10, fontWeight: "800" },
   redText: { color: COLORS.red },
@@ -572,3 +588,13 @@ function runnerLabelStyle(segment: HitAdvanceSegment) {
     case "third-to-home": return styles.runnerAdvanceLabelThirdToHome;
   }
 }
+
+function runnerCutTickStyle(segment: HitAdvanceSegment) {
+  switch (segment) {
+    case "home-to-first": return { left: 34, top: 41, transform: [{ rotate: "45deg" }] };
+    case "first-to-second": return { left: 34, top: 29, transform: [{ rotate: "-45deg" }] };
+    case "second-to-third": return { left: 16, top: 29, transform: [{ rotate: "45deg" }] };
+    case "third-to-home": return { left: 16, top: 41, transform: [{ rotate: "-45deg" }] };
+  }
+}
+

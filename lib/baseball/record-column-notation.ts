@@ -156,13 +156,13 @@ export function getFieldingSequenceSuggestions({ battedBallPosition, result, run
 }
 
 const TRAJECTORY_MARK: Record<RecordTrajectory, string> = {
-  fly: "⌒",
+  fly: "︵",
   // 舊資料仍可載入；統一以 1189LAB 的三種可見軌跡呈現。
-  wavy: "⌒",
-  line: "ー",
-  ground: "＿",
-  bounce: "＿",
-  pop: "⌒",
+  wavy: "︵",
+  line: "—",
+  ground: "︶",
+  bounce: "︶",
+  pop: "︵",
 };
 
 const BATTED_BALL_RESULTS: AtBatResult[] = ["1B", "2B", "3B", "HR", "F", "G"];

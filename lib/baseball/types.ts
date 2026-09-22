@@ -304,6 +304,13 @@ export type RunnerAdvanceRecord = {
   /** 貢獻此進壘之打擊棒次 (1-9)，早稻田進壘藍線渲染依據 */
   advancedByOrder?: number;
   runnerId?: string;
+  /** 代跑資訊，包含被替換原球員與特定壘包象限（一壘、二壘、三壘） */
+  substitutedPlayer?: {
+    originalPlayerId: string;
+    substitutePlayerId: string;
+    substitutePlayerName?: string;
+  };
+  baseLocation?: 1 | 2 | 3;
 };
 
 export type SpecialEvent = {
@@ -316,6 +323,8 @@ export type SpecialEvent = {
   catcherId?: string;
   fromBase?: 1 | 2 | 3;
   toBase?: 2 | 3 | 4;
+  pickoffBase?: "FIRST" | "SECOND" | "THIRD" | "1B" | "2B" | "3B";
+  outType?: OutType;
   runsScored: number;
   outsBefore: number;
   notation: string;
@@ -560,6 +569,7 @@ export function getSpecialEventNotation(type: SpecialEventType, fromBase?: numbe
   // 使用者已確認：盜壘維持藍色箭頭加 SB，不採 1189LAB 的單一 S 寫法。
   if (type === "SB") return "SB";
   if (type === "CS") return "CS";
+  if (type === "PO") return "PO";
   if (type === "ADV") return toBase === 4 ? "↑" : `↑${fromBase ?? ""}→${toBase ?? ""}`;
   if (type === "OFFENSIVE_TIMEOUT") return "O.C";
   if (type === "DEFENSIVE_TIMEOUT") return "T";
@@ -1371,8 +1381,8 @@ export function getNotation(result: AtBatResult, fieldingPosition: string): stri
   if (result === "BB") return "B";
   if (result === "HBP") return "DB";
   if (result === "E") return `E${fieldingPosition}`;
-  if (result === "F") return `⌒${fieldingPosition}`;
-  if (result === "G") return `＿${fieldingPosition}ー3`;
+  if (result === "F") return `︵${fieldingPosition}`;
+  if (result === "G") return `︶${fieldingPosition}ー3`;
   if (result === "1B" || result === "2B" || result === "3B" || result === "HR") return result;
   return result;
 }
@@ -1395,6 +1405,11 @@ export function nextSpecialRunnerState(runners: RunnerState, type: SpecialEventT
   } else if (type === "CS" && fromBase) {
     next[keyFor(fromBase)] = null;
     outsAdded = 1;
+  } else if (type === "PO" && fromBase) {
+    if (next[keyFor(fromBase)]) {
+      next[keyFor(fromBase)] = null;
+      outsAdded = 1;
+    }
   } else if (type === "WP" || type === "PB") {
     if (next.third) runs += 1;
     next.third = next.second;
@@ -1715,7 +1730,7 @@ export function updateGameAfterSpecialEvent(game: Game, event: SpecialEvent, run
   const sourceAtBat = event.runnerId
     ? [...game.events].reverse().find((atBat) => atBat.batterId === event.runnerId)
     : undefined;
-  const outType: OutType | undefined = event.type === "CS" ? "TAG_OUT" : undefined;
+  const outType: OutType | undefined = event.type === "CS" ? "TAG_OUT" : event.type === "PO" ? (event.outType ?? "PICKOFF_OUT") : undefined;
   const linkedEvent = sourceAtBat ? { ...event, sourceAtBatId: sourceAtBat.id, outType } : { ...event, outType };
   const advance: RunnerAdvanceRecord = {
     id: linkedEvent.id,
@@ -1723,7 +1738,7 @@ export function updateGameAfterSpecialEvent(game: Game, event: SpecialEvent, run
     fromBase: linkedEvent.fromBase,
     toBase: linkedEvent.toBase,
     outType,
-    ...(linkedEvent.type === "CS" ? { outNumber: Math.min(linkedEvent.outsBefore + 1, 3) as 1 | 2 | 3 } : {}),
+    ...(linkedEvent.type === "CS" || linkedEvent.type === "PO" ? { outNumber: Math.min(linkedEvent.outsBefore + 1, 3) as 1 | 2 | 3 } : {}),
     notation: linkedEvent.notation,
   };
   const eventsWithAdvance = sourceAtBat

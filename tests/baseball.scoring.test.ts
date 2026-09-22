@@ -163,8 +163,8 @@ describe("棒球紀錄法核心邏輯", () => {
 
   it("會產生 1189LAB 對齊的打席與守備符號", () => {
     expect(getNotation("2B", "7")).toBe("2B");
-    expect(getNotation("F", "8")).toBe("⌒8");
-    expect(getNotation("G", "6")).toBe("＿6ー3");
+    expect(getNotation("F", "8")).toBe("︵8");
+    expect(getNotation("G", "6")).toBe("︶6ー3");
     expect(getNotation("K", "2")).toBe("K");
     expect(getNotation("BB", "2")).toBe("B");
     expect(getNotation("HBP", "2")).toBe("DB");
@@ -173,7 +173,7 @@ describe("棒球紀錄法核心邏輯", () => {
   it("保留野手自踩一壘 A 的早稻田表記，而不誤作傳球或補位", () => {
     expect(getFieldingSequenceNotation("G", { fieldingSequence: "3A" })).toBe("3A");
     expect(getFieldingSequenceNotation("G", { fieldingSequence: "1ー4A" })).toBe("1ー4A");
-    expect(formatRecordColumnNotation("G", "3", { trajectory: "ground", battedBallPosition: "3", fieldingSequence: "3A" })).toBe("＿3 3A");
+    expect(formatRecordColumnNotation("G", "3", { trajectory: "ground", battedBallPosition: "3", fieldingSequence: "3A" })).toBe("︶3 3A");
   });
 
   it("登錄名單會依背號選擇建立的棒次輪替，而不重排固定名單", () => {
@@ -443,7 +443,7 @@ describe("棒球紀錄法核心邏輯", () => {
 
     const after = updateGameAfterEvent(game, event, { first: null, second: null, third: null }, 0);
     expect(after.events[0].pitches.locations?.at(-1)).toEqual({ zone: 8, type: "breaking", outcome: "inPlay" });
-    expect(after.events[0].notation).toBe("＿6 6ー3");
+    expect(after.events[0].notation).toBe("︶6 6ー3");
     expect(after.outs).toBe(1);
   });
 
@@ -453,10 +453,10 @@ describe("棒球紀錄法核心邏輯", () => {
     expect(labels["4"]).toBe("二壘");
     expect(labels["5"]).toBe("三壘");
     expect(labels["6"]).toBe("游擊");
-    expect(getNotation("G", "3")).toBe("＿3ー3");
-    expect(getNotation("G", "4")).toBe("＿4ー3");
-    expect(getNotation("G", "5")).toBe("＿5ー3");
-    expect(getNotation("G", "6")).toBe("＿6ー3");
+    expect(getNotation("G", "3")).toBe("︶3ー3");
+    expect(getNotation("G", "4")).toBe("︶4ー3");
+    expect(getNotation("G", "5")).toBe("︶5ー3");
+    expect(getNotation("G", "6")).toBe("︶6ー3");
   });
 
   it("會正確計算打擊率、長打率、上壘率與 OPS", () => {

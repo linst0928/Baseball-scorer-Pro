@@ -41,7 +41,8 @@ export type RunnerAdvanceContext = {
 export type RunnerAdvanceLine = {
   segment: HitAdvanceSegment;
   hasArrow: boolean;
-  label?: "SB" | "BK" | string;
+  label?: "SB" | "BK" | "CS" | string;
+  isCutLine?: boolean;
 };
 
 const BASE_ADVANCE_SEGMENTS: Record<"0-1" | "1-2" | "2-3" | "3-4", HitAdvanceSegment> = {
@@ -67,11 +68,15 @@ export function getRunnerAdvanceLines({
 }): RunnerAdvanceLine[] {
   if (runnerAdvance?.fromBase !== undefined && runnerAdvance.toBase !== undefined) {
     const segment = BASE_ADVANCE_SEGMENTS[`${runnerAdvance.fromBase}-${runnerAdvance.toBase}` as keyof typeof BASE_ADVANCE_SEGMENTS];
-    if (!segment || runnerAdvance.type === "CS") return [];
+    if (!segment || runnerAdvance.type === "PO") return [];
     if (getHitAdvanceSegments(result).includes(segment)) return [];
     const stolenBase = runnerAdvance.type === "SB";
+    const caughtStealing = runnerAdvance.type === "CS";
     const balk = runnerAdvance.type === "BK";
     const customLabel = runnerAdvance.advancedByOrder !== undefined ? `(${runnerAdvance.advancedByOrder})` : undefined;
+    if (caughtStealing) {
+      return [{ segment, hasArrow: false, label: "CS", isCutLine: true }];
+    }
     return [{ segment, hasArrow: stolenBase, label: stolenBase ? "SB" : balk ? "BK" : customLabel }];
   }
 

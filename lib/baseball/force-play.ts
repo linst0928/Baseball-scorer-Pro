@@ -8,6 +8,8 @@ export type OutType =
   | "LINE_OUT"
   | "GROUND_OUT"
   | "INTERFERENCE_OUT"
+  | "PICKOFF_OUT"
+  | "PICKOFF"
   | "OTHER";
 
 export type RunnerForceStatus = {
