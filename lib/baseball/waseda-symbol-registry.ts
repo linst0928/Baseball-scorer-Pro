@@ -185,10 +185,10 @@ export const WASEDA_SYMBOL_REGISTRY: Record<string, WasedaSymbolDefinition> = {
   INTENTIONAL_WALK: {
     eventType: "INTENTIONAL_WALK",
     name: "敬遠",
-    symbol: "DB",
+    symbol: "DIB",
     color: "blue",
     quadrant: "BOTTOM_RIGHT",
-    description: "外圈右下藍字 DB (敬遠) / DIB (故意四壞)",
+    description: "外圈右下藍字 DIB (敬遠)",
     status: "PASS",
   },
   STRIKEOUT: {

@@ -43,7 +43,7 @@ describe("早稻田符號系統標準與稽核 (Waseda Symbol Registry)", () => 
   it("右下角打席結果與妨礙事件符合標準", () => {
     expect(WASEDA_SYMBOL_REGISTRY.WALK.symbol).toBe("BB");
     expect(WASEDA_SYMBOL_REGISTRY.HIT_BY_PITCH.symbol).toBe("D");
-    expect(WASEDA_SYMBOL_REGISTRY.INTENTIONAL_WALK.symbol).toBe("DB");
+    expect(WASEDA_SYMBOL_REGISTRY.INTENTIONAL_WALK.symbol).toBe("DIB");
     expect(WASEDA_SYMBOL_REGISTRY.STRIKEOUT.symbol).toBe("K");
     expect(WASEDA_SYMBOL_REGISTRY.DROPPED_THIRD_STRIKE.symbol).toBe("ꓘ");
     expect(WASEDA_SYMBOL_REGISTRY.CATCHER_INTERFERENCE.symbol).toBe("2IF");

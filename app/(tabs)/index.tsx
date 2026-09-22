@@ -353,7 +353,7 @@ const RESULT_SHORTCUT_LABELS: Record<AtBatResult, string> = {
   G: "滾地出局",
   E: "失誤",
   IBB: "敬遠",
-  DIB: "故意四壞",
+  DIB: "敬遠",
 };
 
 const RESULT_SHORTCUTS: Array<{ id: string; result: AtBatResult; code?: string; label?: string; calledStrikeout?: boolean }> = [

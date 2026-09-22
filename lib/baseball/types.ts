@@ -605,7 +605,7 @@ export const RESULT_LABELS: Record<AtBatResult, string> = {
   G: "滾地球出局",
   E: "失誤上壘",
   IBB: "敬遠",
-  DIB: "故意四壞",
+  DIB: "敬遠",
 };
 
 export function createSeedPlayers(teamPrefix: string): Player[] {

@@ -181,11 +181,11 @@ export function WasedaPersonalRecordCell({
     modifiers.includes("OB") ? "OB" : null,
   ].filter(Boolean).join("·");
 
-  // 右下角打席結果：BB, D (觸身), DB (敬遠), K, N (不死三振), 2F (妨礙打擊), IP2 (妨礙守備), FC
+  // 右下角打席結果：BB, D (觸身), DIB (敬遠), K, N (不死三振), 2F (妨礙打擊), IP2 (妨礙守備), FC
   const bottomRightResultMarks = [
     finalResult === "BB" ? "BB" : null,
     finalResult === "HBP" ? "D" : null,
-    finalResult === "IBB" ? "DB" : null,
+    finalResult === "IBB" ? "DIB" : null,
     finalResult === "K" ? (droppedThirdStrike ? "N" : "K") : null,
     finalResult === "E" ? "E" : null,
     modifiers.some((m) => /妨礙打擊|2F/i.test(m)) ? "2F" : null,

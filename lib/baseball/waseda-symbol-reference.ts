@@ -42,7 +42,7 @@ export const WASEDA_SYMBOL_REFERENCE: WasedaSymbolReference[] = [
   { id: "home-run", category: "外圈", mark: "HR", title: "全壘打", placement: "外圈左上（紅字）", description: "以紅字記錄全壘打；得分者同步在內圈得分區完成標記。", example: "左外野 HR", tone: "red" },
   { id: "rbi", category: "外圈", mark: "① ② ③ ④", title: "打點", placement: "外圈左下（紅圈數字）", description: "按該打席打回的得分人數標示打點；最多可記四分。", example: "2B ②", tone: "red" },
   { id: "walk", category: "外圈", mark: "BB", title: "四壞球", placement: "外圈右下（藍字）", description: "非安打上壘事件；打者上一壘，其他跑者依規則推進。", example: "BB 上壘", tone: "blue" },
-  { id: "intentional-walk", category: "外圈", mark: "DB / DIB", title: "敬遠／故意四壞", placement: "外圈右下（藍字）", description: "故意四壞球保送；打者上一壘。", example: "DB 上壘", tone: "blue" },
+  { id: "intentional-walk", category: "外圈", mark: "DIB", title: "敬遠", placement: "外圈右下（藍字）", description: "敬遠保送；打者上一壘。", example: "DIB 上壘", tone: "blue" },
   { id: "hit-by-pitch", category: "外圈", mark: "D", title: "觸身球", placement: "外圈右下（藍字）", description: "非安打上壘事件；打者因觸身球取得一壘，記藍字 D。", example: "D 上壘", tone: "blue" },
   { id: "fielder-choice", category: "外圈", mark: "FC", title: "野手選擇", placement: "外圈右下（藍字）", description: "守備方選擇處理其他跑者，打者因野手選擇上壘。", example: "FC 6ー4", tone: "blue" },
   { id: "error", category: "外圈", mark: "E", title: "失誤", placement: "外圈右上（藍字）", description: "結果區只記 E；守備位置與必要傳接另記於外圈右下，不與結果符號合併。", example: "E；右下：6ー3", tone: "blue" },
