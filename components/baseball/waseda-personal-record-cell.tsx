@@ -9,6 +9,8 @@ import {
   type RecordColumn,
   type RecordTrajectory,
   getWasedaPitchMark,
+  classifyRunsForHalfInning,
+  countQualifiedRBI,
 } from "@/lib/baseball/types";
 import { getHitAdvanceSegments, getRunnerAdvanceLines, splitPitchMarksForVerticalGrid, type HitAdvanceSegment, type RunnerAdvanceContext } from "@/lib/baseball/waseda-visuals";
 import { getFieldingSequenceNotation, getRecordTrajectoryMark } from "@/lib/baseball/record-column-notation";
@@ -217,12 +219,17 @@ export function WasedaPersonalRecordCell({
   const allowedInnerMarks = new Set(["—", "○", "●", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "④", "ℓ", "CS", "PO", "N", "//", "///"]);
   const requestedInnerMark = innerMarkOverride ?? correction?.innerMark;
   const safeInnerOverride = requestedInnerMark && allowedInnerMarks.has(requestedInnerMark) ? requestedInnerMark : undefined;
+
+  // 中央菱形正中央：自責分 (ER) 顯示紅色實心圓點 ●，非自責分 (UER) 顯示紅色空心圓圈 ○
+  const isUnearned = finalResult === "E" || modifiers.some((m) => /失誤|E[1-9]?|PB/i.test(m));
+  const runMark = finalRuns > 0 ? (isUnearned ? "○" : "●") : "—";
+
   /**
    * 早稻田菱形中央只記得分、出局、殘壘、CS 或不死三振；
    * 安打種類保留在外圈與紅色壘線，絕不寫入中央。
    */
   const innerMark = safeInnerOverride
-    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "N" : (out && typeof finalOutsBefore === "number" ? ["I", "II", "III"][Math.min(finalOutsBefore, 2)] : (finalRuns > 0 ? "○" : "—")))));
+    ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "N" : (out && typeof finalOutsBefore === "number" ? ["I", "II", "III"][Math.min(finalOutsBefore, 2)] : runMark))));
   const rbi = Math.max(0, Math.min(finalRecord?.rbi ?? 0, 4));
   const liveSize = size === "live";
   const compactSize = size === "compact";

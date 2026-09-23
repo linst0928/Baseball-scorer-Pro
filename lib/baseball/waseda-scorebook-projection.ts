@@ -1,4 +1,4 @@
-import type { AtBatEvent, GameLineup, Substitution, Team, TeamSide } from "./types";
+import { classifyRunsForHalfInning, type AtBatEvent, type GameLineup, type Substitution, type Team, type TeamSide } from "./types";
 
 /** 單場整體紀錄專用的替換徽記；僅供顯示，不改寫正式比賽資料。 */
 export type ScorebookSubstitutionBadge = {
@@ -425,7 +425,16 @@ export function getDetailedPitcherStats(game: { events: readonly AtBatEvent[]; s
     const strikeouts = pitcherEvents.filter((e) => ["K", "KL", "KS"].includes(e.result as string) || /\b(K|KL|KS)\b/.test(e.notation || "")).length;
     const wp = pitcherEvents.filter((e) => (e.result as string) === "WP" || /\bWP\b/.test(e.notation || "")).length + defenseSpecialEvents.filter((se: any) => se.type === "WP").length;
     const runs = pitcherEvents.reduce((sum, e) => sum + (e.runsScored || 0), 0);
-    const er = runs; // 預設自責分等於失分
+    
+    // 動態計算自責分（基於無失誤/無捕逸重建與責任投手交接追溯）
+    let er = 0;
+    const innings = Array.from(new Set(game.events.map((e) => e.inning)));
+    for (const inning of innings) {
+      for (const half of ["home", "away"] as const) {
+        const classifications = classifyRunsForHalfInning(game.events, game.substitutions ?? [], inning, half);
+        er += classifications.filter((c) => c.responsiblePitcherId === pitcherId && c.isEarnedRun).length;
+      }
+    }
 
     return {
       playerId: player.id,

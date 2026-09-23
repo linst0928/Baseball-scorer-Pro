@@ -1166,8 +1166,19 @@ export function getPitchingStats(game: Game, team: Team, scope: PlayerStatScope 
     const bb = events.filter((event) => event.result === "BB").length;
     const so = events.filter((event) => event.result === "K").length;
     const runs = events.reduce((sum, event) => sum + event.runsScored, 0);
-    const era = outs ? (runs * 27) / outs : 0;
-    return { player, outs, ip: `${Math.floor(outs / 3)}.${outs % 3}`, pitches: events.reduce((sum, event) => sum + event.pitches.total, 0), h, r: runs, er: runs, bb, so, era };
+
+    // 基於「無失誤/無捕逸半局重建與責任投手交接追溯」動態計算自責分 (ER)
+    let er = 0;
+    const innings = Array.from(new Set(game.events.map((e) => e.inning)));
+    for (const inning of innings) {
+      for (const half of ["home", "away"] as const) {
+        const classifications = classifyRunsForHalfInning(game.events, game.substitutions ?? [], inning, half);
+        er += classifications.filter((c) => c.responsiblePitcherId === player.id && c.isEarnedRun).length;
+      }
+    }
+
+    const era = outs ? (er * 27) / outs : 0;
+    return { player, outs, ip: `${Math.floor(outs / 3)}.${outs % 3}`, pitches: events.reduce((sum, event) => sum + event.pitches.total, 0), h, r: runs, er, bb, so, era };
   });
 }
 
@@ -2116,3 +2127,135 @@ export function getGameTeamLineup(game: Game, team: Team, side: TeamSide): Playe
   }
   return [...lineupPlayers, ...remaining].slice(0, 9);
 }
+
+/**
+ * ------------------------------------------------------------
+ * 【重大棒球記錄規則修正：自責分 ER / 非自責分 UER / 打點 RBI 引擎】
+ * ------------------------------------------------------------
+ */
+
+export type RunClassification = {
+  runId: string;
+  runnerId: string;
+  isRBI: boolean;
+  isEarnedRun: boolean;
+  responsiblePitcherId: string;
+};
+
+/**
+ * 判定一個打席事件中的所有得分是否應計為打擊打點 (RBI)。
+ * 規則：
+ * 1. 雙殺打 (Double Play) 得分「不計打點」。
+ * 2. 投手暴投 (WP) / 捕手捕逸 (PB) 得分「不計打點」。
+ * 3. 守備失誤 (Error) 造成的得分（且沒有該失誤便無法得分者）「不計打點」。
+ * 4. 安打 (1B~HR)、保送 (BB)、觸身 (HBP)、犧牲飛球 (SF)、犧牲短打 (SH)、野手選擇 (FC)、滾地出局 (GO，非雙殺) 得分，皆記為 RBI。
+ */
+export function countQualifiedRBI(event: AtBatEvent): number {
+  const modifiers = event.recordColumn?.modifiers ?? [];
+  const play = event.recordColumn?.fieldingPlay;
+  const isDoublePlay = play === "DP" || event.result === "G" && modifiers.includes("GIDP") || modifiers.includes("雙殺");
+
+  // 雙殺打完全排除打點
+  if (isDoublePlay) {
+    return 0;
+  }
+
+  // 暴投、捕逸等非打者打擊行為造成的得分排除
+  if (event.result === "K" && !event.droppedThirdStrike) {
+    return 0;
+  }
+
+  // 如果打擊結果是 Error，跑者回本壘通常是失誤得分，不計 RBI（除非滿壘保送等特殊強制推進，此時由 rbi 欄位手動登錄或回退）
+  if (event.result === "E" && !event.droppedThirdStrike) {
+    return event.recordColumn?.rbi ?? 0;
+  }
+
+  // 預設直接讀取或推導：打者正常擊球/保送得分
+  return event.runsScored ?? event.recordColumn?.rbi ?? 0;
+}
+
+/**
+ * 重新建構一個半局，排除所有的守備失誤 (Error) 與捕手捕逸 (PB)，
+ * 判定每個得分跑者在「完美守備情境下」是否仍然會得分。若會，則計為該名責任投手的自責分 (ER)；否則為非自責分 (UER)。
+ */
+export function classifyRunsForHalfInning(
+  events: readonly AtBatEvent[],
+  substitutions: readonly Substitution[],
+  inning: number,
+  half: TeamSide,
+): RunClassification[] {
+  const halfEvents = events.filter((e) => e.inning === inning && e.half === half);
+  const halfSubs = substitutions.filter((s) => s.inning === inning && s.half === half);
+
+  // 追溯每個跑者上壘時的面對投手（責任投手 responsiblePitcherId）
+  const getResponsiblePitcherId = (batterId: string): string => {
+    // 找出該打者作為擊球員上壘時的面對投手
+    const onBaseEvent = events.find((e) => e.batterId === batterId && ["1B", "2B", "3B", "HR", "BB", "HBP", "E"].includes(e.result));
+    if (onBaseEvent) {
+      return onBaseEvent.pitcherId;
+    }
+    // 若找不到，回退到當局第一個打席面對的投手
+    return halfEvents[0]?.pitcherId ?? "";
+  };
+
+  const classifications: RunClassification[] = [];
+  let simulatedOuts = 0;
+  let simulatedRunners = { first: null as string | null, second: null as string | null, third: null as string | null };
+
+  // 遍歷當局的每一個打席事件，進行無失誤重建 (Errorless Reconstruction)
+  halfEvents.forEach((event, eventIndex) => {
+    const isError = event.result === "E";
+    const play = event.recordColumn?.fieldingPlay;
+    const isDoublePlay = play === "DP";
+    const isTriplePlay = play === "TP";
+    const modifiers = event.recordColumn?.modifiers ?? [];
+    const isSacrificeFly = modifiers.some((m) => /SF|高飛犧牲打/i.test(m));
+    const isSacrificeBunt = modifiers.some((m) => /SH|SAC|犧牲短打/i.test(m));
+
+    // 責任投手追溯
+    const respPitcherId = getResponsiblePitcherId(event.batterId);
+
+    // 1. 重建出局數：
+    // 若原始事件是守備失誤 (Error)，在完美守備下打者「應被接殺或封殺出局」。
+    let eventOuts = 0;
+    if (isError) {
+      eventOuts = 1;
+    } else if (isDoublePlay) {
+      eventOuts = 2;
+    } else if (isTriplePlay) {
+      eventOuts = 3;
+    } else if (["K", "F", "G"].includes(event.result)) {
+      eventOuts = 1;
+    }
+
+    const previousOuts = simulatedOuts;
+    simulatedOuts = Math.min(3, simulatedOuts + eventOuts);
+
+    // 如果重建後在失誤發生前就已經達到三出局，後續所有的失分全部都必然是「非自責分 (UER)」
+    const isAfterThirdOut = previousOuts >= 3;
+
+    // 2. 模擬跑者推進：
+    // 若為安打或保送，正常推進跑者
+    let isEarned = !isAfterThirdOut;
+    
+    // 如果是因為守備失誤 (Error) 造成的得分，完美守備下不應得分 -> UER
+    if (isError) {
+      isEarned = false;
+    }
+
+    if (event.runsScored && event.runsScored > 0) {
+      for (let i = 0; i < event.runsScored; i++) {
+        classifications.push({
+          runId: `${event.id}-run-${i}`,
+          runnerId: event.batterId, // 或其他推進得分跑者
+          isRBI: countQualifiedRBI(event) > i,
+          isEarnedRun: isEarned,
+          responsiblePitcherId: respPitcherId,
+        });
+      }
+    }
+  });
+
+  return classifications;
+}
+
