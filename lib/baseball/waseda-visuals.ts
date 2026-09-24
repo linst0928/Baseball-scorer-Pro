@@ -35,6 +35,7 @@ export type RunnerAdvanceContext = {
   type?: RunnerAdvanceRecord["type"];
   fromBase?: 0 | 1 | 2 | 3;
   toBase?: 1 | 2 | 3 | 4;
+  notation?: string;
   advancedByOrder?: number;
 };
 
@@ -77,8 +78,9 @@ export function getRunnerAdvanceLines({
     const balk = runnerAdvance.type === "BK";
 
     if (pickoff) {
-      const defaultFielding = runnerAdvance.fromBase === 1 ? "PO1-3" : runnerAdvance.fromBase === 2 ? "PO2-5" : "PO3-4";
-      return [{ segment, hasArrow: false, label: defaultFielding, isCutLine: true }];
+      const defaultFielding = runnerAdvance.fromBase === 1 ? "PO1-3" : runnerAdvance.fromBase === 2 ? "PO2-4" : "PO3-5";
+      const customNotation = runnerAdvance.notation;
+      return [{ segment, hasArrow: false, label: customNotation || defaultFielding, isCutLine: true }];
     }
 
     if (caughtStealing) {

@@ -396,6 +396,7 @@ type SpecialDraft = {
   type: SpecialEventType;
   fromBase?: 1 | 2 | 3;
   toBase?: 1 | 2 | 3 | 4;
+  notation?: string;
   /** 僅供攻方 O.C 與守方 T 的可選文字備註使用。 */
   reason?: string;
 };
@@ -1235,7 +1236,7 @@ function App() {
       outType: draft.type === "PO" ? "PICKOFF_OUT" : undefined,
       runsScored: movement.runs,
       outsBefore: activeGame.outs,
-      notation: getSpecialEventNotation(draft.type, fromBase, toBase),
+      notation: draft.notation || getSpecialEventNotation(draft.type, fromBase, toBase),
       reason: (draft.type === "OFFENSIVE_TIMEOUT" || draft.type === "DEFENSIVE_TIMEOUT") ? draft.reason?.trim() || undefined : undefined,
       timestamp: new Date().toISOString(),
     };
@@ -1297,7 +1298,7 @@ function App() {
     }, game));
   }, [activeGame, currentPitcher, fieldingPosition, pitchDraft, recordColumnDraft, selectedResult, updateActiveGame]);
 
-  const recordRunnerAction = useCallback((type: "SB" | "CS" | "ADV" | "WP" | "PB" | "BK" | "PO", requestedBase?: 1 | 2 | 3, targetBase?: 2 | 3 | 4) => {
+  const recordRunnerAction = useCallback((type: "SB" | "CS" | "ADV" | "WP" | "PB" | "BK" | "PO", requestedBase?: 1 | 2 | 3, targetBase?: 2 | 3 | 4, notation?: string) => {
     if (!activeGame) return;
     if (type === "BK") {
       recordBalk();
@@ -1305,7 +1306,7 @@ function App() {
     }
     const occupiedBase = requestedBase ?? (activeGame.runners.third ? 3 : activeGame.runners.second ? 2 : activeGame.runners.first ? 1 : 1);
     const toBase = type === "PO" ? occupiedBase : (targetBase ?? (occupiedBase === 3 ? 4 : (occupiedBase + 1) as 2 | 3 | 4));
-    recordSpecialEvent({ type, fromBase: occupiedBase, toBase });
+    recordSpecialEvent({ type, fromBase: occupiedBase, toBase, notation });
   }, [activeGame, recordBalk, recordSpecialEvent]);
 
   const addSchool = useCallback((name: string): Team | null => {
@@ -3090,6 +3091,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
   const [selectedRailInning, setSelectedRailInning] = useState(game.inning);
   const [summaryMode, setSummaryMode] = useState<"compact" | "detailed">("compact");
   const [runnerActionConfirmation, setRunnerActionConfirmation] = useState<"CS" | "WP" | "PB" | "BK" | null>(null);
+  const [pickoffBase, setPickoffBase] = useState<1 | 2 | 3 | null>(null);
   const handleWorkflowCommit = useCallback((result: AtBatResult, customRunnerAdvances?: Array<{ runnerId: string; fromBase: 1 | 2 | 3; toBase: 2 | 3 | 4 }>) => {
     onOutcome(result, pitchDraft, recordColumnDraft, customRunnerAdvances);
   }, [onOutcome, pitchDraft, recordColumnDraft]);
@@ -3186,9 +3188,9 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
                       <RunnerActionButton label="恢復上一球" mark="↶" help={RUNNER_SYMBOL_HELP.UNDO} disabled={!(canUndoPitch ?? canUndo)} onPress={onUndoPitch ?? onUndo} onLongPress={onOpenSymbolHelp} emphasis />
                     </View>
                     <View style={styles.runnerActionRowGroup}>
-                      <RunnerActionButton label="一壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!firstRunner} onPress={() => onRunnerAction("PO", 1)} onLongPress={onOpenSymbolHelp} emphasis />
-                      <RunnerActionButton label="二壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!secondRunner} onPress={() => onRunnerAction("PO", 2)} onLongPress={onOpenSymbolHelp} emphasis />
-                      <RunnerActionButton label="三壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!thirdRunner} onPress={() => onRunnerAction("PO", 3)} onLongPress={onOpenSymbolHelp} emphasis />
+                      <RunnerActionButton label="一壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!firstRunner} onPress={() => setPickoffBase(1)} onLongPress={onOpenSymbolHelp} emphasis />
+                      <RunnerActionButton label="二壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!secondRunner} onPress={() => setPickoffBase(2)} onLongPress={onOpenSymbolHelp} emphasis />
+                      <RunnerActionButton label="三壘牽制" mark="PO" help={RUNNER_SYMBOL_HELP.PO} disabled={!thirdRunner} onPress={() => setPickoffBase(3)} onLongPress={onOpenSymbolHelp} emphasis />
                     </View>
                   </View>
                 </View>
@@ -3313,6 +3315,7 @@ function RecordView({ game, games, away, home, myTeam, mySide, battingTeam, pitc
         </View>
       </View>
       <RunnerActionConfirmationModal action={runnerActionConfirmation} game={game} battingPlayers={battingTeam.players} onClose={() => setRunnerActionConfirmation(null)} onConfirm={(fromBase, targetBase) => { if (runnerActionConfirmation === "CS") onRunnerAction("CS", fromBase, targetBase); else if (runnerActionConfirmation) onRunnerAction(runnerActionConfirmation); setRunnerActionConfirmation(null); }} />
+      <PickoffModal visible={pickoffBase !== null} base={pickoffBase} game={game} battingPlayers={battingTeam.players} onClose={() => setPickoffBase(null)} onConfirm={(fromBase: 1 | 2 | 3, notationCode: string) => { onSpecialEvent({ type: "PO", fromBase, toBase: fromBase, notation: notationCode }); setPickoffBase(null); }} />
     </View>
   );
 }
@@ -3338,6 +3341,178 @@ function RunnerActionConfirmationModal({ action, game, battingPlayers, onClose, 
   const specialAdvances = action && action !== "CS" ? buildSpecialEventRunnerSummary(action, game.runners) : [];
   const specialEventTitle = action === "WP" ? "確認暴投（WP）" : action === "PB" ? "確認捕逸（PB）" : "確認投手犯規（BK）";
   return <Modal visible={Boolean(action)} animationType="fade" transparent onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalSheet}><View style={styles.modalHandle} /><View style={styles.modalHeader}><View><Text style={styles.modalTitle}>{action === "CS" ? "確認盜壘失敗（CS）" : specialEventTitle}</Text><Text style={styles.modalSubtitle}>{action === "CS" ? "先選擇嘗試盜壘的跑者與目標壘包" : "確認每位受影響跑者的推進、得分與紀錄來源"}</Text></View><Pressable onPress={onClose}><Text style={styles.modalClose}>取消</Text></Pressable></View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>{action === "CS" ? <><Text style={styles.inputLabel}>選擇跑者</Text><View style={styles.modalChoiceRow}>{runnerChoices.map((choice) => { const player = battingPlayers.find((candidate) => candidate.id === choice.runnerId); return <Pressable key={choice.base} onPress={() => { setFromBase(choice.base); setTargetBase(choice.base === 3 ? 4 : (choice.base + 1) as 2 | 3 | 4); }} style={[styles.modalChoice, fromBase === choice.base && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, fromBase === choice.base && styles.modalChoiceTextActive]}>{choice.base} 壘 · #{player?.number ?? "—"} {player?.name ?? "跑者"}</Text></Pressable>; })}</View><Text style={styles.inputLabel}>嘗試目標壘包</Text><View style={styles.modalChoiceRow}>{targetChoices.map((base) => <Pressable key={base} onPress={() => setTargetBase(base)} style={[styles.modalChoice, targetBase === base && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, targetBase === base && styles.modalChoiceTextActive]}>{base === 4 ? "本壘" : `${base} 壘`}</Text></Pressable>)}</View><View style={styles.confirmationSummary}><Text style={styles.confirmationSummaryTitle}>確認內容</Text><Text style={styles.confirmationSummaryText}>{fromBase} 壘跑者 #{battingPlayers.find((player) => player.id === selectedRunner)?.number ?? "—"} {selectedRunnerName} 嘗試盜向 {targetBase === 4 ? "本壘" : `${targetBase} 壘`}，未成功並記為出局。</Text><Text style={styles.confirmationNotation}>早稻田符號：{getSpecialEventNotation("CS", fromBase, targetBase)}</Text></View></> : <><View style={styles.confirmationSummary}><Text style={styles.confirmationSummaryTitle}>{action} 預計推進</Text>{specialAdvances.map((advance) => { const player = battingPlayers.find((candidate) => candidate.id === advance.runnerId); return <Text key={advance.fromBase} style={styles.confirmationSummaryText}>{advance.fromBase} 壘 #{player?.number ?? "—"} {player?.name ?? "跑者"} → {advance.scores ? "本壘得分" : `${advance.toBase} 壘`}</Text>; })}<Text style={styles.confirmationNotation}>預計得分：{specialAdvances.filter((advance) => advance.scores).length} 分 · 來源：各跑者原上壘打席</Text></View><Text style={styles.substitutionContext}>確認後會依早稻田規則將 {action} 回寫至每位跑者的來源打席，並同步更新壘包、比分及單場整體紀錄。</Text></>}<View style={styles.confirmationActionRow}><View style={styles.confirmationActionFlex}><Button label="取消" onPress={onClose} variant="secondary" touch fluid /></View><View style={styles.confirmationActionFlex}><Button label={action === "CS" ? "確認記錄 CS" : `確認記錄 ${action ?? ""}`} onPress={() => onConfirm(fromBase, targetBase)} touch fluid /></View></View></ScrollView></View></View></Modal>;
+}
+
+function PickoffModal({
+  visible,
+  base,
+  game,
+  battingPlayers,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  base: 1 | 2 | 3 | null;
+  game: Game;
+  battingPlayers: Player[];
+  onClose: () => void;
+  onConfirm: (fromBase: 1 | 2 | 3, notationCode: string) => void;
+}) {
+  const [thrower, setThrower] = useState<"pitcher" | "catcher" | null>(null);
+  const [fielder, setFielder] = useState<"2B" | "SS" | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setThrower(null);
+      setFielder(null);
+    }
+  }, [visible, base]);
+
+  if (!base) return null;
+
+  const runnerByBase = {
+    1: game.runners.first,
+    2: game.runners.second,
+    3: game.runners.third,
+  } as const;
+  const runnerId = runnerByBase[base];
+  const runnerPlayer = battingPlayers.find((p) => p.id === runnerId);
+  const runnerName = runnerPlayer ? `#${runnerPlayer.number} ${runnerPlayer.name}` : `${base} 壘跑者`;
+  const baseName = base === 1 ? "一壘" : base === 2 ? "二壘" : "三壘";
+
+  let notationCode = "";
+  let description = "";
+
+  if (base === 1) {
+    if (thrower === "pitcher") {
+      notationCode = "PO1-3";
+      description = "投手牽制一壘，傳一壘手刺殺出局";
+    } else if (thrower === "catcher") {
+      notationCode = "PO2-3";
+      description = "捕手牽制一壘，傳一壘手刺殺出局";
+    }
+  } else if (base === 2) {
+    if (thrower === "catcher") {
+      notationCode = "PO2-4";
+      description = "捕手牽制二壘，傳二壘手刺殺出局";
+    } else if (thrower === "pitcher") {
+      if (fielder === "2B") {
+        notationCode = "PO1-4";
+        description = "投手牽制二壘，二壘手接球刺殺出局";
+      } else if (fielder === "SS") {
+        notationCode = "PO1-6";
+        description = "投手牽制二壘，游擊手接球刺殺出局";
+      }
+    }
+  } else if (base === 3) {
+    if (thrower === "pitcher") {
+      notationCode = "PO1-5";
+      description = "投手牽制三壘，傳三壘手刺殺出局";
+    } else if (thrower === "catcher") {
+      notationCode = "PO2-5";
+      description = "捕手牽制三壘，傳三壘手刺殺出局";
+    }
+  }
+
+  const canConfirm = Boolean(notationCode);
+
+  const handleConfirm = () => {
+    if (canConfirm && base && notationCode) {
+      onConfirm(base, notationCode);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>牽制{baseName}（Pickoff {base}B）</Text>
+              <Text style={styles.modalSubtitle}>被牽制跑者：{runnerName}</Text>
+            </View>
+            <Pressable onPress={onClose}>
+              <Text style={styles.modalClose}>取消</Text>
+            </Pressable>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+            <Text style={styles.inputLabel}>1. 選擇牽制發起者</Text>
+            <View style={styles.modalChoiceRow}>
+              <Pressable
+                onPress={() => {
+                  setThrower("pitcher");
+                  setFielder(null);
+                }}
+                style={[styles.modalChoice, thrower === "pitcher" && styles.modalChoiceActive]}
+              >
+                <Text style={[styles.modalChoiceText, thrower === "pitcher" && styles.modalChoiceTextActive]}>
+                  由投手牽制
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setThrower("catcher");
+                  setFielder(null);
+                }}
+                style={[styles.modalChoice, thrower === "catcher" && styles.modalChoiceActive]}
+              >
+                <Text style={[styles.modalChoiceText, thrower === "catcher" && styles.modalChoiceTextActive]}>
+                  由捕手牽制
+                </Text>
+              </Pressable>
+            </View>
+
+            {base === 2 && thrower === "pitcher" ? (
+              <>
+                <Text style={styles.inputLabel}>2. 選擇接球野手</Text>
+                <View style={styles.modalChoiceRow}>
+                  <Pressable
+                    onPress={() => setFielder("2B")}
+                    style={[styles.modalChoice, fielder === "2B" && styles.modalChoiceActive]}
+                  >
+                    <Text style={[styles.modalChoiceText, fielder === "2B" && styles.modalChoiceTextActive]}>
+                      二壘手 (4)
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setFielder("SS")}
+                    style={[styles.modalChoice, fielder === "SS" && styles.modalChoiceActive]}
+                  >
+                    <Text style={[styles.modalChoiceText, fielder === "SS" && styles.modalChoiceTextActive]}>
+                      游擊手 (6)
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
+
+            {notationCode ? (
+              <View style={styles.confirmationSummary}>
+                <Text style={styles.confirmationSummaryTitle}>牽制紀錄預覽</Text>
+                <Text style={styles.confirmationSummaryText}>
+                  早稻田符號：<Text style={{ fontWeight: "700", color: BRAND.blue }}>{notationCode}</Text>
+                </Text>
+                <Text style={styles.confirmationSummaryText}>{description}</Text>
+                <Text style={styles.confirmationSummaryText}>
+                  系統將將【{runnerName}】標記為出局，增加 1 個出局數並更新壘包狀態。
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={{ marginTop: 16 }}>
+              <Button
+                label={canConfirm ? `確認記錄 ${notationCode}` : "請完成牽制選擇"}
+                disabled={!canConfirm}
+                onPress={handleConfirm}
+                fluid
+              />
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 function LiveLineupPanel({ away, home, game, batter, pitcher }: { away: Team; home: Team; game: Game; batter?: Player; pitcher?: Player }) {

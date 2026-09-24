@@ -569,7 +569,12 @@ export function getSpecialEventNotation(type: SpecialEventType, fromBase?: numbe
   // 使用者已確認：盜壘維持藍色箭頭加 SB，不採 1189LAB 的單一 S 寫法。
   if (type === "SB") return "SB";
   if (type === "CS") return "CS";
-  if (type === "PO") return "PO";
+  if (type === "PO") {
+    if (fromBase === 1) return "PO1-3";
+    if (fromBase === 2) return "PO1-4";
+    if (fromBase === 3) return "PO1-5";
+    return "PO";
+  }
   if (type === "ADV") return toBase === 4 ? "↑" : `↑${fromBase ?? ""}→${toBase ?? ""}`;
   if (type === "OFFENSIVE_TIMEOUT") return "O.C";
   if (type === "DEFENSIVE_TIMEOUT") return "T";

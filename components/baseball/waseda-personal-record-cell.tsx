@@ -174,14 +174,25 @@ export function WasedaPersonalRecordCell({
       ? `PO·${["I", "II", "III"][(pickoffOut.outNumber ?? 1) - 1]}`
       : undefined;
   
-  // 右上角：暴投 WP, 捕逸 PB, 牽制 PO, 投手犯規 BK, 妨礙跑壘 OB, 雙殺 DP, 三殺 TP
-  const topRightMarks = [
-    runnerNotation && /\b(?:WP|PB|BK|PO|OB)\b/.test(runnerNotation) ? runnerNotation : null,
+  // 右上角：暴投 WP, 捕逸 PB, 牽制 PO (如 PO1-3, PO2-3 等), 投手犯規 BK, 妨礙跑壘 OB, 雙殺 DP, 三殺 TP
+  const pickoffNotation = pickoffOut?.notation || (pickoffOut ? "PO" : null);
+  const rawTopRight = [
+    runnerNotation && /\b(?:WP|PB|BK|PO|OB|PO\d-\d)\b/i.test(runnerNotation) ? runnerNotation : null,
+    pickoffNotation,
     modifiers.includes("WP") ? "WP" : null,
     modifiers.includes("PB") ? "PB" : null,
     modifiers.includes("BK") ? "BK" : null,
     modifiers.includes("OB") ? "OB" : null,
-  ].filter(Boolean).join("·");
+  ].filter(Boolean);
+
+  const refinedTopRight = rawTopRight.map((mark) => {
+    if (mark === "PO" && pickoffNotation && pickoffNotation !== "PO") {
+      return pickoffNotation;
+    }
+    return mark;
+  }).filter((val, idx, self) => self.indexOf(val) === idx);
+
+  const topRightMarks = refinedTopRight.join("·");
 
   // 右下角打席結果：BB, D (觸身), DIB (敬遠), K, N (不死三振), 2F (妨礙打擊), IP2 (妨礙守備), FC
   const bottomRightResultMarks = [
