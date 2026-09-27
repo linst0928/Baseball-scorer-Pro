@@ -148,4 +148,20 @@ describe("早稻田個人打席格的球性與傳接分區", () => {
     expect(source).toContain("cellRail: { minHeight: 86, height: 86 }");
     expect(source).toContain("outerAreaRail: { minHeight: 86, height: 86, borderWidth: 0 }");
   });
+
+  it("無打席資料時不顯示多餘符號（如 [-]），CS 與 PO 不在中央內圈顯示文字，PO 一律置於右上角", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/baseball/waseda-personal-record-cell.tsx"), "utf8");
+
+    // 任務 3：無得分時 runMark 為空字串，拔除任何佔位符號
+    expect(source).toContain('const runMark = finalRuns > 0 ? (isUnearned ? "○" : "●") : "";');
+
+    // 任務 4：CS 與 PO 不在內圈顯示文字
+    expect(source).toContain("runnerOutNotation = undefined;");
+
+    // 任務 4：PO 一律置於右上角，右下角過濾 PO
+    expect(source).toContain('lowerRight = rawLowerRight.replace(/\\bPO\\d?(-\\d\\w*)?\\b/gi, "").trim();');
+
+    // 任務 4：CS 僅有邊緣文字，不畫進壘藍線
+    expect(source).toContain("!line.noLine");
+  });
 });

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Modal, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
+import Svg, { Line } from "react-native-svg";
 import { useRouter } from "expo-router";
 
 import {
@@ -98,6 +99,8 @@ export type WasedaPersonalRecordCellProps = {
   replacementBadge?: ScorebookSubstitutionBadge;
   /** 換投後新投手面對第一位打者的純顯示徽記；只反映正式換投與 pitcherId。 */
   pitchingChangeBadge?: ScorebookPitchingChangeBadge & { pitcherLabel?: string };
+  /** 是否為半局結束（第 3 出局）打席，在右下角繪製雙斜線 // */
+  isInningEnd?: boolean;
   size?: "large" | "regular" | "compact" | "live" | "rail";
   showLabels?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -126,6 +129,7 @@ export function WasedaPersonalRecordCell({
   runnerAdvance,
   replacementBadge,
   pitchingChangeBadge,
+  isInningEnd: isInningEndProp,
   size = "regular",
   showLabels = false,
   style,
@@ -168,16 +172,15 @@ export function WasedaPersonalRecordCell({
   const pickoffOut = runnerAdvances.find((advance) => advance.type === "PO");
   const leftOnBase = runnerAdvances.some((advance) => advance.type === "LOB");
   const headingNote = [note, correction?.otherMark].filter(Boolean).join(" · ");
-  const runnerOutNotation = caughtStealing
-    ? `CS·${["I", "II", "III"][(caughtStealing.outNumber ?? 1) - 1]}`
-    : pickoffOut
-      ? `PO·${["I", "II", "III"][(pickoffOut.outNumber ?? 1) - 1]}`
-      : undefined;
+  // 早稻田規範：CS 與 PO 不在中央內圈顯示文字（CS 在菱形框邊，PO 在右上角）
+  const runnerOutNotation = undefined;
   
-  // 右上角：暴投 WP, 捕逸 PB, 牽制 PO (如 PO1-3, PO2-3 等), 投手犯規 BK, 妨礙跑壘 OB, 雙殺 DP, 三殺 TP
-  const pickoffNotation = pickoffOut?.notation || (pickoffOut ? "PO" : null);
+  // 右上角：暴投 WP, 捕逸 PB, 牽制 PO (如 PO1-3, PO2-3, PO1-3E 等), 投手犯規 BK, 妨礙跑壘 OB, 雙殺 DP, 三殺 TP
+  const pickoffAdv = runnerAdvances.find((adv) => adv.type === "PO" || (adv.notation && /^PO/i.test(adv.notation)));
+  const defaultPO = pickoffAdv ? (pickoffAdv.fromBase === 1 ? "PO1-3" : pickoffAdv.fromBase === 2 ? "PO1-4" : pickoffAdv.fromBase === 3 ? "PO1-5" : "PO") : null;
+  const pickoffNotation = pickoffAdv?.notation || defaultPO || (pickoffOut ? "PO1-3" : null);
   const rawTopRight = [
-    runnerNotation && /\b(?:WP|PB|BK|PO|OB|PO\d-\d)\b/i.test(runnerNotation) ? runnerNotation : null,
+    runnerNotation && /\b(?:WP|PB|BK|PO|OB|PO\d-\d\w*)\b/i.test(runnerNotation) ? runnerNotation : null,
     pickoffNotation,
     modifiers.includes("WP") ? "WP" : null,
     modifiers.includes("PB") ? "PB" : null,
@@ -224,16 +227,18 @@ export function WasedaPersonalRecordCell({
         ? { type: battedBallTrajectory, position: battedBallPosition }
         : undefined;
   const battedBallOuterMark = correctedBattedBallOuterMark ?? formalBattedBallOuterMark;
-  const lowerRight = finalRecord && finalResult
+  const rawLowerRight = finalRecord && finalResult
     ? getFieldingSequenceNotation(finalResult, finalRecord)
     : finalRecord?.fieldingSequence || (!battedBallTrajectory && !hit && !onBaseMarks && !runnerNotation ? finalNotation : "");
-  const allowedInnerMarks = new Set(["—", "○", "●", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "④", "ℓ", "CS", "PO", "N", "//", "///"]);
+  // PO 牽制一律只顯示於右上角，不應出現在右下角
+  const lowerRight = rawLowerRight.replace(/\bPO\d?(-\d\w*)?\b/gi, "").trim();
+  const allowedInnerMarks = new Set(["", "—", "○", "●", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "④", "ℓ", "CS", "PO", "N", "//", "///"]);
   const requestedInnerMark = innerMarkOverride ?? correction?.innerMark;
   const safeInnerOverride = requestedInnerMark && allowedInnerMarks.has(requestedInnerMark) ? requestedInnerMark : undefined;
 
   // 中央菱形正中央：自責分 (ER) 顯示紅色實心圓點 ●，非自責分 (UER) 顯示紅色空心圓圈 ○
   const isUnearned = finalResult === "E" || modifiers.some((m) => /失誤|E[1-9]?|PB/i.test(m));
-  const runMark = finalRuns > 0 ? (isUnearned ? "○" : "●") : "—";
+  const runMark = finalRuns > 0 ? (isUnearned ? "○" : "●") : "";
 
   /**
    * 早稻田菱形中央只記得分、出局、殘壘、CS 或不死三振；
@@ -241,6 +246,33 @@ export function WasedaPersonalRecordCell({
    */
   const innerMark = safeInnerOverride
     ?? (runnerOutNotation ?? (leftOnBase ? "ℓ" : (droppedThirdStrike ? "N" : (out && typeof finalOutsBefore === "number" ? ["I", "II", "III"][Math.min(finalOutsBefore, 2)] : runMark))));
+
+  // 計算是否為半局結束 (第 3 出局)
+  const isThirdOutInner = innerMark === "III" || innerMark === "Ⅲ" || innerMark === "③" || requestedInnerMark === "III" || requestedInnerMark === "Ⅲ";
+  const hasInningEndAnnotation = Boolean(
+    event?.notation?.includes("//") ||
+    runnerNotation?.includes("//") ||
+    innerMarkOverride === "//" ||
+    correction?.innerMark === "//"
+  );
+  const hasThirdOutRunner = (event?.runnerAdvances || []).some(
+    (adv) => (adv.outNumber as number) === 3 || (adv.type === "LOB" && (event?.outsBefore ?? 0) >= 2) || ((adv.type === "CS" || adv.type === "PO") && (adv.outNumber as number) === 3)
+  );
+  const isBatterOut = finalResult ? OUT_RESULTS.includes(finalResult) && !droppedThirdStrike : false;
+  const isDP = finalRecord?.fieldingPlay === "DP";
+  const isTP = finalRecord?.fieldingPlay === "TP";
+  const fieldingOuts = isTP ? 3 : isDP ? 2 : isBatterOut ? 1 : 0;
+  const calculatedOutsAfter = typeof finalOutsBefore === "number" ? finalOutsBefore + Math.max(fieldingOuts, hasThirdOutRunner ? 1 : 0) : undefined;
+
+  const isEndOfInning = Boolean(
+    isInningEndProp ?? (
+      isThirdOutInner ||
+      hasInningEndAnnotation ||
+      hasThirdOutRunner ||
+      (typeof calculatedOutsAfter === "number" && calculatedOutsAfter >= 3)
+    )
+  );
+
   const rbi = Math.max(0, Math.min(finalRecord?.rbi ?? 0, 4));
   const liveSize = size === "live";
   const compactSize = size === "compact";
@@ -383,11 +415,15 @@ export function WasedaPersonalRecordCell({
             ))}
             {runnerAdvanceLines.map((line) => (
               <View key={`runner-${line.segment}`} pointerEvents="none" style={styles.runnerAdvanceOverlay}>
-                <View style={[styles.runnerAdvanceLine, runnerSegmentStyle(line.segment), line.isCutLine && { width: 14 }]} />
-                {line.isCutLine ? (
-                  <View style={[styles.cutLineTick, runnerCutTickStyle(line.segment)]} />
+                {!line.noLine ? (
+                  <>
+                    <View style={[styles.runnerAdvanceLine, runnerSegmentStyle(line.segment), line.isCutLine && { width: 14 }]} />
+                    {line.isCutLine ? (
+                      <View style={[styles.cutLineTick, runnerCutTickStyle(line.segment)]} />
+                    ) : null}
+                    {line.hasArrow ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.runnerAdvanceArrow, runnerArrowStyle(line.segment)]}>▶</Text> : null}
+                  </>
                 ) : null}
-                {line.hasArrow ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.runnerAdvanceArrow, runnerArrowStyle(line.segment)]}>▶</Text> : null}
                 {line.label ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.runnerAdvanceLabel, runnerLabelStyle(line.segment), line.label === "BK" && styles.runnerAdvanceLabelBK]}>{line.label}</Text> : null}
               </View>
             ))}
@@ -404,6 +440,27 @@ export function WasedaPersonalRecordCell({
             </View>
           </View>
           {showEmptyHint ? <View pointerEvents="none" style={styles.emptyHintOverlay}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.emptyHintText}>{emptyHint}</Text></View> : null}
+          {isEndOfInning ? (
+            <View
+              pointerEvents="none"
+              accessibilityLabel="半局結束標記：//"
+              style={[
+                styles.inningEndMarker,
+                compactSize && styles.inningEndMarkerCompact,
+                liveSize && styles.inningEndMarkerLive,
+                largeSize && styles.inningEndMarkerLarge,
+              ]}
+            >
+              <Svg
+                width={largeSize ? 26 : compactSize || liveSize ? 16 : 20}
+                height={largeSize ? 26 : compactSize || liveSize ? 16 : 20}
+                viewBox="0 0 20 20"
+              >
+                <Line x1="3" y1="18" x2="11" y2="2" stroke={COLORS.blue} strokeWidth="3" strokeLinecap="round" />
+                <Line x1="10" y1="18" x2="18" y2="2" stroke={COLORS.blue} strokeWidth="3" strokeLinecap="round" />
+              </Svg>
+            </View>
+          ) : null}
         </View>
       </View>
       <Modal
@@ -640,6 +697,10 @@ const styles = StyleSheet.create({
   emptyHintText: { color: "#9AA9B9", backgroundColor: "transparent", fontSize: 10, fontWeight: "800" },
   redText: { color: COLORS.red },
   reversedK: { transform: [{ scaleX: -1 }] },
+  inningEndMarker: { position: "absolute", right: 2, bottom: 2, zIndex: 10 },
+  inningEndMarkerCompact: { right: 1, bottom: 1 },
+  inningEndMarkerLive: { right: 1, bottom: 1 },
+  inningEndMarkerLarge: { right: 4, bottom: 4 },
 });
 
 function hitSegmentStyle(segment: HitAdvanceSegment) {

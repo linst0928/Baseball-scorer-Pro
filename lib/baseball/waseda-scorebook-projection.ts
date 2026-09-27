@@ -61,6 +61,8 @@ export type WasedaScorebookAppearance = {
   entryIndex: number;
   /** 該半局的實際打席順序；從 0 起算，供動態格位定位而非重算比賽。 */
   appearanceIndex: number;
+  /** 是否為該半局結束打席（出局數達 3 或該局最後打席） */
+  isInningEnd?: boolean;
   /** 僅在替換發生局的該替換球員格內顯示，與結果與傳接符號分離。 */
   replacementBadge?: ScorebookSubstitutionBadge;
   /** 僅在換投後新投手面對的第一位打者格內顯示，與替換、結果與傳接符號分離。 */
@@ -248,44 +250,64 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
     ...teamEvents.map((event) => event.inning),
   );
   const innings = Array.from({ length: visibleInningCount }, (_, index) => index + 1).map((inning) => {
-    const appearances = teamEvents
-      .filter((event) => event.inning === inning)
-      .map((event, appearanceIndex) => {
-        const entry = entryByPlayerId.get(event.batterId);
-        /** 遺漏球員仍不建立假事件；此防線只提供可追溯的最後保留格。 */
-        const resolved = entry ?? { battingOrder: 9, entryIndex: battingOrders[8].entries.length - 1 };
-        const marker = entry && entry.enteredInning === inning
-          ? getScorebookSubstitutionMarker(entry.substitution?.type)
-          : undefined;
-        let baseLocation: "1B" | "2B" | "3B" | undefined;
-        if (marker && marker.code === "PR") {
-          const pos = entry?.substitution?.position || "";
-          if (/2B|2|二/.test(pos)) {
-            baseLocation = "2B";
-          } else if (/3B|3|三/.test(pos)) {
-            baseLocation = "3B";
-          } else {
-            baseLocation = "1B";
-          }
+    const inningEvents = teamEvents.filter((event) => event.inning === inning);
+    let cumulativeOuts = 0;
+    const appearances = inningEvents.map((event, appearanceIndex) => {
+      const entry = entryByPlayerId.get(event.batterId);
+      /** 遺漏球員仍不建立假事件；此防線只提供可追溯的最後保留格。 */
+      const resolved = entry ?? { battingOrder: 9, entryIndex: battingOrders[8].entries.length - 1 };
+      const marker = entry && entry.enteredInning === inning
+        ? getScorebookSubstitutionMarker(entry.substitution?.type)
+        : undefined;
+      let baseLocation: "1B" | "2B" | "3B" | undefined;
+      if (marker && marker.code === "PR") {
+        const pos = entry?.substitution?.position || "";
+        if (/2B|2|二/.test(pos)) {
+          baseLocation = "2B";
+        } else if (/3B|3|三/.test(pos)) {
+          baseLocation = "3B";
+        } else {
+          baseLocation = "1B";
         }
-        return {
-          event,
-          eventId: event.id,
-          battingOrder: resolved.battingOrder,
-          entryIndex: resolved.entryIndex,
-          appearanceIndex,
-          replacementBadge: marker && entry?.enteredInning
-            ? {
-                ...marker,
-                inning: entry.enteredInning,
-                ...(entry.playerId && playerMap.get(entry.playerId)?.name ? { playerName: playerMap.get(entry.playerId)?.name } : {}),
-                ...(baseLocation ? { baseLocation } : {}),
-                ...(entry.substitution?.handoffPitchNumber !== undefined ? { handoffPitchNumber: entry.substitution.handoffPitchNumber } : {}),
-              }
-            : undefined,
-          pitchingChangeBadge: pitchingChangeByEventId.get(event.id),
-        };
-      });
+      }
+
+      // 出局數計算
+      const isBatterOut = ["K", "F", "G"].includes(event.result as string) && !event.droppedThirdStrike;
+      const isDP = event.recordColumn?.fieldingPlay === "DP";
+      const isTP = event.recordColumn?.fieldingPlay === "TP";
+      const runnerOutsCount = (event.runnerAdvances || []).filter((adv) => adv.outNumber || adv.type === "CS" || adv.type === "PO").length;
+      const outsInEvent = isTP ? 3 : isDP ? 2 : Math.max(isBatterOut ? 1 : 0, runnerOutsCount);
+
+      const outsBefore = typeof event.outsBefore === "number" ? event.outsBefore : cumulativeOuts;
+      const outsAfter = outsBefore + outsInEvent;
+      cumulativeOuts = outsAfter;
+
+      const innerMark = event.recordCorrection?.innerMark;
+      const isInningEnd = outsAfter >= 3
+        || innerMark === "III"
+        || innerMark === "Ⅲ"
+        || innerMark === "③"
+        || (appearanceIndex === inningEvents.length - 1 && outsAfter >= 3);
+
+      return {
+        event,
+        eventId: event.id,
+        battingOrder: resolved.battingOrder,
+        entryIndex: resolved.entryIndex,
+        appearanceIndex,
+        isInningEnd,
+        replacementBadge: marker && entry?.enteredInning
+          ? {
+              ...marker,
+              inning: entry.enteredInning,
+              ...(entry.playerId && playerMap.get(entry.playerId)?.name ? { playerName: playerMap.get(entry.playerId)?.name } : {}),
+              ...(baseLocation ? { baseLocation } : {}),
+              ...(entry.substitution?.handoffPitchNumber !== undefined ? { handoffPitchNumber: entry.substitution.handoffPitchNumber } : {}),
+            }
+          : undefined,
+        pitchingChangeBadge: pitchingChangeByEventId.get(event.id),
+      };
+    });
     return { inning, appearances, slotCount: Math.max(3, appearances.length) };
   });
   const maxPlateAppearances = Math.max(3, ...innings.map((inning) => inning.appearances.length));

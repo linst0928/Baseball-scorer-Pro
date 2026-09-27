@@ -310,7 +310,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                       delayLongPress={420}
                       style={({ pressed }) => [styles.appearanceSlot, { top: localAppearanceIndex * SLOT_HEIGHT, height: SLOT_HEIGHT }, pressed && styles.pressed]}
                     >
-                      <WasedaPersonalRecordCell size="compact" event={appearance.event} showLabels={false} replacementBadge={appearance.replacementBadge} pitchingChangeBadge={appearance.pitchingChangeBadge ? { ...appearance.pitchingChangeBadge, pitcherLabel: opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId) ? `#${opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId)?.number}` : "新投手" } : undefined} />
+                      <WasedaPersonalRecordCell size="compact" event={appearance.event} isInningEnd={appearance.isInningEnd} showLabels={false} replacementBadge={appearance.replacementBadge} pitchingChangeBadge={appearance.pitchingChangeBadge ? { ...appearance.pitchingChangeBadge, pitcherLabel: opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId) ? `#${opponentPlayerById.get(appearance.pitchingChangeBadge.pitcherId)?.number}` : "新投手" } : undefined} />
                     </Pressable>;
                   })}
                   {appearances.length === 0 && activeEntry?.playerId ? (() => {

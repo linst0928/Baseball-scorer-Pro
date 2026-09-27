@@ -44,6 +44,7 @@ export type RunnerAdvanceLine = {
   hasArrow: boolean;
   label?: "SB" | "BK" | "CS" | string;
   isCutLine?: boolean;
+  noLine?: boolean;
 };
 
 const BASE_ADVANCE_SEGMENTS: Record<"0-1" | "1-2" | "2-3" | "3-4", HitAdvanceSegment> = {
@@ -78,13 +79,16 @@ export function getRunnerAdvanceLines({
     const balk = runnerAdvance.type === "BK";
 
     if (pickoff) {
-      const defaultFielding = runnerAdvance.fromBase === 1 ? "PO1-3" : runnerAdvance.fromBase === 2 ? "PO2-4" : "PO3-5";
+      const defaultFielding = runnerAdvance.fromBase === 1 ? "PO1-3" : runnerAdvance.fromBase === 2 ? "PO1-4" : runnerAdvance.fromBase === 3 ? "PO1-5" : "PO";
       const customNotation = runnerAdvance.notation;
-      return [{ segment, hasArrow: false, label: customNotation || defaultFielding, isCutLine: true }];
+      if (runnerAdvance.toBase && runnerAdvance.toBase > runnerAdvance.fromBase) {
+        return [{ segment, hasArrow: true, label: customNotation || defaultFielding }];
+      }
+      return [];
     }
 
     if (caughtStealing) {
-      return [{ segment, hasArrow: false, label: "CS", isCutLine: true }];
+      return [{ segment, hasArrow: false, label: "CS", noLine: true }];
     }
 
     const customLabel = runnerAdvance.advancedByOrder !== undefined ? `(${runnerAdvance.advancedByOrder})` : undefined;

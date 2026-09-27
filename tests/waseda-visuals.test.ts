@@ -56,8 +56,8 @@ describe("早稻田跑壘藍線與盜壘箭頭", () => {
     expect(getRunnerAdvanceLines({ runnerAdvance: { type: "BK", fromBase: 3, toBase: 4 } })).toEqual([{ segment: "third-to-home", hasArrow: false, label: "BK" }]);
   });
 
-  it("盜壘失敗 CS 以截斷線 isCutLine 為真呈現並標示 CS", () => {
-    expect(getRunnerAdvanceLines({ runnerAdvance: { type: "CS", fromBase: 1, toBase: 2 } })).toEqual([{ segment: "first-to-second", hasArrow: false, label: "CS", isCutLine: true }]);
+  it("盜壘失敗 CS 不需要畫進壘藍線 (noLine: true) 並在菱形邊緣標示 CS", () => {
+    expect(getRunnerAdvanceLines({ runnerAdvance: { type: "CS", fromBase: 1, toBase: 2 } })).toEqual([{ segment: "first-to-second", hasArrow: false, label: "CS", noLine: true }]);
   });
 
   it("一壘安打後原一壘跑者推進二壘時，安打紅線與不同壘間的藍線須同步保留", () => {

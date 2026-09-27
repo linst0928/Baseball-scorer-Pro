@@ -5982,14 +5982,22 @@ export const normalizePositionToCode = (pos: unknown): string | null => {
 
 function TopDownLineupField({ team, lineup, conflictedPositions = [], highlightedPositions = [], style }: { team: Team; lineup: GameLineup; conflictedPositions?: string[]; highlightedPositions?: string[]; style?: StyleProp<ViewStyle> }) {
   const playersForPosition = (number: string) => {
-    // 嚴格讀取先發九人名單（避免以打序索引定點），並透過字典精確定點
+    // 嚴格依照守備位置代碼（1=投手, 2=捕手, 3=一壘手... 9=右外野手）比對球員資料與先發陣容
+    const assignedPlayers = team.players.filter((player) => {
+      const assignedPos = lineup.defensivePositions?.[player.id];
+      const posValue = assignedPos !== undefined ? assignedPos : ((player as any).positionCode ?? (player as any).positionId ?? player.position);
+      const mappedCode = normalizePositionToCode(posValue);
+      return mappedCode === number;
+    });
+    if (assignedPlayers.length > 0) {
+      return assignedPlayers;
+    }
     return (lineup.battingOrderIds || [])
       .map((playerId) => team.players.find((p) => p.id === playerId))
       .filter((player): player is Player => {
         if (!player) return false;
-        // 優先讀取先發排定守位，如果沒有，則依次讀取其守位屬性
         const assignedPos = lineup.defensivePositions?.[player.id];
-        const posValue = assignedPos !== undefined ? assignedPos : ((player as any).positionCode ?? (player as any).positionId ?? player.position);
+        const posValue = assignedPos !== undefined ? assignedPos : player.position;
         const mappedCode = normalizePositionToCode(posValue);
         return mappedCode === number;
       });
