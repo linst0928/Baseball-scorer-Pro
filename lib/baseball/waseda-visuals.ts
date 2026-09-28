@@ -79,10 +79,9 @@ export function getRunnerAdvanceLines({
     const balk = runnerAdvance.type === "BK";
 
     if (pickoff) {
-      const defaultFielding = runnerAdvance.fromBase === 1 ? "PO1-3" : runnerAdvance.fromBase === 2 ? "PO1-4" : runnerAdvance.fromBase === 3 ? "PO1-5" : "PO";
-      const customNotation = runnerAdvance.notation;
       if (runnerAdvance.toBase && runnerAdvance.toBase > runnerAdvance.fromBase) {
-        return [{ segment, hasArrow: true, label: customNotation || defaultFielding }];
+        // 牽制失誤推進或牽制進壘：畫無箭頭推進藍線，右上角已顯示 Notation，線上不重複標示文字
+        return [{ segment, hasArrow: false }];
       }
       return [];
     }

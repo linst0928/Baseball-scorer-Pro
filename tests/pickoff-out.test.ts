@@ -2,11 +2,14 @@ import { describe, it, expect } from "vitest";
 import {
   nextSpecialRunnerState,
   updateGameAfterSpecialEvent,
+  applyPickoffOutcome,
   type Game,
   type SpecialEvent,
   type RunnerState,
-  type AtBatEvent
+  type AtBatEvent,
+  type PickoffRunnerOutcome,
 } from "../lib/baseball/types";
+import { getRunnerAdvanceLines } from "../lib/baseball/waseda-visuals";
 
 describe("牽制出局 (Pickoff Out) 核心判定與狀態更新測試", () => {
   const mockGame: Game = {
@@ -324,5 +327,195 @@ describe("牽制出局 (Pickoff Out) 核心判定與狀態更新測試", () => {
     expect(gameAfter.runners.second).toBeNull();
     expect(gameAfter.runners.third).toBeNull();
     expect(gameAfter.half).toBe("home"); // 攻守切換由 away 變為 home
+  });
+
+  describe("🎯 實務規格情境範例 1~5 全面測試", () => {
+    it("範例 1：單純牽制出局 - 一壘跑者遭捕手牽制出局 (PO2-3)", () => {
+      const initialGame: Game = {
+        ...mockGame,
+        runners: { first: "R1", second: null, third: null },
+        events: createEventsWithRunners(),
+      };
+
+      const outcomes: PickoffRunnerOutcome[] = [
+        {
+          runnerId: "R1",
+          fromBase: 1,
+          isTarget: true,
+          isOut: true,
+          notation: "PO2-3",
+        },
+      ];
+
+      const afterGame = applyPickoffOutcome(initialGame, outcomes, "P1");
+
+      expect(afterGame.outs).toBe(1);
+      expect(afterGame.runners.first).toBeNull();
+
+      const r1AtBat = afterGame.events.find((e) => e.batterId === "R1");
+      expect(r1AtBat?.runnerAdvances?.at(-1)?.notation).toBe("PO2-3");
+      expect(r1AtBat?.runnerAdvances?.at(-1)?.outType).toBe("PICKOFF_OUT");
+    });
+
+    it("範例 2：牽制失誤導致推進 - 二壘跑者遭投手牽制 (二壘手) 失誤進三壘 (PO1-4E)", () => {
+      const initialGame: Game = {
+        ...mockGame,
+        runners: { first: null, second: "R2", third: null },
+        events: createEventsWithRunners(),
+      };
+
+      const outcomes: PickoffRunnerOutcome[] = [
+        {
+          runnerId: "R2",
+          fromBase: 2,
+          isTarget: true,
+          isOut: false,
+          toBase: 3,
+          notation: "PO1-4E",
+        },
+      ];
+
+      const afterGame = applyPickoffOutcome(initialGame, outcomes, "P1");
+
+      expect(afterGame.outs).toBe(0);
+      expect(afterGame.runners.second).toBeNull();
+      expect(afterGame.runners.third).toBe("R2");
+
+      const r2AtBat = afterGame.events.find((e) => e.batterId === "R2");
+      const r2Advance = r2AtBat?.runnerAdvances?.at(-1);
+      expect(r2Advance?.notation).toBe("PO1-4E");
+      expect(r2Advance?.fromBase).toBe(2);
+      expect(r2Advance?.toBase).toBe(3);
+
+      // 驗證跑壘線為無箭頭推進藍線
+      const advanceLines = getRunnerAdvanceLines({ runnerAdvance: r2Advance });
+      expect(advanceLines[0]?.segment).toBe("second-to-third");
+      expect(advanceLines[0]?.hasArrow).toBe(false);
+      expect(advanceLines[0]?.label).toBeUndefined();
+    });
+
+    it("範例 3：牽制出局，但其他跑者趁機得分 - 牽制二壘出局 (PO1-6)，三壘跑者回本壘得分", () => {
+      const initialGame: Game = {
+        ...mockGame,
+        runners: { first: null, second: "R2", third: "R3" },
+        events: createEventsWithRunners(),
+      };
+
+      const outcomes: PickoffRunnerOutcome[] = [
+        {
+          runnerId: "R2",
+          fromBase: 2,
+          isTarget: true,
+          isOut: true,
+          notation: "PO1-6",
+        },
+        {
+          runnerId: "R3",
+          fromBase: 3,
+          isTarget: false,
+          isOut: false,
+          toBase: 4,
+          notation: "ADV",
+        },
+      ];
+
+      const afterGame = applyPickoffOutcome(initialGame, outcomes, "P1");
+
+      expect(afterGame.outs).toBe(1);
+      expect(afterGame.runners.second).toBeNull();
+      expect(afterGame.runners.third).toBeNull();
+      expect(afterGame.score[0]?.away).toBe(1);
+
+      // 1. 二壘跑者右上角顯示 PO1-6
+      const r2AtBat = afterGame.events.find((e) => e.batterId === "R2");
+      expect(r2AtBat?.runnerAdvances?.at(-1)?.notation).toBe("PO1-6");
+
+      // 2. 三壘跑者畫出三壘往本壘無箭頭藍線
+      const r3AtBat = afterGame.events.find((e) => e.batterId === "R3");
+      const r3Advance = r3AtBat?.runnerAdvances?.at(-1);
+      expect(r3Advance?.fromBase).toBe(3);
+      expect(r3Advance?.toBase).toBe(4);
+
+      // 3. 當下打者打席格記錄非自責分 (⭕)
+      const currentBatterAtBat = afterGame.events.find((e) => e.batterId === "B2");
+      expect(currentBatterAtBat?.unearnedRunsDuringAtBat).toBe(1);
+    });
+
+    it("範例 4：雙殺/多重傳球牽制出局 - 牽制三壘出局 (PO1-5)，一壘跑者遭三壘手傳二壘手觸殺 (PO1-5-4)", () => {
+      const initialGame: Game = {
+        ...mockGame,
+        runners: { first: "R1", second: null, third: "R3" },
+        events: createEventsWithRunners(),
+      };
+
+      const outcomes: PickoffRunnerOutcome[] = [
+        {
+          runnerId: "R3",
+          fromBase: 3,
+          isTarget: true,
+          isOut: true,
+          notation: "PO1-5",
+        },
+        {
+          runnerId: "R1",
+          fromBase: 1,
+          isTarget: false,
+          isOut: true,
+          notation: "PO1-5-4",
+        },
+      ];
+
+      const afterGame = applyPickoffOutcome(initialGame, outcomes, "P1");
+
+      expect(afterGame.outs).toBe(2);
+      expect(afterGame.runners.first).toBeNull();
+      expect(afterGame.runners.third).toBeNull();
+
+      const r3AtBat = afterGame.events.find((e) => e.batterId === "R3");
+      expect(r3AtBat?.runnerAdvances?.at(-1)?.notation).toBe("PO1-5");
+
+      const r1AtBat = afterGame.events.find((e) => e.batterId === "R1");
+      expect(r1AtBat?.runnerAdvances?.at(-1)?.notation).toBe("PO1-5-4");
+    });
+
+    it("範例 5：牽制失誤導致得分 - 牽制三壘暴傳失誤 (PO1-5E)，三壘跑者回本壘得分", () => {
+      const initialGame: Game = {
+        ...mockGame,
+        runners: { first: null, second: null, third: "R3" },
+        events: createEventsWithRunners(),
+      };
+
+      const outcomes: PickoffRunnerOutcome[] = [
+        {
+          runnerId: "R3",
+          fromBase: 3,
+          isTarget: true,
+          isOut: false,
+          toBase: 4,
+          notation: "PO1-5E",
+        },
+      ];
+
+      const afterGame = applyPickoffOutcome(initialGame, outcomes, "P1");
+
+      expect(afterGame.outs).toBe(0);
+      expect(afterGame.runners.third).toBeNull();
+      expect(afterGame.score[0]?.away).toBe(1);
+
+      // 1. 三壘跑者右上角顯示 PO1-5E，推進線為無箭頭藍線
+      const r3AtBat = afterGame.events.find((e) => e.batterId === "R3");
+      const r3Advance = r3AtBat?.runnerAdvances?.at(-1);
+      expect(r3Advance?.notation).toBe("PO1-5E");
+      expect(r3Advance?.fromBase).toBe(3);
+      expect(r3Advance?.toBase).toBe(4);
+
+      const advanceLines = getRunnerAdvanceLines({ runnerAdvance: r3Advance });
+      expect(advanceLines[0]?.segment).toBe("third-to-home");
+      expect(advanceLines[0]?.hasArrow).toBe(false);
+
+      // 2. 當下打者打席格記錄非自責得分，供菱形中央繪製紅色空心圓圈 (⭕)
+      const currentBatterAtBat = afterGame.events.find((e) => e.batterId === "B2");
+      expect(currentBatterAtBat?.unearnedRunsDuringAtBat).toBe(1);
+    });
   });
 });

@@ -265,6 +265,8 @@ export type AtBatEvent = {
   recordCorrection?: RecordColumnCorrection;
   /** 第三好球漏接後合法上一壘；與一般三振出局須分開計算出局數。 */
   droppedThirdStrike?: boolean;
+  /** 該打席進行期間因牽制失誤、暴投、捕逸等特殊事件產生的跑者非自責分（本壘得分）個數；用於在打者打席格中央繪製紅圈 ⭕ */
+  unearnedRunsDuringAtBat?: number;
   /** 跑者後續進壘／盜壘事件，附加到讓該跑者上壘的來源打席，供各紀錄格同步顯示。 */
   runnerAdvances?: RunnerAdvanceRecord[];
   source?: AtBatSource;
@@ -1736,6 +1738,127 @@ export function finishGameWithEarlyEndAnnotation(game: Game): Game {
   };
   const withAnnotation = appendStatNeutralSpecialEvent(game, annotation);
   return { ...withAnnotation, status: "final", updatedAt: now };
+}
+
+export type PickoffRunnerOutcome = {
+  runnerId: string;
+  fromBase: 1 | 2 | 3;
+  isTarget?: boolean;
+  isOut: boolean;
+  toBase?: 2 | 3 | 4;
+  notation: string;
+};
+
+export function applyPickoffOutcome(
+  game: Game,
+  outcomes: PickoffRunnerOutcome[],
+  pitcherId?: string
+): Game {
+  if (!outcomes || outcomes.length === 0) return game;
+
+  const outsAdded = outcomes.filter((o) => o.isOut).length;
+  const runsScored = outcomes.filter((o) => !o.isOut && o.toBase === 4).length;
+
+  const currentRunners = { ...game.runners };
+  outcomes.forEach((o) => {
+    if (o.fromBase === 1 && currentRunners.first === o.runnerId) currentRunners.first = null;
+    if (o.fromBase === 2 && currentRunners.second === o.runnerId) currentRunners.second = null;
+    if (o.fromBase === 3 && currentRunners.third === o.runnerId) currentRunners.third = null;
+    if (!o.isOut && o.toBase) {
+      if (o.toBase === 2) currentRunners.second = o.runnerId;
+      if (o.toBase === 3) currentRunners.third = o.runnerId;
+    }
+  });
+
+  const nextOuts = game.outs + outsAdded;
+  const halfEnded = nextOuts >= 3;
+  const nextHalf: TeamSide = halfEnded ? (game.half === "away" ? "home" : "away") : game.half;
+  const nextInning = halfEnded && game.half === "home" ? game.inning + 1 : game.inning;
+  const nextScore = ensureScoreThroughInning(game.score, game.inning).map((row) =>
+    row.inning === game.inning ? { ...row, [game.half]: row[game.half] + runsScored } : row
+  );
+
+  let updatedEvents = [...game.events];
+
+  // 1. 更新跑者各自來源打席的 runnerAdvances
+  let outsAddedSoFar = 0;
+  outcomes.forEach((o, idx) => {
+    const sourceAtBat = [...updatedEvents].reverse().find((atBat) => atBat.batterId === o.runnerId);
+    if (sourceAtBat) {
+      const outNumber = o.isOut ? (Math.min(game.outs + outsAddedSoFar + 1, 3) as 1 | 2 | 3) : undefined;
+      if (o.isOut) outsAddedSoFar++;
+      const advance: RunnerAdvanceRecord = {
+        id: `pickoff-${Date.now()}-${idx}`,
+        type: "PO",
+        fromBase: o.fromBase,
+        toBase: o.toBase,
+        outNumber,
+        outType: o.isOut ? "PICKOFF_OUT" : undefined,
+        notation: o.notation,
+      };
+      updatedEvents = updatedEvents.map((atBat) =>
+        atBat.id === sourceAtBat.id
+          ? {
+              ...atBat,
+              runnerAdvances: [...(atBat.runnerAdvances ?? []), advance],
+            }
+          : atBat
+      );
+    }
+  });
+
+  // 2. 若有非自責分回本壘得分 (runsScored > 0)，記錄給當前半局最新打者打席格，供繪製紅圈 ⭕
+  if (runsScored > 0) {
+    const currentHalfEvents = updatedEvents.filter((e) => e.half === game.half && e.inning === game.inning);
+    const currentBatterAtBat = currentHalfEvents.at(-1);
+    if (currentBatterAtBat) {
+      updatedEvents = updatedEvents.map((atBat) =>
+        atBat.id === currentBatterAtBat.id
+          ? {
+              ...atBat,
+              unearnedRunsDuringAtBat: (atBat.unearnedRunsDuringAtBat ?? 0) + runsScored,
+            }
+          : atBat
+      );
+    }
+  }
+
+  const newRunners = halfEnded ? { first: null, second: null, third: null } : currentRunners;
+  const nextForceState = calculateForceState(newRunners, false);
+
+  const mainOutcome = outcomes.find((o) => o.isTarget) ?? outcomes[0];
+  const primaryEvent: SpecialEvent = {
+    id: `special-po-${Date.now()}`,
+    inning: game.inning,
+    half: game.half,
+    type: "PO",
+    runnerId: mainOutcome.runnerId,
+    pitcherId: pitcherId ?? game.events.at(-1)?.pitcherId,
+    fromBase: mainOutcome.fromBase,
+    toBase: mainOutcome.toBase,
+    pickoffBase: ({ 1: "FIRST", 2: "SECOND", 3: "THIRD" } as const)[mainOutcome.fromBase],
+    outType: mainOutcome.isOut ? "PICKOFF_OUT" : undefined,
+    runsScored,
+    outsBefore: game.outs,
+    notation: outcomes.map((o) => o.notation).join(" / "),
+    timestamp: new Date().toISOString(),
+  };
+
+  return {
+    ...game,
+    status: "live",
+    inning: nextInning,
+    half: nextHalf,
+    outs: halfEnded ? 0 : nextOuts,
+    runners: newRunners,
+    forceState: nextForceState,
+    score: nextScore,
+    events: halfEnded ? markLeftOnBase(updatedEvents, currentRunners, primaryEvent.id) : updatedEvents,
+    specialEvents: halfEnded
+      ? appendInningEndAnnotation([...(game.specialEvents ?? []), primaryEvent], primaryEvent)
+      : [...(game.specialEvents ?? []), primaryEvent],
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function updateGameAfterSpecialEvent(game: Game, event: SpecialEvent, runnerState: RunnerState, runs: number, outsAdded: number): Game {

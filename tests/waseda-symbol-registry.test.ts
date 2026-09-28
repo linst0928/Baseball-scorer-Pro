@@ -66,7 +66,7 @@ describe("早稻田符號系統標準與稽核 (Waseda Symbol Registry)", () => 
     const poLines = getRunnerAdvanceLines({
       runnerAdvance: { type: "PO", fromBase: 1, toBase: 2, notation: "PO1-3E" },
     });
-    expect(poLines[0]?.label).toBe("PO1-3E");
-    expect(poLines[0]?.hasArrow).toBe(true);
+    expect(poLines[0]?.label).toBeUndefined();
+    expect(poLines[0]?.hasArrow).toBe(false);
   });
 });

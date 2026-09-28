@@ -88,6 +88,7 @@ export type WasedaPersonalRecordCellProps = {
   runnerNotation?: string;
   innerMark?: string;
   runsScored?: number;
+  unearnedRunsDuringAtBat?: number;
   outsBefore?: number;
   label?: string;
   note?: string;
@@ -122,6 +123,7 @@ export function WasedaPersonalRecordCell({
   runnerNotation,
   innerMark: innerMarkOverride,
   runsScored,
+  unearnedRunsDuringAtBat,
   outsBefore,
   label,
   note,
@@ -238,7 +240,8 @@ export function WasedaPersonalRecordCell({
 
   // 中央菱形正中央：自責分 (ER) 顯示紅色實心圓點 ●，非自責分 (UER) 顯示紅色空心圓圈 ○
   const isUnearned = finalResult === "E" || modifiers.some((m) => /失誤|E[1-9]?|PB/i.test(m));
-  const runMark = finalRuns > 0 ? (isUnearned ? "○" : "●") : "";
+  const unearnedRuns = unearnedRunsDuringAtBat ?? event?.unearnedRunsDuringAtBat ?? 0;
+  const runMark = finalRuns > 0 ? (isUnearned ? "○" : "●") : (unearnedRuns > 0 ? "○" : "");
 
   /**
    * 早稻田菱形中央只記得分、出局、殘壘、CS 或不死三振；
