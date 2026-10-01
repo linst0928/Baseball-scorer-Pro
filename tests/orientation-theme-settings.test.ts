@@ -64,7 +64,7 @@ describe("Android 橫式與設定配色回饋", () => {
     expect(projection).toContain("ScorebookPitchingChangeBadge");
     expect(projection).toContain('code: "PH"');
     expect(projection).toContain('code: "PR"');
-    expect(projection).toContain('code: "PF"');
+    expect(projection).toContain('code: "PD"');
     expect(homeScreen).toContain("<ScorebookGameSelector");
     expect(homeScreen).toContain("<ScorebookDisplayEditor");
     expect(homeScreen).toContain("onLongPressAtBatEvent");

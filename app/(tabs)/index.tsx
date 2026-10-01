@@ -1503,16 +1503,72 @@ function App() {
     setShowEditGame(false);
   }, [updateActiveGame]);
 
-  const addSubstitution = useCallback((substitution: Omit<Substitution, "id" | "timestamp">) => {
+  const addSubstitution = useCallback((subInput: Omit<Substitution, "id" | "timestamp"> | Array<Omit<Substitution, "id" | "timestamp">>) => {
     if (!activeGame) return;
+    const subs = Array.isArray(subInput) ? subInput : [subInput];
+    if (!subs.length) return;
     gameHistoryRef.current[activeGame.id] = [...(gameHistoryRef.current[activeGame.id] ?? []), { game: activeGame, pitchDraft, fieldingPosition, selectedResult, recordColumnDraft }].slice(-20);
-    updateActiveGame((game) => ({
-      ...game,
-      substitutions: [...game.substitutions, { ...substitution, id: `sub-${Date.now()}`, timestamp: new Date().toISOString() }],
-      updatedAt: new Date().toISOString(),
+    const now = Date.now();
+    const timestamp = new Date().toISOString();
+    const newSubs: Substitution[] = subs.map((sub, idx) => ({
+      ...sub,
+      id: `sub-${now}-${idx}`,
+      timestamp: new Date(now + idx * 100).toISOString(),
     }));
+
+    updateActiveGame((game) => {
+      let nextAwayLineup = game.awayLineup ? { ...game.awayLineup, battingOrderIds: [...game.awayLineup.battingOrderIds], defensivePositions: { ...game.awayLineup.defensivePositions } } : undefined;
+      let nextHomeLineup = game.homeLineup ? { ...game.homeLineup, battingOrderIds: [...game.homeLineup.battingOrderIds], defensivePositions: { ...game.homeLineup.defensivePositions } } : undefined;
+
+      subs.forEach((sub) => {
+        const isAway = sub.teamId === game.awayTeamId;
+        const targetLineup = isAway ? nextAwayLineup : nextHomeLineup;
+        if (targetLineup) {
+          if (sub.type === "換守" || sub.type === "代守") {
+            if (sub.defensiveChangeType === "上下調動") {
+              const orderIdx = targetLineup.battingOrderIds.indexOf(sub.playerOutId);
+              if (orderIdx !== -1) {
+                targetLineup.battingOrderIds[orderIdx] = sub.playerInId;
+              }
+              delete targetLineup.defensivePositions[sub.playerOutId];
+              if (sub.position) {
+                targetLineup.defensivePositions[sub.playerInId] = sub.position;
+              }
+            } else if (sub.defensiveChangeType === "場上調動") {
+              if (sub.position) {
+                targetLineup.defensivePositions[sub.playerInId] = sub.position;
+              }
+            } else {
+              if (targetLineup.battingOrderIds.includes(sub.playerOutId) && !targetLineup.battingOrderIds.includes(sub.playerInId)) {
+                const orderIdx = targetLineup.battingOrderIds.indexOf(sub.playerOutId);
+                targetLineup.battingOrderIds[orderIdx] = sub.playerInId;
+                delete targetLineup.defensivePositions[sub.playerOutId];
+              }
+              if (sub.position) {
+                targetLineup.defensivePositions[sub.playerInId] = sub.position;
+              }
+            }
+          } else if (sub.type === "代打") {
+            const orderIdx = targetLineup.battingOrderIds.indexOf(sub.playerOutId);
+            if (orderIdx !== -1) {
+              targetLineup.battingOrderIds[orderIdx] = sub.playerInId;
+            }
+          }
+        }
+      });
+
+      return {
+        ...game,
+        awayLineup: nextAwayLineup,
+        homeLineup: nextHomeLineup,
+        substitutions: [...game.substitutions, ...newSubs],
+        updatedAt: timestamp,
+      };
+    });
+
     setShowSubstitution(false);
-    announceOperationFeedback("success", "換人已寫入", `${substitution.type}已記錄；人員與守備調整可使用「復原上一筆」回退。`);
+    const mainType = subs[0]?.type ?? "換人";
+    announceOperationFeedback("success", "換人已寫入", `${mainType}已記錄；人員與守備調整可使用「復原上一筆」回退。`);
   }, [activeGame, announceOperationFeedback, fieldingPosition, pitchDraft, recordColumnDraft, selectedResult, updateActiveGame]);
 
   const recordManualAtBat = useCallback((draft: ManualAtBatDraft) => {
@@ -6799,17 +6855,46 @@ function LegacySubstitutionModal({ visible, game, teams, initialType, onClose, o
   return <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalSheet}><View style={styles.modalHandle} /><View style={styles.modalHeader}><Text style={styles.modalTitle}>新增換人紀錄</Text><Pressable onPress={onClose}><Text style={styles.modalClose}>關閉</Text></Pressable></View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}><Text style={styles.inputLabel}>換人類型</Text><View style={styles.modalChoiceRow}>{(["代打", "代跑", "換投", "換守"] as SubstitutionType[]).map((choice) => <Pressable key={choice} onPress={() => { setType(choice); if (choice !== "換守") setPosition(choice); }} style={[styles.modalChoice, type === choice && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, type === choice && styles.modalChoiceTextActive]}>{choice}</Text></Pressable>)}</View><Text style={styles.inputLabel}>換人球隊</Text><View style={styles.modalChoiceRow}>{teams.map((candidate) => <Pressable key={candidate.id} onPress={() => setTeamId(candidate.id)} style={[styles.modalChoice, teamId === candidate.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, teamId === candidate.id && styles.modalChoiceTextActive]}>{candidate.name}</Text></Pressable>)}</View><Text style={styles.inputLabel}>退場球員</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>{team.players.map((player) => <Pressable key={`out-${player.id}`} onPress={() => setPlayerOutId(player.id)} style={[styles.modalPlayerChip, player.id === playerOutId && styles.modalChoiceActive]}><Text style={[styles.modalPlayerChipNumber, player.id === playerOutId && styles.modalChoiceTextActive]}>{player.number}</Text><Text style={[styles.modalPlayerChipName, player.id === playerOutId && styles.modalChoiceTextActive]}>{player.name} {playerHandAbbr(player)}</Text></Pressable>)}</ScrollView><Text style={styles.inputLabel}>{type === "換守" ? "換入／調動球員" : "替補球員"}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>{team.players.map((player) => <Pressable key={`in-${player.id}`} onPress={() => { setPlayerInId(player.id); if (type === "換守") setPosition(player.position || "游擊"); }} style={[styles.modalPlayerChip, player.id === playerInId && styles.modalChoiceActive]}><Text style={[styles.modalPlayerChipNumber, player.id === playerInId && styles.modalChoiceTextActive]}>{player.number}</Text><Text style={[styles.modalPlayerChipName, player.id === playerInId && styles.modalChoiceTextActive]}>{player.name} {playerHandAbbr(player)}</Text></Pressable>)}</ScrollView><Text style={styles.inputLabel}>{type === "換守" ? "新守備位置" : "接替位置／角色"}</Text>{type === "換守" ? <View style={styles.modalChoiceRow}>{FIELD_POSITIONS.map((field) => <Pressable key={field.number} onPress={() => setPosition(field.label)} style={[styles.modalChoice, position === field.label && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, position === field.label && styles.modalChoiceTextActive]}>{field.number} · {field.label}</Text></Pressable>)}</View> : <TextInput value={position} onChangeText={setPosition} style={styles.formInput} placeholder="例如：投手、游擊、代打" placeholderTextColor={BRAND.muted} />}<Text style={styles.substitutionContext}>記錄時間：{game.inning} 局 {game.half === "away" ? "上" : "下"} · 類型：{type} · 目前第 {game.substitutions.length + 1} 次換人</Text><Button label="儲存換人紀錄" onPress={() => { if (playerOutId === playerInId) { Alert.alert("球員不能相同", "請選擇不同的退場與替補球員。"); return; } onSubmit({ inning: game.inning, half: game.half, teamId, playerOutId, playerInId, position, type }); }} /></ScrollView></View></View></Modal>;
 }
 
-function SubstitutionModal({ visible, game, teams, initialType, initialHandoffPitchNumber = 0, onClose, onSubmit }: { visible: boolean; game: Game; teams: Team[]; initialType: SubstitutionType; initialHandoffPitchNumber?: number; onClose: () => void; onSubmit: (substitution: Omit<Substitution, "id" | "timestamp">) => void }) {
+function SubstitutionModal({ visible, game, teams, initialType, initialHandoffPitchNumber = 0, onClose, onSubmit }: { visible: boolean; game: Game; teams: Team[]; initialType: SubstitutionType; initialHandoffPitchNumber?: number; onClose: () => void; onSubmit: (substitution: Omit<Substitution, "id" | "timestamp"> | Array<Omit<Substitution, "id" | "timestamp">>) => void }) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [type, setType] = useState<SubstitutionType>(initialType);
   const [teamId, setTeamId] = useState(game.awayTeamId);
+
+  // 【換守】狀態機專用狀態
+  const [defensiveCountMode, setDefensiveCountMode] = useState<"single" | "multi">("single");
+  const [defensivePurpose, setDefensivePurpose] = useState<"offfield" | "onfield">("offfield");
+  const [defensivePlayerOutId, setDefensivePlayerOutId] = useState("");
+  const [defensivePlayerInId, setDefensivePlayerInId] = useState("");
+  const [defensivePosition, setDefensivePosition] = useState("");
+  const [defensiveSwapPlayer1Id, setDefensiveSwapPlayer1Id] = useState("");
+  const [defensiveSwapPlayer2Id, setDefensiveSwapPlayer2Id] = useState("");
+  const [pendingDefensiveSubs, setPendingDefensiveSubs] = useState<Array<Omit<Substitution, "id" | "timestamp">>>([]);
+
+  // 代打／代跑／換投狀態
   const [playerOutId, setPlayerOutId] = useState("");
   const [playerInId, setPlayerInId] = useState("");
   const [position, setPosition] = useState("");
   const [handoffPitchNumber, setHandoffPitchNumber] = useState("0");
+
   const team = teams.find((candidate) => candidate.id === teamId) ?? teams[0];
+  const side = teamId === game.awayTeamId ? "away" : "home";
+  const currentLineup = side === "away" ? game.awayLineup : game.homeLineup;
+  const onFieldPlayerIds = useMemo(() => new Set(currentLineup?.battingOrderIds ?? team?.players.slice(0, 9).map((p) => p.id) ?? []), [currentLineup, team]);
+
+  const onFieldPlayers = useMemo(() => (team?.players ?? []).filter((p) => onFieldPlayerIds.has(p.id)), [onFieldPlayerIds, team]);
+  const offFieldPlayers = useMemo(() => (team?.players ?? []).filter((p) => !onFieldPlayerIds.has(p.id)), [onFieldPlayerIds, team]);
+
   const playerOut = team?.players.find((player) => player.id === playerOutId);
   const playerIn = team?.players.find((player) => player.id === playerInId);
+
+  const defOutPlayer = team?.players.find((p) => p.id === defensivePlayerOutId);
+  const defInPlayer = team?.players.find((p) => p.id === defensivePlayerInId);
+  const swap1Player = team?.players.find((p) => p.id === defensiveSwapPlayer1Id);
+  const swap2Player = team?.players.find((p) => p.id === defensiveSwapPlayer2Id);
+
+  const getPlayerCurrentDefPos = useCallback((playerId: string) => {
+    return currentLineup?.defensivePositions[playerId] || team?.players.find((p) => p.id === playerId)?.position || "—";
+  }, [currentLineup, team]);
 
   useEffect(() => {
     if (!visible) return;
@@ -6818,6 +6903,14 @@ function SubstitutionModal({ visible, game, teams, initialType, initialHandoffPi
     setStep(1);
     setType(initialType);
     setTeamId(initialTeam?.id ?? "");
+    setDefensiveCountMode("single");
+    setDefensivePurpose("offfield");
+    setDefensivePlayerOutId(players[0]?.id ?? "");
+    setDefensivePlayerInId("");
+    setDefensivePosition(players[0]?.position ?? "游擊");
+    setDefensiveSwapPlayer1Id(players[0]?.id ?? "");
+    setDefensiveSwapPlayer2Id(players[1]?.id ?? "");
+    setPendingDefensiveSubs([]);
     setPlayerOutId(players[0]?.id ?? "");
     setPlayerInId(players[1]?.id ?? players[0]?.id ?? "");
     setPosition(initialType === "換守" ? (players[1]?.position ?? "游擊") : initialType);
@@ -6830,25 +6923,532 @@ function SubstitutionModal({ visible, game, teams, initialType, initialHandoffPi
     setTeamId(nextTeamId);
     setPlayerOutId(players[0]?.id ?? "");
     setPlayerInId(players[1]?.id ?? players[0]?.id ?? "");
+    setDefensivePlayerOutId(players[0]?.id ?? "");
+    setDefensivePlayerInId("");
+    setDefensiveSwapPlayer1Id(players[0]?.id ?? "");
+    setDefensiveSwapPlayer2Id(players[1]?.id ?? "");
+    setPendingDefensiveSubs([]);
     setPosition(type === "換守" ? (players[1]?.position ?? "游擊") : type);
   };
+
   const chooseType = (nextType: SubstitutionType) => {
     setType(nextType);
+    setStep(1);
     setPosition(nextType === "換守" ? (playerIn?.position ?? "游擊") : nextType);
   };
+
   const parsedHandoffPitchNumber = /^\d+$/.test(handoffPitchNumber.trim()) ? Number.parseInt(handoffPitchNumber, 10) : undefined;
   const hasValidHandoffPitchNumber = typeof parsedHandoffPitchNumber === "number" && Number.isSafeInteger(parsedHandoffPitchNumber) && parsedHandoffPitchNumber >= 0;
   const handoffSummary = hasValidHandoffPitchNumber ? parsedHandoffPitchNumber === 0 ? "打席開始交接" : `第 ${parsedHandoffPitchNumber} 球交接` : "請輸入 0 或正整數";
-  const canContinue = step === 1 ? Boolean(teamId) : step === 2 ? Boolean(playerOutId) : step === 3 ? Boolean(playerInId) && playerInId !== playerOutId : Boolean(position.trim()) && hasValidHandoffPitchNumber;
-  const stepTitle = (["類型與球隊", "退場球員", "換入球員", "守備／摘要"] as const)[step - 1];
+
+  const addCurrentDefensiveSubToPending = () => {
+    if (defensivePurpose === "offfield") {
+      if (!defensivePlayerOutId || !defensivePlayerInId) {
+        Alert.alert("請選擇球員", "請先選擇退場的場上球員與替補的場下球員。");
+        return;
+      }
+      if (onFieldPlayerIds.has(defensivePlayerInId)) {
+        Alert.alert("球員已在場上", "替換的場下球員不可為已在場上的球員。");
+        return;
+      }
+      const newSub: Omit<Substitution, "id" | "timestamp"> = {
+        inning: game.inning,
+        half: game.half,
+        teamId,
+        playerOutId: defensivePlayerOutId,
+        playerInId: defensivePlayerInId,
+        position: defensivePosition.trim() || getPlayerCurrentDefPos(defensivePlayerOutId),
+        type: "換守",
+        defensiveChangeType: "上下調動",
+      };
+      setPendingDefensiveSubs((prev) => [...prev, newSub]);
+      setDefensivePlayerInId("");
+      Alert.alert("已加入調動", "已加入一筆上下調動。可繼續選擇下一位調動，或點選下一步完成預覽。");
+    } else {
+      if (!defensiveSwapPlayer1Id || !defensiveSwapPlayer2Id) {
+        Alert.alert("請選擇球員", "請選擇欲互換守位的兩位場上球員。");
+        return;
+      }
+      if (defensiveSwapPlayer1Id === defensiveSwapPlayer2Id) {
+        Alert.alert("球員不能相同", "互換守位請選擇兩位不同的場上球員。");
+        return;
+      }
+      const pos1 = getPlayerCurrentDefPos(defensiveSwapPlayer1Id);
+      const pos2 = getPlayerCurrentDefPos(defensiveSwapPlayer2Id);
+      const sub1: Omit<Substitution, "id" | "timestamp"> = {
+        inning: game.inning,
+        half: game.half,
+        teamId,
+        playerOutId: defensiveSwapPlayer1Id,
+        playerInId: defensiveSwapPlayer1Id,
+        position: pos2,
+        type: "換守",
+        defensiveChangeType: "場上調動",
+      };
+      const sub2: Omit<Substitution, "id" | "timestamp"> = {
+        inning: game.inning,
+        half: game.half,
+        teamId,
+        playerOutId: defensiveSwapPlayer2Id,
+        playerInId: defensiveSwapPlayer2Id,
+        position: pos1,
+        type: "換守",
+        defensiveChangeType: "場上調動",
+      };
+      setPendingDefensiveSubs((prev) => [...prev, sub1, sub2]);
+      setDefensiveSwapPlayer1Id("");
+      setDefensiveSwapPlayer2Id("");
+      Alert.alert("已加入調動", "已加入一組場上守位互換。可繼續選擇下一組調動，或點選下一步完成預覽。");
+    }
+  };
+
+  const getDefensiveSubsToSubmit = (): Array<Omit<Substitution, "id" | "timestamp">> => {
+    if (defensiveCountMode === "multi") {
+      if (pendingDefensiveSubs.length > 0) return pendingDefensiveSubs;
+    }
+    if (defensivePurpose === "offfield") {
+      return [{
+        inning: game.inning,
+        half: game.half,
+        teamId,
+        playerOutId: defensivePlayerOutId,
+        playerInId: defensivePlayerInId,
+        position: defensivePosition.trim() || getPlayerCurrentDefPos(defensivePlayerOutId),
+        type: "換守",
+        defensiveChangeType: "上下調動",
+      }];
+    } else {
+      const pos1 = getPlayerCurrentDefPos(defensiveSwapPlayer1Id);
+      const pos2 = getPlayerCurrentDefPos(defensiveSwapPlayer2Id);
+      return [
+        {
+          inning: game.inning,
+          half: game.half,
+          teamId,
+          playerOutId: defensiveSwapPlayer1Id,
+          playerInId: defensiveSwapPlayer1Id,
+          position: pos2,
+          type: "換守",
+          defensiveChangeType: "場上調動",
+        },
+        {
+          inning: game.inning,
+          half: game.half,
+          teamId,
+          playerOutId: defensiveSwapPlayer2Id,
+          playerInId: defensiveSwapPlayer2Id,
+          position: pos1,
+          type: "換守",
+          defensiveChangeType: "場上調動",
+        },
+      ];
+    }
+  };
+
+  const canContinueDefensive = () => {
+    if (step === 1) return Boolean(teamId);
+    if (step === 2) return Boolean(defensivePurpose);
+    if (step === 3) {
+      if (defensiveCountMode === "multi" && pendingDefensiveSubs.length > 0) return true;
+      if (defensivePurpose === "offfield") {
+        return Boolean(defensivePlayerOutId && defensivePlayerInId && defensivePlayerOutId !== defensivePlayerInId);
+      } else {
+        return Boolean(defensiveSwapPlayer1Id && defensiveSwapPlayer2Id && defensiveSwapPlayer1Id !== defensiveSwapPlayer2Id);
+      }
+    }
+    return true;
+  };
+
+  const canContinueStandard = step === 1 ? Boolean(teamId) : step === 2 ? Boolean(playerOutId) : step === 3 ? Boolean(playerInId) && playerInId !== playerOutId : Boolean(position.trim()) && hasValidHandoffPitchNumber;
+
+  const canContinue = type === "換守" ? canContinueDefensive() : canContinueStandard;
+
+  const isDefensive = type === "換守";
+  const stepTitle = isDefensive
+    ? (["換守人數與球隊", "換守目的", "調動球員排定", "調動預覽與確認"] as const)[step - 1]
+    : (["類型與球隊", "退場球員", "換入球員", "守備／摘要"] as const)[step - 1];
+
   if (!team) return null;
 
-  return <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalSheet}><View style={styles.modalHandle} /><View style={styles.modalHeader}><View><Text style={styles.modalTitle}>換人逐步記錄</Text><Text style={styles.modalSubtitle}>每一步可返回修正；完成前不會寫入單場紀錄。</Text></View><Pressable onPress={onClose}><Text style={styles.modalClose}>取消</Text></Pressable></View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}><View style={styles.wizardStepRow}>{([1, 2, 3, 4] as const).map((item) => <View key={item} style={[styles.wizardStepChip, item === step && styles.wizardStepChipActive, item < step && styles.wizardStepChipDone]}><Text style={[styles.wizardStepIndex, item <= step && styles.wizardStepIndexActive]}>{item}</Text><Text style={[styles.wizardStepText, item === step && styles.wizardStepTextActive]}>{item === 1 ? "類型" : item === 2 ? "退場" : item === 3 ? "換入" : "核對"}</Text></View>)}</View><Text style={styles.substitutionWizardStage}>第 {step}／4 步｜{stepTitle}</Text>
-    {step === 1 ? <><Text style={styles.inputLabel}>換人類型</Text><View style={styles.modalChoiceRow}>{(["代打", "代跑", "換投", "換守"] as SubstitutionType[]).map((choice) => <Pressable key={choice} onPress={() => chooseType(choice)} style={[styles.modalChoice, type === choice && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, type === choice && styles.modalChoiceTextActive]}>{choice}</Text></Pressable>)}</View><Text style={styles.inputLabel}>換人球隊</Text><View style={styles.modalChoiceRow}>{teams.map((candidate) => <Pressable key={candidate.id} onPress={() => chooseTeam(candidate.id)} style={[styles.modalChoice, teamId === candidate.id && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, teamId === candidate.id && styles.modalChoiceTextActive]}>{candidate.name}</Text></Pressable>)}</View><Text style={styles.substitutionContext}>記錄時點：第 {game.inning} 局{game.half === "away" ? "上" : "下"}；換人會同時列入分隊完整紀錄表與換人歷程。</Text></> : null}
-    {step === 2 ? <><Text style={styles.inputLabel}>選擇退場球員｜{team.name}</Text><Text style={styles.modalSubtitle}>請選擇被接替的球員；下一步才選擇替補者。</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>{team.players.map((player) => <Pressable key={`out-${player.id}`} onPress={() => setPlayerOutId(player.id)} style={[styles.modalPlayerChip, player.id === playerOutId && styles.modalChoiceActive]}><Text style={[styles.modalPlayerChipNumber, player.id === playerOutId && styles.modalChoiceTextActive]}>#{player.number}</Text><Text style={[styles.modalPlayerChipName, player.id === playerOutId && styles.modalChoiceTextActive]}>{player.name} {playerHandAbbr(player)}</Text></Pressable>)}</ScrollView></> : null}
-    {step === 3 ? <><Text style={styles.inputLabel}>選擇{type === "換守" ? "調動" : "替補"}球員｜{team.name}</Text><Text style={styles.modalSubtitle}>已選退場：#{playerOut?.number ?? "—"} {playerOut?.name ?? "未選擇"}。不可選擇同一位球員。</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>{team.players.map((player) => <Pressable key={`in-${player.id}`} onPress={() => { if (player.id !== playerOutId) { setPlayerInId(player.id); if (type === "換守") setPosition(player.position || "游擊"); } }} style={[styles.modalPlayerChip, player.id === playerInId && styles.modalChoiceActive, player.id === playerOutId && styles.modalPlayerChipDisabled]}><Text style={[styles.modalPlayerChipNumber, player.id === playerInId && styles.modalChoiceTextActive]}>{player.number}</Text><Text style={[styles.modalPlayerChipName, player.id === playerInId && styles.modalChoiceTextActive]}>{player.name} {playerHandAbbr(player)}</Text></Pressable>)}</ScrollView></> : null}
-    {step === 4 ? <><Text style={styles.inputLabel}>{type === "換守" ? "新守備位置" : "接替角色"}</Text>{type === "換守" ? <View style={styles.modalChoiceRow}>{FIELD_POSITIONS.map((field) => <Pressable key={field.number} onPress={() => setPosition(field.label)} style={[styles.modalChoice, position === field.label && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, position === field.label && styles.modalChoiceTextActive]}>{field.number} · {field.label}</Text></Pressable>)}</View> : <TextInput value={position} onChangeText={setPosition} style={styles.formInput} placeholder="例如：投手、游擊、代打" placeholderTextColor={BRAND.muted} />}<Text style={styles.inputLabel}>第 N 球交接</Text><TextInput value={handoffPitchNumber} onChangeText={(value) => setHandoffPitchNumber(value.replace(/[^\d]/g, ""))} keyboardType="number-pad" returnKeyType="done" style={styles.formInput} placeholder="0" placeholderTextColor={BRAND.muted} accessibilityLabel="本打席已記錄球數" /><Text style={styles.substitutionContext}>此數字表示本打席已記錄的球數。0 代表「打席開始交接」，不是第一球後；舊場次沒有此欄位時不會被推測為精確球序。</Text><View style={styles.confirmationSummary}><Text style={styles.confirmationSummaryTitle}>寫入前影響摘要</Text><Text style={styles.confirmationSummaryText}>{team.name}｜{type}</Text><Text style={styles.confirmationSummaryText}>#{playerOut?.number ?? "—"} {playerOut?.name ?? "未選擇"} → #{playerIn?.number ?? "—"} {playerIn?.name ?? "未選擇"}</Text><Text style={styles.confirmationSummaryText}>接替位置／角色：{position || "未選擇"}</Text><Text style={styles.confirmationSummaryText}>精確交接：{handoffSummary}</Text><Text style={styles.confirmationSummaryText}>時點：第 {game.inning} 局{game.half === "away" ? "上" : "下"}。寫入後仍可從完整紀錄的歷程選擇該筆資料查看與復原。</Text></View></> : null}
-    <View style={styles.confirmationActionRow}><View style={styles.confirmationActionFlex}>{step === 1 ? <Button label="取消" onPress={onClose} variant="secondary" touch fluid /> : <Button label="上一步" onPress={() => setStep((current) => (current - 1) as 1 | 2 | 3)} variant="secondary" touch fluid />}</View><View style={styles.confirmationActionFlex}>{step < 4 ? <Button label="下一步" onPress={() => setStep((current) => (current + 1) as 2 | 3 | 4)} disabled={!canContinue} touch fluid /> : <Button label="確認寫入換人" onPress={() => { if (playerOutId === playerInId) { Alert.alert("球員不能相同", "請返回上一步，選擇不同的退場與替補球員。"); return; } if (!hasValidHandoffPitchNumber || typeof parsedHandoffPitchNumber !== "number") { Alert.alert("交接球數無效", "請輸入 0 或正整數；0 代表打席開始交接。"); return; } onSubmit({ inning: game.inning, half: game.half, teamId, playerOutId, playerInId, position: position.trim(), type, handoffPitchNumber: parsedHandoffPitchNumber }); }} disabled={!canContinue} touch fluid />}</View></View></ScrollView></View></View></Modal>;
+  return <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <View style={styles.modalBackdrop}>
+      <View style={styles.modalSheet}>
+        <View style={styles.modalHandle} />
+        <View style={styles.modalHeader}>
+          <View>
+            <Text style={styles.modalTitle}>{isDefensive ? "換守調動記錄 (State Machine)" : "換人逐步記錄"}</Text>
+            <Text style={styles.modalSubtitle}>每一步可返回修正；完成前不會寫入單場紀錄。</Text>
+          </View>
+          <Pressable onPress={onClose}><Text style={styles.modalClose}>取消</Text></Pressable>
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+          <View style={styles.wizardStepRow}>
+            {([1, 2, 3, 4] as const).map((item) => (
+              <View key={item} style={[styles.wizardStepChip, item === step && styles.wizardStepChipActive, item < step && styles.wizardStepChipDone]}>
+                <Text style={[styles.wizardStepIndex, item <= step && styles.wizardStepIndexActive]}>{item}</Text>
+                <Text style={[styles.wizardStepText, item === step && styles.wizardStepTextActive]}>
+                  {isDefensive
+                    ? (item === 1 ? "人數" : item === 2 ? "目的" : item === 3 ? "調動" : "確認")
+                    : (item === 1 ? "類型" : item === 2 ? "退場" : item === 3 ? "換入" : "核對")}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.substitutionWizardStage}>第 {step}／4 步｜{stepTitle}</Text>
+
+          {/* ===== 換守專屬狀態機流程 ===== */}
+          {isDefensive ? <>
+            {step === 1 ? <>
+              <Text style={styles.inputLabel}>換人類型</Text>
+              <View style={styles.modalChoiceRow}>
+                {(["代打", "代跑", "換投", "換守"] as SubstitutionType[]).map((choice) => (
+                  <Pressable key={choice} onPress={() => chooseType(choice)} style={[styles.modalChoice, type === choice && styles.modalChoiceActive]}>
+                    <Text style={[styles.modalChoiceText, type === choice && styles.modalChoiceTextActive]}>{choice}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>Step 1. 選擇【換守人數】</Text>
+              <View style={styles.modalChoiceRow}>
+                <Pressable onPress={() => setDefensiveCountMode("single")} style={[styles.modalChoice, defensiveCountMode === "single" && styles.modalChoiceActive]}>
+                  <Text style={[styles.modalChoiceText, defensiveCountMode === "single" && styles.modalChoiceTextActive]}>單人調動</Text>
+                </Pressable>
+                <Pressable onPress={() => setDefensiveCountMode("multi")} style={[styles.modalChoice, defensiveCountMode === "multi" && styles.modalChoiceActive]}>
+                  <Text style={[styles.modalChoiceText, defensiveCountMode === "multi" && styles.modalChoiceTextActive]}>多人調動</Text>
+                </Pressable>
+              </View>
+
+              <Text style={styles.inputLabel}>換守球隊</Text>
+              <View style={styles.modalChoiceRow}>
+                {teams.map((candidate) => (
+                  <Pressable key={candidate.id} onPress={() => chooseTeam(candidate.id)} style={[styles.modalChoice, teamId === candidate.id && styles.modalChoiceActive]}>
+                    <Text style={[styles.modalChoiceText, teamId === candidate.id && styles.modalChoiceTextActive]}>{candidate.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.substitutionContext}>記錄時點：第 {game.inning} 局{game.half === "away" ? "上" : "下"}；換守將依最新早稻田規範精確渲染。</Text>
+            </> : null}
+
+            {step === 2 ? <>
+              <Text style={styles.inputLabel}>Step 2. 選擇【換守目的】｜{team.name}</Text>
+              <View style={styles.modalChoiceRow}>
+                <Pressable onPress={() => { setDefensivePurpose("offfield"); setDefensivePlayerInId(""); }} style={[styles.modalChoice, defensivePurpose === "offfield" && styles.modalChoiceActive]}>
+                  <Text style={[styles.modalChoiceText, defensivePurpose === "offfield" && styles.modalChoiceTextActive]}>上下調動 (原球員換下場，場下替補上場)</Text>
+                </Pressable>
+                <Pressable onPress={() => { setDefensivePurpose("onfield"); setDefensiveSwapPlayer1Id(onFieldPlayers[0]?.id ?? ""); setDefensiveSwapPlayer2Id(onFieldPlayers[1]?.id ?? ""); }} style={[styles.modalChoice, defensivePurpose === "onfield" && styles.modalChoiceActive]}>
+                  <Text style={[styles.modalChoiceText, defensivePurpose === "onfield" && styles.modalChoiceTextActive]}>場上調動 (球員未退場，互換守備位置)</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.confirmationSummary}>
+                <Text style={styles.confirmationSummaryTitle}>渲染規則說明</Text>
+                {defensivePurpose === "offfield" ? (
+                  <Text style={styles.confirmationSummaryText}>
+                    • 【上下調動】：發生換人該局打席格最左側畫上垂直波浪線「︴」，並標註「PD 新上場球員」；打序欄填上「PD、姓名、背號」。
+                  </Text>
+                ) : (
+                  <Text style={styles.confirmationSummaryText}>
+                    • 【場上調動】：不畫波浪線，打序名單保持原樣；守備欄更新為局數調動格式（如 1B-D2P、P-D21B）。
+                  </Text>
+                )}
+              </View>
+            </> : null}
+
+            {step === 3 ? <>
+              {defensivePurpose === "offfield" ? <>
+                {/* Step 2-1 上下調動 */}
+                <Text style={styles.inputLabel}>Step 2-1-1. 點選退場【場上球員】｜{team.name}</Text>
+                <Text style={styles.modalSubtitle}>請點選目前在場上要換下場的先發／守備球員：</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>
+                  {onFieldPlayers.map((player) => (
+                    <Pressable
+                      key={`def-out-${player.id}`}
+                      onPress={() => {
+                        setDefensivePlayerOutId(player.id);
+                        setDefensivePosition(getPlayerCurrentDefPos(player.id));
+                      }}
+                      style={[styles.modalPlayerChip, player.id === defensivePlayerOutId && styles.modalChoiceActive]}
+                    >
+                      <Text style={[styles.modalPlayerChipNumber, player.id === defensivePlayerOutId && styles.modalChoiceTextActive]}>#{player.number}</Text>
+                      <Text style={[styles.modalPlayerChipName, player.id === defensivePlayerOutId && styles.modalChoiceTextActive]}>{player.name} ({getPlayerCurrentDefPos(player.id)})</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                <Text style={styles.inputLabel}>Step 2-1-2. 點選替換【場下球員】 (系統防呆：已在場上不可選)</Text>
+                <Text style={styles.modalSubtitle}>已選退場：#{defOutPlayer?.number ?? "—"} {defOutPlayer?.name ?? "未選擇"}。請選擇板凳／候補球員：</Text>
+                {offFieldPlayers.length === 0 ? (
+                  <Text style={styles.emptyText}>目前無可用的場下候補球員。</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>
+                    {offFieldPlayers.map((player) => {
+                      const isSelected = player.id === defensivePlayerInId;
+                      return (
+                        <Pressable
+                          key={`def-in-${player.id}`}
+                          onPress={() => setDefensivePlayerInId(player.id)}
+                          style={[styles.modalPlayerChip, isSelected && styles.modalChoiceActive]}
+                        >
+                          <Text style={[styles.modalPlayerChipNumber, isSelected && styles.modalChoiceTextActive]}>#{player.number}</Text>
+                          <Text style={[styles.modalPlayerChipName, isSelected && styles.modalChoiceTextActive]}>{player.name} {playerHandAbbr(player)}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+
+                <Text style={styles.inputLabel}>Step 2-1-3. 確認新上場守備位置</Text>
+                <View style={styles.modalChoiceRow}>
+                  {FIELD_POSITIONS.map((field) => (
+                    <Pressable key={field.number} onPress={() => setDefensivePosition(field.label)} style={[styles.modalChoice, defensivePosition === field.label && styles.modalChoiceActive]}>
+                      <Text style={[styles.modalChoiceText, defensivePosition === field.label && styles.modalChoiceTextActive]}>{field.number} · {field.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {defensiveCountMode === "multi" ? (
+                  <View style={{ marginTop: 8, gap: 6 }}>
+                    <Button label="＋ 加入此筆上下調動並繼續設定下一位" onPress={addCurrentDefensiveSubToPending} variant="secondary" touch fluid />
+                    {pendingDefensiveSubs.length > 0 ? (
+                      <View style={styles.confirmationSummary}>
+                        <Text style={styles.confirmationSummaryTitle}>已排定的調動清單 ({pendingDefensiveSubs.length} 筆)</Text>
+                        {pendingDefensiveSubs.map((sub, idx) => {
+                          const pOut = team.players.find((p) => p.id === sub.playerOutId);
+                          const pIn = team.players.find((p) => p.id === sub.playerInId);
+                          return (
+                            <Text key={idx} style={styles.confirmationSummaryText}>
+                              • 上下調動：#{pOut?.number} {pOut?.name} → #{pIn?.number} {pIn?.name} (守 {sub.position})
+                            </Text>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+              </> : <>
+                {/* Step 2-2 場上調動 */}
+                <Text style={styles.inputLabel}>Step 2-2-1. 點選第 1 位欲更換守位【場上球員】</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>
+                  {onFieldPlayers.map((player) => (
+                    <Pressable
+                      key={`swap-1-${player.id}`}
+                      onPress={() => setDefensiveSwapPlayer1Id(player.id)}
+                      style={[styles.modalPlayerChip, player.id === defensiveSwapPlayer1Id && styles.modalChoiceActive]}
+                    >
+                      <Text style={[styles.modalPlayerChipNumber, player.id === defensiveSwapPlayer1Id && styles.modalChoiceTextActive]}>#{player.number}</Text>
+                      <Text style={[styles.modalPlayerChipName, player.id === defensiveSwapPlayer1Id && styles.modalChoiceTextActive]}>{player.name} ({getPlayerCurrentDefPos(player.id)})</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                <Text style={styles.inputLabel}>Step 2-2-2. 點選第 2 位欲互換守位【場上球員】 (不可為同一人)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>
+                  {onFieldPlayers.map((player) => {
+                    const isSelf = player.id === defensiveSwapPlayer1Id;
+                    const isSelected = player.id === defensiveSwapPlayer2Id;
+                    return (
+                      <Pressable
+                        key={`swap-2-${player.id}`}
+                        disabled={isSelf}
+                        onPress={() => setDefensiveSwapPlayer2Id(player.id)}
+                        style={[styles.modalPlayerChip, isSelected && styles.modalChoiceActive, isSelf && styles.modalPlayerChipDisabled]}
+                      >
+                        <Text style={[styles.modalPlayerChipNumber, isSelected && styles.modalChoiceTextActive]}>#{player.number}</Text>
+                        <Text style={[styles.modalPlayerChipName, isSelected && styles.modalChoiceTextActive]}>{player.name} ({getPlayerCurrentDefPos(player.id)})</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                <View style={styles.confirmationSummary}>
+                  <Text style={styles.confirmationSummaryTitle}>互換守位預覽</Text>
+                  <Text style={styles.confirmationSummaryText}>
+                    • #{swap1Player?.number ?? "—"} {swap1Player?.name ?? "未選"} ({getPlayerCurrentDefPos(defensiveSwapPlayer1Id)}) ➔ 轉守 {getPlayerCurrentDefPos(defensiveSwapPlayer2Id) || "—"}
+                  </Text>
+                  <Text style={styles.confirmationSummaryText}>
+                    • #{swap2Player?.number ?? "—"} {swap2Player?.name ?? "未選"} ({getPlayerCurrentDefPos(defensiveSwapPlayer2Id)}) ➔ 轉守 {getPlayerCurrentDefPos(defensiveSwapPlayer1Id) || "—"}
+                  </Text>
+                  <Text style={styles.confirmationSummaryText}>（打序名單與球員姓名保持不變）</Text>
+                </View>
+
+                {defensiveCountMode === "multi" ? (
+                  <View style={{ marginTop: 8, gap: 6 }}>
+                    <Button label="＋ 加入此組場上互換並繼續設定下一組" onPress={addCurrentDefensiveSubToPending} variant="secondary" touch fluid />
+                    {pendingDefensiveSubs.length > 0 ? (
+                      <View style={styles.confirmationSummary}>
+                        <Text style={styles.confirmationSummaryTitle}>已排定的調動清單 ({pendingDefensiveSubs.length / 2} 組)</Text>
+                        {pendingDefensiveSubs.map((sub, idx) => {
+                          const p = team.players.find((item) => item.id === sub.playerInId);
+                          return (
+                            <Text key={idx} style={styles.confirmationSummaryText}>
+                              • 場上調動：#{p?.number} {p?.name} 轉守 {sub.position}
+                            </Text>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+              </>}
+            </> : null}
+
+            {step === 4 ? <>
+              <View style={styles.confirmationSummary}>
+                <Text style={styles.confirmationSummaryTitle}>寫入前影響與渲染預覽</Text>
+                <Text style={styles.confirmationSummaryText}>球隊：{team.name}｜時點：第 {game.inning} 局{game.half === "away" ? "上" : "下"}</Text>
+                <Text style={styles.confirmationSummaryText}>模式：{defensiveCountMode === "single" ? "【單人調動】" : "【多人調動】"} · {defensivePurpose === "offfield" ? "【上下調動】" : "【場上調動】"}</Text>
+                <Text style={styles.confirmationSummaryTitle}>調動明細：</Text>
+                {getDefensiveSubsToSubmit().map((sub, idx) => {
+                  const pOut = team.players.find((p) => p.id === sub.playerOutId);
+                  const pIn = team.players.find((p) => p.id === sub.playerInId);
+                  if (sub.defensiveChangeType === "上下調動") {
+                    return (
+                      <Text key={idx} style={styles.confirmationSummaryText}>
+                        {idx + 1}. 退場 #{pOut?.number} {pOut?.name} ➔ 進場 #{pIn?.number} {pIn?.name}（接替守位：{sub.position}）
+                      </Text>
+                    );
+                  } else {
+                    return (
+                      <Text key={idx} style={styles.confirmationSummaryText}>
+                        {idx + 1}. #{pIn?.number} {pIn?.name} 守備位置更換為：{sub.position}
+                      </Text>
+                    );
+                  }
+                })}
+
+                <Text style={styles.confirmationSummaryTitle}>早稻田符號繪製規則：</Text>
+                {defensivePurpose === "offfield" ? (
+                  <Text style={styles.confirmationSummaryText}>
+                    ✓ 第 {game.inning} 局打席格最左側將繪製垂直波浪線「︴」，並標註「PD 新球員」；打序欄填上「PD、姓名、背號」。
+                  </Text>
+                ) : (
+                  <Text style={styles.confirmationSummaryText}>
+                    ✓ 打席格不畫波浪線；守備欄更新為「原守位-D{game.inning}新守位」（例如 1B-D{game.inning}P、P-D{game.inning}1B）。
+                  </Text>
+                )}
+              </View>
+            </> : null}
+          </> : <>
+            {/* ===== 代打／代跑／換投標準流程 ===== */}
+            {step === 1 ? <>
+              <Text style={styles.inputLabel}>換人類型</Text>
+              <View style={styles.modalChoiceRow}>
+                {(["代打", "代跑", "換投", "換守"] as SubstitutionType[]).map((choice) => (
+                  <Pressable key={choice} onPress={() => chooseType(choice)} style={[styles.modalChoice, type === choice && styles.modalChoiceActive]}>
+                    <Text style={[styles.modalChoiceText, type === choice && styles.modalChoiceTextActive]}>{choice}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.inputLabel}>換人球隊</Text>
+              <View style={styles.modalChoiceRow}>
+                {teams.map((candidate) => (
+                  <Pressable key={candidate.id} onPress={() => chooseTeam(candidate.id)} style={[styles.modalChoice, teamId === candidate.id && styles.modalChoiceActive]}>
+                    <Text style={[styles.modalChoiceText, teamId === candidate.id && styles.modalChoiceTextActive]}>{candidate.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.substitutionContext}>記錄時點：第 {game.inning} 局{game.half === "away" ? "上" : "下"}；換人會同時列入分隊完整紀錄表與換人歷程。</Text>
+            </> : null}
+
+            {step === 2 ? <>
+              <Text style={styles.inputLabel}>選擇退場球員｜{team.name}</Text>
+              <Text style={styles.modalSubtitle}>請選擇被接替的球員；下一步才選擇替補者。</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>
+                {team.players.map((player) => (
+                  <Pressable key={`out-${player.id}`} onPress={() => setPlayerOutId(player.id)} style={[styles.modalPlayerChip, player.id === playerOutId && styles.modalChoiceActive]}>
+                    <Text style={[styles.modalPlayerChipNumber, player.id === playerOutId && styles.modalChoiceTextActive]}>#{player.number}</Text>
+                    <Text style={[styles.modalPlayerChipName, player.id === playerOutId && styles.modalChoiceTextActive]}>{player.name} {playerHandAbbr(player)}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </> : null}
+
+            {step === 3 ? <>
+              <Text style={styles.inputLabel}>選擇替補球員｜{team.name}</Text>
+              <Text style={styles.modalSubtitle}>已選退場：#{playerOut?.number ?? "—"} {playerOut?.name ?? "未選擇"}。不可選擇同一位球員。</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>
+                {team.players.map((player) => (
+                  <Pressable key={`in-${player.id}`} onPress={() => { if (player.id !== playerOutId) setPlayerInId(player.id); }} style={[styles.modalPlayerChip, player.id === playerInId && styles.modalChoiceActive, player.id === playerOutId && styles.modalPlayerChipDisabled]}>
+                    <Text style={[styles.modalPlayerChipNumber, player.id === playerInId && styles.modalChoiceTextActive]}>{player.number}</Text>
+                    <Text style={[styles.modalPlayerChipName, player.id === playerInId && styles.modalChoiceTextActive]}>{player.name} {playerHandAbbr(player)}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </> : null}
+
+            {step === 4 ? <>
+              <Text style={styles.inputLabel}>接替角色</Text>
+              <TextInput value={position} onChangeText={setPosition} style={styles.formInput} placeholder="例如：投手、代打、代跑" placeholderTextColor={BRAND.muted} />
+              <Text style={styles.inputLabel}>第 N 球交接</Text>
+              <TextInput value={handoffPitchNumber} onChangeText={(value) => setHandoffPitchNumber(value.replace(/[^\d]/g, ""))} keyboardType="number-pad" returnKeyType="done" style={styles.formInput} placeholder="0" placeholderTextColor={BRAND.muted} accessibilityLabel="本打席已記錄球數" />
+              <Text style={styles.substitutionContext}>此數字表示本打席已記錄的球數。0 代表「打席開始交接」，不是第一球後；舊場次沒有此欄位時不會被推測為精確球序。</Text>
+              <View style={styles.confirmationSummary}>
+                <Text style={styles.confirmationSummaryTitle}>寫入前影響摘要</Text>
+                <Text style={styles.confirmationSummaryText}>{team.name}｜{type}</Text>
+                <Text style={styles.confirmationSummaryText}>#{playerOut?.number ?? "—"} {playerOut?.name ?? "未選擇"} → #{playerIn?.number ?? "—"} {playerIn?.name ?? "未選擇"}</Text>
+                <Text style={styles.confirmationSummaryText}>接替位置／角色：{position || "未選擇"}</Text>
+                <Text style={styles.confirmationSummaryText}>精確交接：{handoffSummary}</Text>
+                <Text style={styles.confirmationSummaryText}>時點：第 {game.inning} 局{game.half === "away" ? "上" : "下"}。寫入後仍可從完整紀錄的歷程選擇該筆資料查看與復原。</Text>
+              </View>
+            </> : null}
+          </>}
+
+          {/* ===== 底部操作按鈕 ===== */}
+          <View style={styles.confirmationActionRow}>
+            <View style={styles.confirmationActionFlex}>
+              {step === 1 ? (
+                <Button label="取消" onPress={onClose} variant="secondary" touch fluid />
+              ) : (
+                <Button label="上一步" onPress={() => setStep((current) => (current - 1) as 1 | 2 | 3)} variant="secondary" touch fluid />
+              )}
+            </View>
+            <View style={styles.confirmationActionFlex}>
+              {step < 4 ? (
+                <Button label="下一步" onPress={() => setStep((current) => (current + 1) as 2 | 3 | 4)} disabled={!canContinue} touch fluid />
+              ) : (
+                <Button
+                  label={isDefensive ? "確認寫入換守" : "確認寫入換人"}
+                  onPress={() => {
+                    if (isDefensive) {
+                      const subsToSubmit = getDefensiveSubsToSubmit();
+                      if (!subsToSubmit.length) {
+                        Alert.alert("請完成調動設定", "請完成換守調動設定後再確認寫入。");
+                        return;
+                      }
+                      onSubmit(subsToSubmit);
+                    } else {
+                      if (playerOutId === playerInId) {
+                        Alert.alert("球員不能相同", "請返回上一步，選擇不同的退場與替補球員。");
+                        return;
+                      }
+                      if (!hasValidHandoffPitchNumber || typeof parsedHandoffPitchNumber !== "number") {
+                        Alert.alert("交接球數無效", "請輸入 0 或正整數；0 代表打席開始交接。");
+                        return;
+                      }
+                      onSubmit({
+                        inning: game.inning,
+                        half: game.half,
+                        teamId,
+                        playerOutId,
+                        playerInId,
+                        position: position.trim(),
+                        type,
+                        handoffPitchNumber: parsedHandoffPitchNumber,
+                      });
+                    }
+                  }}
+                  disabled={!canContinue}
+                  touch
+                  fluid
+                />
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </View>
+  </Modal>;
 }
 
 function ManualAtBatModal({ visible, game, away, home, onClose, onSubmit }: { visible: boolean; game: Game; away: Team; home: Team; onClose: () => void; onSubmit: (draft: ManualAtBatDraft) => void }) {

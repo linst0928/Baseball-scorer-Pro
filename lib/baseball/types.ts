@@ -31,8 +31,10 @@ export type RecordColumn = {
   /** 高飛犧牲打例外未得分的原因；未設定時依正常 SF 處理。 */
   sacrificeFlyNoScoreReason?: SacrificeFlyNoScoreReason;
 };
+/** 換守調動類型：上下調動（原球員退場，替補球員上場）或場上調動（原球員未退場，僅互換守備位置） */
+export type DefensiveChangeType = "上下調動" | "場上調動";
 /** 換人角色，保留舊版 position 欄位以相容既有紀錄。 */
-export type SubstitutionType = "代打" | "代跑" | "換投" | "換守" | "PH" | "PR" | "RP" | "DEFENSE";
+export type SubstitutionType = "代打" | "代跑" | "換投" | "換守" | "代守" | "PH" | "PR" | "RP" | "PD" | "PF" | "DEFENSE";
 /** 早稻田球數欄的逐球狀態；依個人紀錄欄圖例區分觸擊與界外失誤。 */
 export type PitchOutcome = "ball" | "strike" | "foul" | "foulTip" | "swingingStrike" | "bunt" | "missedBunt" | "buntFoul" | "foulError" | "inPlay" | "droppedThirdStrike";
 /**
@@ -346,6 +348,8 @@ export type Substitution = {
   playerInId: string;
   position: string;
   type?: SubstitutionType;
+  /** 換守調動類型：上下調動（原球員換下場，場下球員上場）或場上調動（原球員未退場，僅互換守備位置） */
+  defensiveChangeType?: DefensiveChangeType;
   /** 換人當下進行中打席已記錄的球數；0 代表打席開始交接，缺省表示舊資料未記錄精確球序。 */
   handoffPitchNumber?: number;
   timestamp: string;

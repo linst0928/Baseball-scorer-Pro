@@ -115,7 +115,7 @@ describe("早稻田單場整體紀錄投影", () => {
     expect(starterAppearances.every((appearance) => appearance.entryIndex !== pinchHitAppearances[0]?.entryIndex)).toBe(true);
   });
 
-  it("將代打、代跑與換守安全映射為 PH、PR、PF，且只在替換發生局的對應打席投影徽記", () => {
+  it("將代打、代跑與換守安全映射為 PH、PR、PD，且只在替換發生局的對應打席投影徽記", () => {
     const sourceTeam = team();
     const lineup = lineupFor(sourceTeam);
     const starter = lineup.battingOrderIds[0]!;
@@ -123,7 +123,7 @@ describe("早稻田單場整體紀錄投影", () => {
     const changes: Substitution[] = [
       { ...substitution("ph", sourceTeam.id, starter, pinchHitter!, 2, "2026-08-24T00:02:00.000Z"), type: "代打" },
       { ...substitution("pr", sourceTeam.id, pinchHitter!, pinchRunner!, 3, "2026-08-24T00:03:00.000Z"), type: "代跑" },
-      { ...substitution("pf", sourceTeam.id, pinchRunner!, pinchFielder!, 4, "2026-08-24T00:04:00.000Z"), type: "換守" },
+      { ...substitution("pf", sourceTeam.id, pinchRunner!, pinchFielder!, 4, "2026-08-24T00:04:00.000Z"), type: "換守", defensiveChangeType: "上下調動" },
     ];
     const events = [
       atBat("ph-at-bat", pinchHitter!, 2, "2026-08-24T00:02:10.000Z"),
@@ -135,12 +135,12 @@ describe("早稻田單場整體紀錄投影", () => {
 
     expect(getScorebookSubstitutionMarker("代打")).toEqual({ code: "PH", label: "代打" });
     expect(getScorebookSubstitutionMarker("代跑")).toEqual({ code: "PR", label: "代跑" });
-    expect(getScorebookSubstitutionMarker("換守")).toEqual({ code: "PF", label: "代守" });
+    expect(getScorebookSubstitutionMarker("換守")).toEqual({ code: "PD", label: "代守" });
     expect(getScorebookSubstitutionMarker("換投")).toBeUndefined();
     expect(getScorebookSubstitutionMarker()).toBeUndefined();
     expect(projection.innings[1]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 2, code: "PH", label: "代打" });
     expect(projection.innings[2]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 3, code: "PR", label: "代跑" });
-    expect(projection.innings[3]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 4, code: "PF", label: "代守" });
+    expect(projection.innings[3]?.appearances[0]?.replacementBadge).toMatchObject({ inning: 4, code: "PD", label: "代守" });
   });
 
   it("只投影正式保存的第 N 球交接，不從完成打席球數猜測舊資料", () => {

@@ -259,10 +259,10 @@ export const WASEDA_SYMBOL_REGISTRY: Record<string, WasedaSymbolDefinition> = {
   DEFENSIVE_SUB: {
     eventType: "DEFENSIVE_SUB",
     name: "代守",
-    symbol: "︴PF",
+    symbol: "︴PD",
     color: "blue",
     quadrant: "SUBSTITUTION",
-    description: "打席格側邊藍色波浪線加 PF",
+    description: "打席格左側藍色波浪線加 PD",
     status: "PASS",
   },
 

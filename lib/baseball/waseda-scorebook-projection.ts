@@ -2,7 +2,7 @@ import { classifyRunsForHalfInning, type AtBatEvent, type GameLineup, type Subst
 
 /** 單場整體紀錄專用的替換徽記；僅供顯示，不改寫正式比賽資料。 */
 export type ScorebookSubstitutionBadge = {
-  code: "PH" | "PR" | "PF";
+  code: "PH" | "PR" | "PD" | "PF";
   label: "代打" | "代跑" | "代守";
   inning: number;
   playerName?: string;
@@ -10,6 +10,25 @@ export type ScorebookSubstitutionBadge = {
   /** 僅由正式換人資料帶入；缺省時不得從完成打席球數反推。 */
   handoffPitchNumber?: number;
 };
+
+/** 守備位置代號標準縮寫 (例如：投手 -> P, 一壘 -> 1B, 游擊 -> SS) */
+export function formatScorebookPositionCode(pos: string | undefined): string {
+  if (!pos) return "";
+  const trimmed = pos.trim();
+  switch (trimmed) {
+    case "1": case "投手": case "P": return "P";
+    case "2": case "捕手": case "C": return "C";
+    case "3": case "一壘": case "一壘手": case "1B": return "1B";
+    case "4": case "二壘": case "二壘手": case "2B": return "2B";
+    case "5": case "三壘": case "三壘手": case "3B": return "3B";
+    case "6": case "游擊": case "游擊手": case "SS": return "SS";
+    case "7": case "左外": case "左外野": case "左外野手": case "LF": return "LF";
+    case "8": case "中外": case "中外野": case "中外野手": case "CF": return "CF";
+    case "9": case "右外": case "右外野": case "右外野手": case "RF": return "RF";
+    case "DH": case "指定打擊": return "DH";
+    default: return trimmed;
+  }
+}
 
 /** 換投後第一位面對新投手的打席提示；僅投影既有 pitcherId 與換投紀錄。 */
 export type ScorebookPitchingChangeBadge = {
@@ -33,9 +52,9 @@ export type ScorebookDefenseTimelineItem = {
 /** 將既有換人類型轉為紀錄表簡寫；換投與遺漏型別不臆測、不顯示。 */
 export function getScorebookSubstitutionMarker(type?: Substitution["type"] | string): Omit<ScorebookSubstitutionBadge, "inning"> | undefined {
   switch (type) {
-    case "代打": return { code: "PH", label: "代打" };
-    case "代跑": return { code: "PR", label: "代跑" };
-    case "換守": return { code: "PF", label: "代守" };
+    case "代打": case "PH": return { code: "PH", label: "代打" };
+    case "代跑": case "PR": return { code: "PR", label: "代跑" };
+    case "換守": case "代守": case "PD": case "PF": case "DEFENSE": return { code: "PD", label: "代守" };
     default: return undefined;
   }
 }
@@ -49,9 +68,11 @@ export type WasedaScorebookEntry = {
   kind: "starter" | "substitute" | "reserve";
   enteredInning?: number;
   enteredHalf?: TeamSide;
-  substitution?: Pick<Substitution, "id" | "type" | "position" | "handoffPitchNumber" | "timestamp">;
+  substitution?: Pick<Substitution, "id" | "type" | "position" | "handoffPitchNumber" | "timestamp" | "defensiveChangeType">;
   playerOutId?: string;
   fallback?: boolean;
+  /** 格式化守備欄位字串（例如：1B-D2P 或 P-D21B） */
+  formattedDefensivePosition?: string;
 };
 
 export type WasedaScorebookAppearance = {
@@ -151,6 +172,16 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
   const playerOrder = new Map<string, number>();
   starterIds.forEach((playerId, index) => playerOrder.set(playerId, index + 1));
 
+  const starterSet = new Set(starterIds);
+  const isOnFieldDefensiveChange = (sub: Substitution) => {
+    if (sub.defensiveChangeType === "場上調動") return true;
+    if (sub.defensiveChangeType === "上下調動") return false;
+    if (sub.type !== "換守" && sub.type !== "代守" && sub.type !== "PD" && sub.type !== "PF" && sub.type !== "DEFENSE") return false;
+    if (sub.playerOutId === sub.playerInId) return true;
+    if (starterSet.has(sub.playerInId) && starterSet.has(sub.playerOutId)) return true;
+    return false;
+  };
+
   const addSubstitute = (order: WasedaScorebookOrder, substitution: Substitution) => {
     const existing = order.entries.find((entry) => entry.playerId === substitution.playerInId);
     if (existing) return existing;
@@ -166,6 +197,7 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
         position: substitution.position,
         handoffPitchNumber: substitution.handoffPitchNumber,
         timestamp: substitution.timestamp,
+        defensiveChangeType: substitution.defensiveChangeType,
       },
       playerOutId: substitution.playerOutId,
     };
@@ -174,13 +206,17 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
     return entry;
   };
 
-  chronological(input.substitutions.filter((substitution) => substitution.teamId === input.team.id)).forEach((substitution) => {
+  const teamSubstitutions = chronological(input.substitutions.filter((substitution) => substitution.teamId === input.team.id));
+
+  teamSubstitutions.forEach((substitution) => {
+    if (isOnFieldDefensiveChange(substitution)) {
+      // 場上調動：不增加打序名單列，球員姓名打序保持不變
+      return;
+    }
     const battingOrder = playerOrder.get(substitution.playerOutId) ?? playerOrder.get(substitution.playerInId);
     if (!battingOrder) return;
     addSubstitute(battingOrders[battingOrder - 1], substitution);
   });
-
-  const teamSubstitutions = chronological(input.substitutions.filter((substitution) => substitution.teamId === input.team.id));
   const defenseTimeline = teamSubstitutions.flatMap((substitution, substitutionIndex) => {
     if (substitution.type !== "換守" || !isDefensivePosition(substitution.position)) return [];
     const previousPinchHit = teamSubstitutions.slice(0, substitutionIndex).reverse().find((candidate) => candidate.playerInId === substitution.playerInId && candidate.type === "代打");
@@ -239,6 +275,47 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
     }
   });
 
+  // 計算每一棒每位球員的格式化守備位置字串 (例如：1B-D2P 或 P-D21B)
+  battingOrders.forEach((order) => {
+    order.entries.forEach((entry) => {
+      if (!entry.playerId) {
+        entry.formattedDefensivePosition = "";
+        return;
+      }
+      const rawInitial = entry.kind === "starter"
+        ? (input.lineup?.defensivePositions[entry.playerId] || playerMap.get(entry.playerId)?.position || "—")
+        : (entry.substitution?.position || playerMap.get(entry.playerId)?.position || "—");
+      const initialCode = formatScorebookPositionCode(rawInitial);
+      if (!initialCode || initialCode === "—") {
+        entry.formattedDefensivePosition = "—";
+        return;
+      }
+
+      const startInning = entry.kind === "starter" ? 1 : (entry.enteredInning ?? 1);
+      let currCode = initialCode;
+      let timeline = initialCode;
+
+      teamSubstitutions.forEach((sub) => {
+        if (!sub.position) return;
+        const matchesPlayer = sub.playerInId === entry.playerId || sub.playerOutId === entry.playerId;
+        if (!matchesPlayer) return;
+        const subInning = sub.inning ?? 1;
+        if (subInning < startInning) return;
+
+        // 如果是該 entry 的入場代換，且是上下調動，則 initialCode 已包含其位置，不重複加註 -D
+        if (entry.kind !== "starter" && sub.id === entry.substitution?.id) return;
+
+        const newPosCode = formatScorebookPositionCode(sub.position);
+        if (newPosCode && newPosCode !== currCode) {
+          timeline += `-D${subInning}${newPosCode}`;
+          currCode = newPosCode;
+        }
+      });
+
+      entry.formattedDefensivePosition = timeline;
+    });
+  });
+
   const entryByPlayerId = new Map<string, WasedaScorebookEntry & { battingOrder: number }>();
   battingOrders.forEach((order) => order.entries.forEach((entry) => {
     if (entry.playerId) entryByPlayerId.set(entry.playerId, { ...entry, battingOrder: order.battingOrder });
@@ -256,7 +333,8 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
       const entry = entryByPlayerId.get(event.batterId);
       /** 遺漏球員仍不建立假事件；此防線只提供可追溯的最後保留格。 */
       const resolved = entry ?? { battingOrder: 9, entryIndex: battingOrders[8].entries.length - 1 };
-      const marker = entry && entry.enteredInning === inning
+      const isSubstituteWavyEligible = entry && entry.kind === "substitute" && entry.enteredInning === inning && !isOnFieldDefensiveChange(entry.substitution as any);
+      const marker = isSubstituteWavyEligible
         ? getScorebookSubstitutionMarker(entry.substitution?.type)
         : undefined;
       let baseLocation: "1B" | "2B" | "3B" | undefined;

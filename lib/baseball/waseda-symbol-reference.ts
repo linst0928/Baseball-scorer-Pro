@@ -75,8 +75,8 @@ export const WASEDA_SYMBOL_REFERENCE: WasedaSymbolReference[] = [
   { id: "game-end-early", category: "跑壘／特殊", mark: "///", title: "未滿三出局結束比賽", placement: "完整紀錄最後一筆註記", description: "比賽在當半局未滿三出局而被使用者確認結束時，以三斜線註記；必須走確認流程，且不得補加出局、清除跑者或改變比分。", example: "第 7 局下 1 出局：///", tone: "navy" },
   { id: "pinch-hitter", category: "跑壘／特殊", mark: "PH", title: "代打", placement: "整體紀錄替換子列／替換發生局打席格上側", description: "代打進場時，替換球員姓名旁顯示進場局數與 PH；同局打席格以獨立徽記標示，不與結果或傳接混寫。", example: "第 10 局・PH（代打）", tone: "blue" },
   { id: "pinch-runner", category: "跑壘／特殊", mark: "PR", title: "代跑", placement: "整體紀錄替換子列／替換發生局打席格上側", description: "代跑進場時，替換球員姓名旁顯示進場局數與 PR；同局打席格以獨立徽記標示，不與結果或傳接混寫。", example: "第 8 局・PR（代跑）", tone: "blue" },
-  { id: "pinch-fielder", category: "跑壘／特殊", mark: "PF", title: "代守", placement: "整體紀錄替換子列／替換發生局打席格上側", description: "換守進場時，替換球員姓名旁顯示進場局數與 PF；同局打席格以獨立徽記標示，不與結果或傳接混寫。", example: "第 7 局・PF（代守）", tone: "blue" },
-  { id: "substitute-wavy", category: "跑壘／特殊", mark: "︴ / ﹋", title: "代跑／代打／代守波浪線", placement: "打席格旁／替換記錄處", description: "球員更換代跑、代打、代守時，在格子旁以波浪線標註並補上替換資訊。", example: "︴PR 林庫均", tone: "blue" },
+  { id: "pinch-fielder", category: "跑壘／特殊", mark: "PD", title: "代守", placement: "整體紀錄替換子列／替換發生局打席格左側", description: "換守進場時，替換球員姓名旁顯示進場局數與 PD；同局打席格左側以垂直波浪線與 PD 標示，不與結果或傳接混寫。", example: "第 7 局・PD（代守）", tone: "blue" },
+  { id: "substitute-wavy", category: "跑壘／特殊", mark: "︴", title: "代跑／代打／代守波浪線", placement: "打席格旁／替換記錄處", description: "球員更換代跑、代打、代守時，在格子旁以波浪線標註並補上替換資訊。", example: "︴PD 王凱毅", tone: "blue" },
   { id: "pitching-change", category: "跑壘／特殊", mark: "︺ P", title: "換投", placement: "新投手面對的首位打者格左上", description: "對手換投後，系統以既有換投紀錄與打席 pitcherId 找出新投手面對的第一位打者；標記只提示投手交接，不與打席結果、替換徽記或右下傳接混寫。", example: "第 6 局・︺ P #18", tone: "blue" },
 
   { id: "fly", category: "守備／軌跡", mark: "︵", title: "高飛球", placement: "菱形邊線／外圈", description: "用於描述高拋物線飛球的擊球軌跡。", example: "︵7 2B", tone: "navy" },

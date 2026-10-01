@@ -349,11 +349,12 @@ export function WasedaPersonalRecordCell({
         </View>
         <View style={[styles.outerArea, compactSize && styles.outerAreaCompact, liveSize && styles.outerAreaLive, largeSize && styles.outerAreaLarge, railSize && styles.outerAreaRail]}>
           {showLabels ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={styles.outerLabel}>外圈</Text> : null}
-          {replacementBadge && (replacementBadge.code === "PH" || replacementBadge.code === "PR") ? (
+          {replacementBadge && (replacementBadge.code === "PH" || replacementBadge.code === "PR" || replacementBadge.code === "PD" || replacementBadge.code === "PF") ? (
             <View
               pointerEvents="none"
               style={[
                 styles.replacementSideMarker,
+                (replacementBadge.code === "PD" || replacementBadge.code === "PF") ? styles.replacementSideMarkerPD :
                 replacementBadge.code === "PR" ? (
                   replacementBadge.baseLocation === "2B"
                     ? styles.replacementSideMarkerPR2B
@@ -365,7 +366,7 @@ export function WasedaPersonalRecordCell({
             >
               <Text style={styles.replacementWavyGlyph}>︴</Text>
               <Text numberOfLines={1} style={styles.replacementSideText}>
-                {replacementBadge.code} {replacementBadge.playerName ?? ""}
+                {replacementBadge.code === "PF" ? "PD" : replacementBadge.code} {replacementBadge.playerName ?? ""}
               </Text>
             </View>
           ) : null}
@@ -550,6 +551,11 @@ const styles = StyleSheet.create({
     right: 2,
     top: 4,
     borderColor: "#A78BFA",
+  },
+  replacementSideMarkerPD: {
+    left: 2,
+    top: 4,
+    borderColor: "#3B82F6",
   },
   replacementSideMarkerPR1B: {
     right: 2,

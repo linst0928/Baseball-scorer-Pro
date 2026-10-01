@@ -121,7 +121,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
     const overrideKey = getScorebookDisplayOverrideKey(side, battingOrder, entry.entryIndex);
     const displayOverride: ScorebookDisplayOverride | undefined = game.scorebookDisplayOverrides?.[overrideKey];
     const player = (displayOverride?.playerId ?? entry.playerId) ? playerById.get(displayOverride?.playerId ?? entry.playerId ?? "") : undefined;
-    const defensivePosition = displayOverride?.defensivePosition || (entry.kind === "starter" ? lineup?.defensivePositions[entry.playerId ?? ""] : entry.substitution?.position) || player?.position || "—";
+    const defensivePosition = displayOverride?.defensivePosition || entry.formattedDefensivePosition || (entry.kind === "starter" ? lineup?.defensivePositions[entry.playerId ?? ""] : entry.substitution?.position) || player?.position || "—";
     if (!player) return { title: "候補保留／待換人", detail: "尚未登場；不代表事件", defensivePosition: "—" };
     if (entry.kind === "starter") {
       return {
@@ -133,10 +133,13 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
     const change = entry.substitution;
     const replacementMarker = getScorebookSubstitutionMarker(change?.type);
     const pitchingChange = change?.type === "換投";
+    const isPinchDefender = change?.type === "換守" || change?.type === "代守" || replacementMarker?.code === "PD" || replacementMarker?.code === "PF";
     return {
       title: `#${player.number} ${player.name}`,
       detail: pitchingChange && entry.enteredInning
         ? `第${entry.enteredInning}局${entry.enteredHalf ? halfLabel(entry.enteredHalf) : ""}・P（換投） · 守 ${defensivePosition}${displayOverride ? " · 表格補正" : ""}${entry.fallback ? " · 回退" : ""}`
+        : isPinchDefender && entry.enteredInning
+        ? `第${entry.enteredInning}局${entry.enteredHalf ? halfLabel(entry.enteredHalf) : ""}・PD（代守） · 守 ${defensivePosition}${displayOverride ? " · 表格補正" : ""}${entry.fallback ? " · 回退" : ""}`
         : replacementMarker && entry.enteredInning
         ? `第${entry.enteredInning}局${entry.enteredHalf ? halfLabel(entry.enteredHalf) : ""}・${replacementMarker.code}（${replacementMarker.label}） · 守 ${defensivePosition}${displayOverride ? " · 表格補正" : ""}${entry.fallback ? " · 回退" : ""}`
         : `${entry.enteredInning ?? "?"}${entry.enteredHalf ? halfLabel(entry.enteredHalf) : ""} 入 · ${change?.type ?? "局中承接"} ${defensivePosition}${displayOverride ? " · 表格補正" : ""}${entry.fallback ? " · 回退" : ""}`,
@@ -202,13 +205,13 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                       ? "PH"
                       : entry.substitution?.type === "代跑" || entryMarker?.code === "PR"
                       ? "PR"
-                      : entry.substitution?.type === "換守" || entryMarker?.code === "PF"
-                      ? "換守"
+                      : entry.substitution?.type === "換守" || entry.substitution?.type === "代守" || entryMarker?.code === "PD" || entryMarker?.code === "PF"
+                      ? "PD"
                       : entry.substitution?.type === "換投"
                       ? "換投"
                       : entryMarker?.label ?? "替補";
 
-                    const defPos = isEmptyReserve ? "" : description.defensivePosition;
+                    const defPos = isEmptyReserve ? "" : (entry.formattedDefensivePosition || description.defensivePosition);
                     const playerName = isEmptyReserve ? "" : description.title.replace(/^#\S+\s*/, "");
                     const jerseyNumber = isEmptyReserve ? "" : (description.title.match(/^#(\S+)/)?.[1] ?? "—");
 
@@ -228,7 +231,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                           accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格守備位置`}
                           style={({ pressed }) => [styles.col1DefenseCell, pressed && styles.pressed]}
                         >
-                          <Text style={[styles.col1DefenseText, isEmptyReserve && styles.emptyEntryText]}>
+                          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.col1DefenseText, isEmptyReserve && styles.emptyEntryText]}>
                             {defPos}
                           </Text>
                         </Pressable>
@@ -246,6 +249,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                             isEmptyReserve && styles.emptyEntryText,
                             entryRole === "PH" && styles.col2RolePH,
                             entryRole === "PR" && styles.col2RolePR,
+                            entryRole === "PD" && styles.col2RolePD,
                             entryRole === "先發" && styles.col2RoleStarter,
                           ]}>
                             {isEmptyReserve ? "" : entryRole}
@@ -581,9 +585,9 @@ const styles = StyleSheet.create({
   starterTag: { color: "#2563EB", fontSize: 8, fontWeight: "900" },
   statsRowWrapper: { flexDirection: "row", backgroundColor: "#0F172A", borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 2, borderColor: "#64748B", alignItems: "stretch", minHeight: 40 },
   statsLeftContainer: { width: 252, flexDirection: "row", borderRightWidth: 1, borderColor: "#475569", backgroundColor: "#1E293B" },
-  statsLabelLead: { width: 222, paddingHorizontal: 8, justifyContent: "center" },
+  statsLabelLead: { width: 226, paddingHorizontal: 8, justifyContent: "center" },
   statsLabelLeadText: { color: "#94A3B8", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
-  statsTotalTitleCell: { width: 30, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#475569", backgroundColor: "#0F172A" },
+  statsTotalTitleCell: { width: 26, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderColor: "#475569", backgroundColor: "#0F172A" },
   statsTotalTitleText: { color: "#38BDF8", fontSize: 10, fontWeight: "900", textAlign: "center" },
   statsItemsContainer: { flexDirection: "row", alignItems: "center" },
   statColumnCell: { width: 72, minHeight: 40, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#334155", paddingHorizontal: 4, paddingVertical: 4 },
@@ -592,12 +596,12 @@ const styles = StyleSheet.create({
   statColumnValue: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", marginTop: 2, textAlign: "center" },
   headerRow: { flexDirection: "row", backgroundColor: "#0F172A", borderTopLeftRadius: 8, borderTopRightRadius: 8, overflow: "hidden" },
   orderHeader: { width: 252, minHeight: 44, flexDirection: "row", alignItems: "stretch", borderRightWidth: 1, borderColor: "#475569" },
-  headerDefenseCombined: { width: 60, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
+  headerDefenseCombined: { width: 54, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
   headerTeamSection: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 2, borderRightWidth: 1, borderColor: "#475569" },
   headerTeamHalfText: { color: "#94A3B8", fontSize: 9, fontWeight: "800" },
   headerTeamNameText: { color: "#38BDF8", fontSize: 11, fontWeight: "900" },
-  headerJerseyColumn: { width: 30, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
-  headerOrderColumn: { width: 30, alignItems: "center", justifyContent: "center" },
+  headerJerseyColumn: { width: 26, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#475569" },
+  headerOrderColumn: { width: 26, alignItems: "center", justifyContent: "center" },
   headerTextCenter: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", textAlign: "center" },
   headerText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },
   headerDefense: { width: 30, textAlign: "center" },
@@ -624,18 +628,19 @@ const styles = StyleSheet.create({
   playerEntryCell: { flex: 1, minHeight: 22, flexDirection: "row", alignItems: "center" },
   playerEntryCellDivider: { borderBottomWidth: 1, borderColor: "#CBD5E1" },
   playerEntryCellDashedDivider: { borderBottomWidth: 1, borderStyle: "dashed", borderColor: "#CBD5E1" },
-  col1DefenseCell: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
-  col1DefenseText: { color: "#1D4ED8", fontSize: 9, fontWeight: "900", textAlign: "center" },
-  col2RoleCell: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col1DefenseCell: { width: 54, alignSelf: "stretch", alignItems: "center", justifyContent: "center", paddingHorizontal: 1, borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col1DefenseText: { color: "#1D4ED8", fontSize: 8.5, fontWeight: "900", textAlign: "center" },
+  col2RoleCell: { width: 26, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
   col2RoleText: { color: "#475569", fontSize: 9, fontWeight: "900", textAlign: "center" },
   col2RolePH: { color: "#7C3AED", fontWeight: "900" },
   col2RolePR: { color: "#059669", fontWeight: "900" },
+  col2RolePD: { color: "#2563EB", fontWeight: "900" },
   col2RoleStarter: { color: "#1D4ED8", fontWeight: "900" },
-  col3NameCell: { flex: 1, minWidth: 0, alignSelf: "stretch", justifyContent: "center", paddingLeft: 6, paddingRight: 4, borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col3NameCell: { flex: 1, minWidth: 0, alignSelf: "stretch", justifyContent: "center", paddingLeft: 5, paddingRight: 3, borderRightWidth: 1, borderColor: "#CBD5E1" },
   col3NameText: { color: "#0F172A", fontSize: 11, fontWeight: "900" },
-  col4JerseyCell: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
+  col4JerseyCell: { width: 26, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
   col4JerseyText: { color: "#1D4ED8", fontSize: 10, fontWeight: "900", textAlign: "center" },
-  col5OrderCell: { width: 30, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" },
+  col5OrderCell: { width: 26, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" },
   col5OrderText: { color: "#0F172A", fontSize: 12, fontWeight: "900", textAlign: "center" },
   sharedDefenseEditTarget: { width: 30, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderColor: "#CBD5E1" },
   sharedDefenseLabel: { color: "#1D4ED8", fontSize: 9, fontWeight: "900", textAlign: "center" },
