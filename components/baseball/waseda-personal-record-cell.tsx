@@ -186,7 +186,7 @@ export function WasedaPersonalRecordCell({
   );
   const runnerOutNotation = isRunnerOut
     ? (typeof runnerOutAdvance?.outNumber === "number"
-        ? ["I", "II", "III"][Math.min(Math.max(1, runnerOutAdvance.outNumber) - 1, 2)]
+        ? ["I", "II", "III"][Math.min(Math.max(1, runnerOutAdvance?.outNumber) - 1, 2)]
         : typeof finalOutsBefore === "number"
           ? ["I", "II", "III"][Math.min(Math.max(0, finalOutsBefore), 2)]
           : "I")

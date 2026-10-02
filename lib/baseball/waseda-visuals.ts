@@ -37,6 +37,7 @@ export type RunnerAdvanceContext = {
   toBase?: 1 | 2 | 3 | 4;
   notation?: string;
   advancedByOrder?: number;
+  outNumber?: number;
 };
 
 export type RunnerAdvanceLine = {
