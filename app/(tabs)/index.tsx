@@ -6282,6 +6282,11 @@ function TopDownLineupField({ team, lineup, conflictedPositions = [], highlighte
       });
   };
 
+  const getPosShortLabel = (num: string) => {
+    const map: Record<string, string> = { "1": "投", "2": "捕", "3": "一", "4": "二", "5": "三", "6": "游", "7": "左", "8": "中", "9": "右" };
+    return map[num] ?? num;
+  };
+
   return <ImageBackground source={COMMON_DEFENSE_BLANK_FIELD_IMAGE} resizeMode="contain" style={[styles.topDownField, style]} imageStyle={styles.topDownFieldImage} accessibilityLabel={`${team.name} 守備位置配置圖（常用守備位置空白圖）`}>
     {FIELD_POSITION_LAYOUT.map((spot) => {
       const players = playersForPosition(spot.number);
@@ -6289,8 +6294,15 @@ function TopDownLineupField({ team, lineup, conflictedPositions = [], highlighte
       const conflicted = conflictedPositions.includes(spot.number) || players.length > 1;
       const highlighted = highlightedPositions.includes(spot.number);
       const nodeText = conflicted ? "重複" : players.length ? players.map((player) => player.name).join("/") : spot.number;
-      return <View key={spot.number} style={[styles.topDownFieldMarker, players.length ? styles.topDownFieldMarkerFilled : styles.topDownFieldMarkerEmpty, highlighted && styles.topDownFieldMarkerChanged, conflicted && styles.topDownFieldMarkerConflict, { top: `${spot.top}%`, left: `${spot.left}%` }]}>
-        <Text numberOfLines={1} style={[styles.topDownFieldMarkerText, !players.length && styles.topDownFieldMarkerTextEmpty]}>{nodeText}</Text>
+      const posShort = getPosShortLabel(spot.number);
+
+      return <View key={spot.number} style={[styles.topDownFieldMarkerAnchor, { top: `${spot.top}%`, left: `${spot.left}%` }]}>
+        <View style={[styles.topDownFieldMarker, players.length ? styles.topDownFieldMarkerFilled : styles.topDownFieldMarkerEmpty, highlighted && styles.topDownFieldMarkerChanged, conflicted && styles.topDownFieldMarkerConflict]}>
+          <View style={[styles.topDownFieldPosBadge, conflicted && styles.topDownFieldPosBadgeConflict, !players.length && styles.topDownFieldPosBadgeEmpty]}>
+            <Text style={[styles.topDownFieldPosBadgeText, !players.length && styles.topDownFieldPosBadgeTextEmpty]}>{posShort}</Text>
+          </View>
+          <Text numberOfLines={1} style={[styles.topDownFieldMarkerText, !players.length && styles.topDownFieldMarkerTextEmpty]}>{nodeText}</Text>
+        </View>
       </View>;
     })}
   </ImageBackground>;
@@ -8647,13 +8659,46 @@ const styles = StyleSheet.create({
   topDownFieldBaseSecond: { left: 82, top: 51 },
   topDownFieldBaseThird: { left: 45, top: 88 },
   topDownFieldBaseHome: { left: 82, top: 118 },
-  topDownFieldMarker: { position: "absolute", minWidth: 32, minHeight: 18, marginTop: -9, marginLeft: -16, borderRadius: 9, alignItems: "center", justifyContent: "center", paddingHorizontal: 3, paddingVertical: 1 },
+  topDownFieldMarkerAnchor: {
+    position: "absolute",
+    width: 0,
+    height: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  topDownFieldMarker: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1.5,
+    borderRadius: 999,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 1.5,
+    elevation: 3,
+  },
   topDownFieldMarkerFilled: { backgroundColor: BRAND.navy, borderWidth: 1, borderColor: BRAND.white },
-  topDownFieldMarkerConflict: { backgroundColor: BRAND.red, borderColor: "#FFF0F1", borderWidth: 2 },
-  topDownFieldMarkerChanged: { backgroundColor: "#D89B11", borderColor: "#FFF7D1", borderWidth: 2 },
-  topDownFieldMarkerEmpty: { backgroundColor: "rgba(255,255,255,0.85)", borderWidth: 1, borderColor: "#7C8FA2" },
-  topDownFieldMarkerText: { color: BRAND.white, fontSize: 7.5, fontWeight: "900", textAlign: "center" },
-  topDownFieldMarkerTextEmpty: { color: BRAND.navy, fontSize: 7, fontWeight: "800" },
+  topDownFieldMarkerConflict: { backgroundColor: BRAND.red, borderColor: "#FFF0F1", borderWidth: 1.5 },
+  topDownFieldMarkerChanged: { backgroundColor: "#D89B11", borderColor: "#FFF7D1", borderWidth: 1.5 },
+  topDownFieldMarkerEmpty: { backgroundColor: "rgba(255,255,255,0.92)", borderWidth: 1, borderColor: "#7C8FA2" },
+  topDownFieldPosBadge: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 3,
+    paddingHorizontal: 2.5,
+    paddingVertical: 0.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topDownFieldPosBadgeEmpty: { backgroundColor: "rgba(15,23,42,0.12)" },
+  topDownFieldPosBadgeConflict: { backgroundColor: "rgba(255,255,255,0.3)" },
+  topDownFieldPosBadgeText: { color: BRAND.white, fontSize: 7, fontWeight: "900", lineHeight: 9 },
+  topDownFieldPosBadgeTextEmpty: { color: BRAND.navy, fontSize: 7, fontWeight: "900", lineHeight: 9 },
+  topDownFieldMarkerText: { color: BRAND.white, fontSize: 7.5, fontWeight: "900", textAlign: "center", lineHeight: 10 },
+  topDownFieldMarkerTextEmpty: { color: BRAND.navy, fontSize: 7, fontWeight: "800", lineHeight: 9 },
   topDownFieldMarkerLabel: { color: BRAND.white, fontSize: 5, fontWeight: "800" },
   topDownFieldMarkerLabelConflict: { color: BRAND.white },
   registrationList: { gap: 7, paddingRight: 4 },

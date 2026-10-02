@@ -1663,9 +1663,42 @@ export function getCurrentBatter(game: Game, team: Team): Player {
 
 export function getCurrentPitcher(game: Game, homeTeam: Team, awayTeam: Team): Player {
   const pitchingTeam = game.half === "away" ? homeTeam : awayTeam;
+  const defenseLineup = game.half === "away" ? game.homeLineup : game.awayLineup;
+
+  // 1. 優先從當前防守陣容的 defensivePositions 中，尋找守備位置為投手的球員
+  if (defenseLineup && defenseLineup.defensivePositions) {
+    const pitcherPlayerId = Object.entries(defenseLineup.defensivePositions).find(([_, pos]) => {
+      return pos === "投手" || pos === "P" || pos === "1";
+    })?.[0];
+
+    if (pitcherPlayerId) {
+      const foundPlayer = pitchingTeam.players.find((player) => player.id === pitcherPlayerId);
+      if (foundPlayer) {
+        return foundPlayer;
+      }
+    }
+  }
+
+  // 2. 其次從 game.substitutions 尋找最新的投手異動，加強各種防守縮寫之相容性
   const registeredPlayers = getRegisteredPlayers(game, pitchingTeam);
-  const latestPitcherChange = [...(game.substitutions ?? [])].reverse().find((substitution) => substitution.teamId === pitchingTeam.id && substitution.position.includes("投手"));
-  return (latestPitcherChange && pitchingTeam.players.find((player) => player.id === latestPitcherChange.playerInId)) ?? registeredPlayers.find((player) => player.number === 1 || player.position === "投手") ?? pitchingTeam.players.find((player) => player.number === 1) ?? pitchingTeam.players[0];
+  const latestPitcherChange = [...(game.substitutions ?? [])].reverse().find((substitution) => {
+    return (
+      substitution.teamId === pitchingTeam.id &&
+      (substitution.position === "P" ||
+        substitution.position === "1" ||
+        substitution.position === "投手" ||
+        substitution.position.includes("投手") ||
+        substitution.type === "換投" ||
+        substitution.type === "RP")
+    );
+  });
+
+  return (
+    (latestPitcherChange && pitchingTeam.players.find((player) => player.id === latestPitcherChange.playerInId)) ??
+    registeredPlayers.find((player) => player.number === 1 || player.position === "投手" || player.position === "P" || player.position === "1") ??
+    pitchingTeam.players.find((player) => player.number === 1) ??
+    pitchingTeam.players[0]
+  );
 }
 
 export function getRecentEvents(game: Game, teams: Team[]): Array<AtBatEvent & { batterName: string }> {

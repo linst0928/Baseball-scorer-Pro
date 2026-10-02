@@ -128,9 +128,9 @@ describe("早稻田個人打席格的球性與傳接分區", () => {
     expect(source).toContain('leftTop: { position: "absolute", top: 2, left: 3, maxWidth: "42%", color: COLORS.blue, fontSize: 9, fontWeight: "900" }');
 
     // SB 標記貼緊藍線
-    expect(source).toContain('runnerAdvanceLabelFirstToSecond: { left: 37, top: 14 }');
-    expect(source).toContain('runnerAdvanceLabelSecondToThird: { left: 16, top: 12 }');
-    expect(source).toContain('runnerAdvanceLabelThirdToHome: { left: 12, top: 44 }');
+    expect(source).toContain('runnerAdvanceLabelFirstToSecond: { left: 38, top: 18 }');
+    expect(source).toContain('runnerAdvanceLabelSecondToThird: { left: 17, top: 17 }');
+    expect(source).toContain('runnerAdvanceLabelThirdToHome: { left: 13, top: 43 }');
 
     // 逐球欄字體放大與每欄最多 7 球 (共 14 球)
     expect(source).toContain('pitchMarkCell: { width: 10, height: 11, color: COLORS.ink, fontSize: 9.5');
@@ -149,17 +149,18 @@ describe("早稻田個人打席格的球性與傳接分區", () => {
     expect(source).toContain("outerAreaRail: { minHeight: 86, height: 86, borderWidth: 0 }");
   });
 
-  it("無打席資料時不顯示多餘符號（如 [-]），CS 與 PO 不在中央內圈顯示文字，PO 一律置於右上角", () => {
+  it("無打席資料時不顯示多餘符號（如 [-]），跑壘出局 (CS/PO) 於中央內圈顯示出局數 (I, II, III)，PO 一律置於右上角", () => {
     const source = readFileSync(resolve(process.cwd(), "components/baseball/waseda-personal-record-cell.tsx"), "utf8");
 
     // 任務 3：無得分時 runMark 為空字串，非自責分顯示空心圓圈 ○
     expect(source).toContain('const runMark = finalRuns > 0 ? (isUnearned ? "○" : "●") : (unearnedRuns > 0 ? "○" : "");');
 
-    // 任務 4：CS 與 PO 不在內圈顯示文字
-    expect(source).toContain("runnerOutNotation = undefined;");
+    // 任務 5：CS 與 PO 等跑壘出局事件於中央內圈渲染出局數 (I, II, III)
+    expect(source).toContain("const runnerOutNotation");
+    expect(source).toContain('isRunnerOut');
 
     // 任務 4：PO 一律置於右上角，右下角過濾 PO
-    expect(source).toContain('lowerRight = rawLowerRight.replace(/\\bPO\\d?(-\\d\\w*)?\\b/gi, "").trim();');
+    expect(source).toContain('replace(/\\bPO\\d*(?:-\\d+\\w*)?\\b/gi, "")');
 
     // 任務 4：CS 僅有邊緣文字，不畫進壘藍線
     expect(source).toContain("!line.noLine");

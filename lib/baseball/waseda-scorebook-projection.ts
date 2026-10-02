@@ -297,7 +297,7 @@ export function createWasedaScorebookProjection(input: WasedaScorebookProjection
 
       teamSubstitutions.forEach((sub) => {
         if (!sub.position) return;
-        const matchesPlayer = sub.playerInId === entry.playerId || sub.playerOutId === entry.playerId;
+        const matchesPlayer = sub.playerInId === entry.playerId;
         if (!matchesPlayer) return;
         const subInning = sub.inning ?? 1;
         if (subInning < startInning) return;

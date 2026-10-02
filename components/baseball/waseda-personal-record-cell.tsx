@@ -174,15 +174,38 @@ export function WasedaPersonalRecordCell({
   const pickoffOut = runnerAdvances.find((advance) => advance.type === "PO");
   const leftOnBase = runnerAdvances.some((advance) => advance.type === "LOB");
   const headingNote = [note, correction?.otherMark].filter(Boolean).join(" · ");
-  // 早稻田規範：CS 與 PO 不在中央內圈顯示文字（CS 在菱形框邊，PO 在右上角）
-  const runnerOutNotation = undefined;
+
+  // 跑壘出局事件（盜壘失敗 CS、牽制出局 PO 或其他跑者出局）中央顯示當次出局數 (I, II, III)
+  const runnerOutAdvance = runnerAdvances.find(
+    (advance) => advance.outNumber || advance.type === "CS" || advance.type === "PO" || advance.outType || (advance as { isOut?: boolean }).isOut,
+  ) ?? (runnerAdvance?.type === "CS" || runnerAdvance?.type === "PO" ? runnerAdvance : undefined);
+  const isRunnerOut = Boolean(
+    runnerOutAdvance ||
+    (event as { type?: string })?.type === "CS" ||
+    (event as { type?: string })?.type === "PO",
+  );
+  const runnerOutNotation = isRunnerOut
+    ? (typeof runnerOutAdvance?.outNumber === "number"
+        ? ["I", "II", "III"][Math.min(Math.max(1, runnerOutAdvance.outNumber) - 1, 2)]
+        : typeof finalOutsBefore === "number"
+          ? ["I", "II", "III"][Math.min(Math.max(0, finalOutsBefore), 2)]
+          : "I")
+    : undefined;
   
-  // 右上角：暴投 WP, 捕逸 PB, 牽制 PO (如 PO1-3, PO2-3, PO1-3E 等), 投手犯規 BK, 妨礙跑壘 OB, 雙殺 DP, 三殺 TP
+  // 右上角：暴投 WP, 捕逸 PB, 牽制 PO (如 PO1-3, PO2-3, PO1-4E 等), 投手犯規 BK, 妨礙跑壘 OB, 雙殺 DP, 三殺 TP
+  const isPOType = (event as { type?: string })?.type === "PO" || /^PO/i.test(event?.notation ?? "");
+  const eventPoMatch = (event?.notation ?? notation ?? "").match(/\bPO\d*(?:-\d+\w*)?\b/i)?.[0];
+  const runnerPoMatch = (runnerNotation ?? "").match(/\bPO\d*(?:-\d+\w*)?\b/i)?.[0];
   const pickoffAdv = runnerAdvances.find((adv) => adv.type === "PO" || (adv.notation && /^PO/i.test(adv.notation)));
-  const defaultPO = pickoffAdv ? (pickoffAdv.fromBase === 1 ? "PO1-3" : pickoffAdv.fromBase === 2 ? "PO1-4" : pickoffAdv.fromBase === 3 ? "PO1-5" : "PO") : null;
-  const pickoffNotation = pickoffAdv?.notation || defaultPO || (pickoffOut ? "PO1-3" : null);
+  const defaultPO = pickoffAdv ? (pickoffAdv.fromBase === 1 ? "PO1-3" : pickoffAdv.fromBase === 2 ? "PO1-4" : pickoffAdv.fromBase === 3 ? "PO1-5" : "PO") : (isPOType ? "PO" : null);
+  const rawPickoffNotation = pickoffAdv?.notation || eventPoMatch || runnerPoMatch || defaultPO || (pickoffOut ? "PO1-3" : null);
+  // 清除任何 ADV 字樣 (ADV 不顯示文字，只劃線)
+  const pickoffNotation = rawPickoffNotation?.replace(/\/?\s*\bADV\b/gi, "").trim() || null;
+
+  const cleanRunnerNotation = runnerNotation?.replace(/\/?\s*\bADV\b/gi, "").trim() || null;
+
   const rawTopRight = [
-    runnerNotation && /\b(?:WP|PB|BK|PO|OB|PO\d-\d\w*)\b/i.test(runnerNotation) ? runnerNotation : null,
+    cleanRunnerNotation && /\b(?:WP|PB|BK|PO|OB|PO\d*-\d*\w*)\b/i.test(cleanRunnerNotation) ? cleanRunnerNotation : null,
     pickoffNotation,
     modifiers.includes("WP") ? "WP" : null,
     modifiers.includes("PB") ? "PB" : null,
@@ -191,11 +214,11 @@ export function WasedaPersonalRecordCell({
   ].filter(Boolean);
 
   const refinedTopRight = rawTopRight.map((mark) => {
-    if (mark === "PO" && pickoffNotation && pickoffNotation !== "PO") {
+    if ((mark === "PO" || mark === "PO1-3") && pickoffNotation && pickoffNotation !== "PO") {
       return pickoffNotation;
     }
-    return mark;
-  }).filter((val, idx, self) => self.indexOf(val) === idx);
+    return mark?.replace(/\/?\s*\bADV\b/gi, "").trim();
+  }).filter((val): val is string => Boolean(val)).filter((val, idx, self) => self.indexOf(val) === idx);
 
   const topRightMarks = refinedTopRight.join("·");
 
@@ -211,7 +234,7 @@ export function WasedaPersonalRecordCell({
     finalRecord?.fieldingPlay === "FC" ? "FC" : null,
   ].filter(Boolean).join("·");
 
-  const onBaseMarks = [topRightMarks, bottomRightResultMarks].filter(Boolean).join("·");
+  const onBaseMarks = [topRightMarks, bottomRightResultMarks].filter(Boolean).join("·").replace(/\/?\s*\bADV\b/gi, "").replace(/^[\s·/-]+|[\s·/-]+$/g, "");
   const leftTop = [hit ? finalResult : null].filter(Boolean).join("·");
   const battedBallTrajectory = getRecordTrajectoryMark(finalRecord?.trajectory);
   const battedBallPosition = finalRecord?.battedBallPosition ?? (battedBallTrajectory ? finalNotation.match(/[1-9]/)?.[0] : undefined);
@@ -229,11 +252,21 @@ export function WasedaPersonalRecordCell({
         ? { type: battedBallTrajectory, position: battedBallPosition }
         : undefined;
   const battedBallOuterMark = correctedBattedBallOuterMark ?? formalBattedBallOuterMark;
-  const rawLowerRight = finalRecord && finalResult
-    ? getFieldingSequenceNotation(finalResult, finalRecord)
-    : finalRecord?.fieldingSequence || (!battedBallTrajectory && !hit && !onBaseMarks && !runnerNotation ? finalNotation : "");
-  // PO 牽制一律只顯示於右上角，不應出現在右下角
-  const lowerRight = rawLowerRight.replace(/\bPO\d?(-\d\w*)?\b/gi, "").trim();
+
+  // 當打席純屬 PO 牽制事件時，右下角不預填 finalNotation，以免 PO 被重複擺放至右下角
+  const isPurePOEvent = !finalResult && (isPOType || /^PO/i.test(finalNotation));
+  const rawLowerRight = isPurePOEvent
+    ? ""
+    : (finalRecord && finalResult
+        ? getFieldingSequenceNotation(finalResult, finalRecord)
+        : finalRecord?.fieldingSequence || (!battedBallTrajectory && !hit && !onBaseMarks && !cleanRunnerNotation ? finalNotation : ""));
+
+  // PO 牽制與 ADV 進壘一律不得出現在右下角
+  const lowerRight = rawLowerRight
+    .replace(/\bPO\d*(?:-\d+\w*)?\b/gi, "")
+    .replace(/\/?\s*\bADV\b/gi, "")
+    .replace(/^[\s/·-]+|[\s/·-]+$/g, "")
+    .trim();
   const allowedInnerMarks = new Set(["", "—", "○", "●", "Ⅰ", "Ⅱ", "Ⅲ", "I", "II", "III", "①", "②", "③", "④", "ℓ", "CS", "PO", "N", "//", "///"]);
   const requestedInnerMark = innerMarkOverride ?? correction?.innerMark;
   const safeInnerOverride = requestedInnerMark && allowedInnerMarks.has(requestedInnerMark) ? requestedInnerMark : undefined;
@@ -675,9 +708,9 @@ const styles = StyleSheet.create({
   runnerAdvanceLabel: { position: "absolute", color: COLORS.blue, fontSize: 6, fontWeight: "900", zIndex: 3 },
   runnerAdvanceLabelBK: { color: "#0F4E90", backgroundColor: "transparent", borderRadius: 3, overflow: "hidden", paddingHorizontal: 2, fontSize: 7, letterSpacing: -0.2 },
   runnerAdvanceLabelHomeToFirst: { left: 40, top: 42 },
-  runnerAdvanceLabelFirstToSecond: { left: 37, top: 14 },
-  runnerAdvanceLabelSecondToThird: { left: 16, top: 12 },
-  runnerAdvanceLabelThirdToHome: { left: 12, top: 44 },
+  runnerAdvanceLabelFirstToSecond: { left: 38, top: 18 },
+  runnerAdvanceLabelSecondToThird: { left: 17, top: 17 },
+  runnerAdvanceLabelThirdToHome: { left: 13, top: 43 },
   /** 菱形底端→右端，依逆時鐘前進的第一段內部跑壘線。 */
   runnerHomeToFirst: { left: 29, top: 44, transform: [{ rotate: "-45deg" }] },
   runnerFirstToSecond: { left: 29, top: 21, transform: [{ rotate: "45deg" }] },
