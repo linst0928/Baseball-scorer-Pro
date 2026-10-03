@@ -235,6 +235,23 @@ export function WasedaPersonalRecordCell({
   ].filter(Boolean).join("·");
 
   const onBaseMarks = [topRightMarks, bottomRightResultMarks].filter(Boolean).join("·").replace(/\/?\s*\bADV\b/gi, "").replace(/^[\s·/-]+|[\s·/-]+$/g, "");
+  
+  // 強制將所有 PO 相關字串單獨移到右上角 (Top-Right)
+  const baseOnBaseMarks = outerMarks?.rightTop ?? onBaseMarks;
+  const poParts: string[] = [];
+  const nonPoParts: string[] = [];
+  
+  baseOnBaseMarks.split("·").forEach((part) => {
+    if (/\bPO\d*(?:-\d+\w*)?\b/i.test(part)) {
+      poParts.push(part);
+    } else {
+      nonPoParts.push(part);
+    }
+  });
+  
+  const resolvedPoText = poParts.join("·") || null;
+  const resolvedOnBaseMarks = nonPoParts.join("·") || "";
+
   const leftTop = [hit ? finalResult : null].filter(Boolean).join("·");
   const battedBallTrajectory = getRecordTrajectoryMark(finalRecord?.trajectory);
   const battedBallPosition = finalRecord?.battedBallPosition ?? (battedBallTrajectory ? finalNotation.match(/[1-9]/)?.[0] : undefined);
@@ -407,7 +424,20 @@ export function WasedaPersonalRecordCell({
           {replacementBadge ? <View pointerEvents="none" accessibilityLabel={`替換交接：第${replacementBadge.inning}局起 ${replacementBadge.code}${replacementHandoffLabel ? `；${replacementHandoffLabel}` : typeof replacementPitchTotal === "number" ? `；本席 ${replacementPitchTotal} 球（非精確交接）` : ""}`} style={[styles.replacementBadge, liveSize && styles.replacementBadgeLive]}><View style={styles.replacementBadgeHeader}><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeCode, liveSize && styles.replacementBadgeCodeLive]}>{replacementBadge.code}</Text><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeHandoff, liveSize && styles.replacementBadgeHandoffLive]}>交接</Text></View><Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgeInning, liveSize && styles.replacementBadgeInningLive]}>第{replacementBadge.inning}局起</Text>{replacementHandoffLabel ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>{replacementHandoffLabel}</Text> : typeof replacementPitchTotal === "number" ? <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.replacementBadgePitchCount, liveSize && styles.replacementBadgePitchCountLive]}>本席 {replacementPitchTotal} 球</Text> : null}</View> : null}
           {correction?.outerMark && !hasStructuredOuterCorrection ? <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.outerCorrectionMark, liveSize && styles.outerCorrectionMarkLive, largeSize && styles.outerCorrectionMarkLarge]}>{correction.outerMark}</Text> : <>
             <Text {...scorebookGlyphFitProps} numberOfLines={2} style={[styles.leftTop, liveSize && styles.leftTopLive, largeSize && styles.leftTopLarge, hit && styles.redText]}>{outerMarks?.leftTop ?? leftTop ?? ""}</Text>
-            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[batterReachesFirst ? styles.batterFirstBaseMark : styles.rightTop, liveSize && (batterReachesFirst ? styles.batterFirstBaseMarkLive : styles.rightTopLive), largeSize && (batterReachesFirst ? styles.batterFirstBaseMarkLarge : styles.rightTopLarge)]}>{outerMarks?.rightTop ?? onBaseMarks}</Text>
+            {resolvedPoText ? (
+              <Text
+                {...scorebookGlyphFitProps}
+                numberOfLines={1}
+                style={[
+                  styles.rightTop,
+                  liveSize && styles.rightTopLive,
+                  largeSize && styles.rightTopLarge,
+                ]}
+              >
+                {resolvedPoText}
+              </Text>
+            ) : null}
+            <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[batterReachesFirst ? styles.batterFirstBaseMark : styles.rightTop, liveSize && (batterReachesFirst ? styles.batterFirstBaseMarkLive : styles.rightTopLive), largeSize && (batterReachesFirst ? styles.batterFirstBaseMarkLarge : styles.rightTopLarge)]}>{resolvedOnBaseMarks}</Text>
             <Text {...scorebookGlyphFitProps} numberOfLines={1} style={[styles.leftBottom, styles.redText, liveSize && styles.leftBottomLive, largeSize && styles.leftBottomLarge]}>{outerMarks?.leftBottom ?? (finalRuns > 0 || rbi > 0 ? (["①", "②", "③", "④"][Math.max(finalRuns, rbi) - 1] ?? "") : "")}</Text>
             <View accessibilityLabel={displayedFieldingNotation ? `右下角傳接符號：${displayedFieldingNotation}` : "右下角傳接符號"} style={[styles.rightBottom, liveSize && styles.rightBottomLive, largeSize && styles.rightBottomLarge, displayedFieldingNotation && styles.rightBottomHasFielding]}>
               <SacrificeShapeContainer shape={sacrificeShape}>
