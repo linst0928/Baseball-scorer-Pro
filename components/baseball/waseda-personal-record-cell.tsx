@@ -236,6 +236,8 @@ export function WasedaPersonalRecordCell({
 
   const onBaseMarks = [topRightMarks, bottomRightResultMarks].filter(Boolean).join("·").replace(/\/?\s*\bADV\b/gi, "").replace(/^[\s·/-]+|[\s·/-]+$/g, "");
   
+  const outerMarks = correction?.outerMarks;
+
   // 強制將所有 PO 相關字串單獨移到右上角 (Top-Right)
   const baseOnBaseMarks = outerMarks?.rightTop ?? onBaseMarks;
   const poParts: string[] = [];
@@ -256,7 +258,6 @@ export function WasedaPersonalRecordCell({
   const battedBallTrajectory = getRecordTrajectoryMark(finalRecord?.trajectory);
   const battedBallPosition = finalRecord?.battedBallPosition ?? (battedBallTrajectory ? finalNotation.match(/[1-9]/)?.[0] : undefined);
   /** 球性、方向與守備傳接固定在右下分區，由上而下堆疊，避免擠壓中央菱形。 */
-  const outerMarks = correction?.outerMarks;
   const correctedBattedBallParts = outerMarks?.battedBallTop?.trim().split(/\s+/).filter(Boolean) ?? [];
   const correctedBattedBallOuterMark = correctedBattedBallParts.length
     ? { type: correctedBattedBallParts[0], position: correctedBattedBallParts.slice(1).join(" ") }
