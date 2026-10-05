@@ -37,7 +37,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { DatePicker, TimePicker, getSystemLocalDateString } from "@/components/ui/date-time-picker";
 import { WasedaPersonalRecordCell } from "@/components/baseball/waseda-personal-record-cell";
 import { PitcherCatcherBottomPanel, WasedaMatrixStatsRow, WasedaScorebookTeamSheet } from "@/components/baseball/waseda-scorebook-team-sheet";
-import { ScorebookDisplayEditor, ScorebookGameSelector } from "@/components/baseball/scorebook-workbench-controls";
+import { ScorebookDisplayEditor, ScorebookGameSelector, WasedaCellActionMenuModal } from "@/components/baseball/scorebook-workbench-controls";
 import { DiamondFieldPositionPicker, LiveInfieldDiamondBackground } from "@/components/baseball/diamond-field-position-picker";
 import { formatPreferredPositionsShort } from "@/lib/baseball/diamond-field-positions";
 import { HOME_DEFENSE_FIELD_IMAGE } from "@/constants/baseball-assets";
@@ -5254,36 +5254,51 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
   const [matchNotes, setMatchNotes] = useState(game.notes || "");
   const [notesSaved, setNotesSaved] = useState(false);
   const [scorebookEditor, setScorebookEditor] = useState<{
-    field: "player" | "defense";
+    field: "player" | "defense" | "menu";
     team: Team;
     side: TeamSide;
     battingOrder: number;
     entry: WasedaScorebookEntry;
+    allOrderEntries?: WasedaScorebookEntry[];
     currentPlayerId?: string;
     currentDefensivePosition?: string;
     entryLabel: string;
+    initialCategory?: "typo" | "ph" | "pr" | "defense";
+  } | null>(null);
+  const [wasedaCellMenu, setWasedaCellMenu] = useState<{
+    side: TeamSide;
+    battingOrder: number;
+    inning: number;
+    entryIndex: number;
+    eventId?: string;
+    event?: AtBatEvent;
+    slot: ScorebookBlankSlot;
+    allOrderEntries?: WasedaScorebookEntry[];
   } | null>(null);
   const [formalBlankSlot, setFormalBlankSlot] = useState<ScorebookBlankSlot | null>(null);
+  const [activeReplacementTarget, setActiveReplacementTarget] = useState<AtBatEvent | null>(null);
+  const effectiveReplacementTarget = activeReplacementTarget ?? formalAtBatReplacement;
   const formalReplacementSlot = useMemo<ScorebookBlankSlot | null>(() => {
-    if (!formalAtBatReplacement) return null;
-    const lineup = formalAtBatReplacement.half === "away" ? game.awayLineup : game.homeLineup;
-    const battingOrderIndex = lineup?.battingOrderIds.indexOf(formalAtBatReplacement.batterId) ?? -1;
+    if (!effectiveReplacementTarget) return null;
+    const lineup = effectiveReplacementTarget.half === "away" ? game.awayLineup : game.homeLineup;
+    const battingOrderIndex = lineup?.battingOrderIds.indexOf(effectiveReplacementTarget.batterId) ?? -1;
     return {
-      side: formalAtBatReplacement.half,
+      side: effectiveReplacementTarget.half,
       battingOrder: battingOrderIndex >= 0 ? battingOrderIndex + 1 : 1,
       entryIndex: 0,
-      inning: formalAtBatReplacement.inning,
+      inning: effectiveReplacementTarget.inning,
       slotIndex: 0,
-      playerId: formalAtBatReplacement.batterId,
+      playerId: effectiveReplacementTarget.batterId,
     };
-  }, [formalAtBatReplacement, game.awayLineup, game.homeLineup]);
-  const formalWorkflowSlot = formalAtBatReplacement ? formalReplacementSlot : formalBlankSlot;
+  }, [effectiveReplacementTarget, game.awayLineup, game.homeLineup]);
+  const formalWorkflowSlot = effectiveReplacementTarget ? formalReplacementSlot : formalBlankSlot;
 
   useEffect(() => {
     setSelectedScorebookSide(game.half);
     setMatchNotes(game.notes || "");
     setScorebookEditor(null);
     setFormalBlankSlot(null);
+    setActiveReplacementTarget(null);
   }, [game.half, game.id, game.notes]);
 
   const handleSaveMatchNotes = () => {
@@ -5404,7 +5419,14 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
     </View>;
   };
 
-  const openScorebookEntryEditor = (team: Team, side: TeamSide, entry: WasedaScorebookEntry, battingOrder: number, field: "player" | "defense") => {
+  const openScorebookEntryEditor = (
+    team: Team,
+    side: TeamSide,
+    entry: WasedaScorebookEntry,
+    battingOrder: number,
+    field: "player" | "defense",
+    allEntries?: WasedaScorebookEntry[]
+  ) => {
     if (isReadOnly) return;
     const overrideKey = getScorebookDisplayOverrideKey(side, battingOrder, entry.entryIndex);
     const currentOverride = game.scorebookDisplayOverrides?.[overrideKey];
@@ -5420,20 +5442,25 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
       side,
       battingOrder,
       entry,
+      allOrderEntries: allEntries,
       currentPlayerId,
       currentDefensivePosition,
-      entryLabel: `第 ${battingOrder} 棒${entry.entryIndex > 0 ? `／候補 ${entry.entryIndex}` : "／先發"}`,
+      entryLabel: `第 ${battingOrder} 棒${entry.entryIndex > 0 ? `／點選位置 ${entry.entryIndex + 1}` : "／先發"}`,
     });
   };
 
-  const saveScorebookDisplayOverride = (patch: ScorebookDisplayOverride) => {
+  const saveScorebookDisplayOverride = (patch: ScorebookDisplayOverride & { substitutionAction?: "typo" | "ph" | "pr" | "defense"; targetEntryIndex?: number }) => {
     if (isReadOnly || !scorebookEditor) return;
-    const overrideKey = getScorebookDisplayOverrideKey(scorebookEditor.side, scorebookEditor.battingOrder, scorebookEditor.entry.entryIndex);
+    const targetIndex = patch.targetEntryIndex ?? scorebookEditor.entry.entryIndex;
+    const overrideKey = getScorebookDisplayOverrideKey(scorebookEditor.side, scorebookEditor.battingOrder, targetIndex);
     onSaveDisplayOverrides({
       ...(game.scorebookDisplayOverrides ?? {}),
       [overrideKey]: {
-        ...game.scorebookDisplayOverrides?.[overrideKey],
-        ...patch,
+        ...(game.scorebookDisplayOverrides?.[overrideKey] ?? {}),
+        playerId: patch.playerId,
+        defensivePosition: patch.defensivePosition,
+        role: patch.role,
+        revisedAt: new Date().toISOString(),
       },
     });
     setScorebookEditor(null);
@@ -5449,6 +5476,43 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
     setFormalBlankSlot(slot);
   };
 
+  const handleWasedaCellAction = (option: "correction" | "ph" | "pr" | "defense") => {
+    if (!wasedaCellMenu) return;
+    const target = wasedaCellMenu;
+    setWasedaCellMenu(null);
+
+    if (option === "correction") {
+      if (target.event) {
+        setActiveReplacementTarget(target.event);
+        setFormalBlankSlot(target.slot);
+      } else {
+        setActiveReplacementTarget(null);
+        openFormalBlankSlotCorrection(target.slot);
+      }
+    } else if (option === "ph" || option === "pr" || option === "defense") {
+      const activeTeam = target.side === "away" ? away : home;
+      const dummyEntry: WasedaScorebookEntry = {
+        entryIndex: target.entryIndex,
+        playerId: target.slot.playerId,
+        kind: target.entryIndex === 0 ? "starter" : "substitute",
+        enteredInning: target.inning,
+        enteredHalf: target.side,
+      };
+      setScorebookEditor({
+        field: "player",
+        team: activeTeam,
+        side: target.side,
+        battingOrder: target.battingOrder,
+        entry: dummyEntry,
+        allOrderEntries: target.allOrderEntries,
+        currentPlayerId: target.slot.playerId,
+        currentDefensivePosition: option === "ph" ? "PH" : option === "pr" ? "PR" : undefined,
+        entryLabel: `第 ${target.battingOrder} 棒・第 ${target.inning} 局`,
+        initialCategory: option,
+      });
+    }
+  };
+
   const renderTeamSheet = (team: Team, side: TeamSide, _batting: ReturnType<typeof getBattingStats>, _pitching: ReturnType<typeof getPitchingStats>, _teamSummary: ReturnType<typeof getTeamPerformanceSummary>) => <>
     <WasedaScorebookTeamSheet
       game={game}
@@ -5462,14 +5526,87 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
       }}
       onLongPressAtBatEvent={(eventId) => {
         if (isReadOnly) return;
-        const row = rows.find((candidate) => candidate.id === `atbat-${eventId}`);
-        if (row) onOpenCorrection(row);
+        const event = game.events.find((e) => e.id === eventId);
+        const lineup = side === "away" ? game.awayLineup : game.homeLineup;
+        const battingOrderIndex = event ? lineup?.battingOrderIds.indexOf(event.batterId) ?? -1 : -1;
+        const battingOrder = battingOrderIndex >= 0 ? battingOrderIndex + 1 : 1;
+        const slot: ScorebookBlankSlot = {
+          side,
+          battingOrder,
+          entryIndex: 0,
+          inning: event?.inning ?? 1,
+          slotIndex: 0,
+          playerId: event?.batterId,
+        };
+        setWasedaCellMenu({
+          side,
+          battingOrder,
+          inning: event?.inning ?? 1,
+          entryIndex: 0,
+          eventId,
+          event,
+          slot,
+        });
       }}
-      onLongPressEntry={(entry, battingOrder, field) => openScorebookEntryEditor(team, side, entry, battingOrder, field)}
-      onLongPressBlankSlot={openFormalBlankSlotCorrection}
+      onLongPressEntry={(entry, battingOrder, field, allEntries) => openScorebookEntryEditor(team, side, entry, battingOrder, field, allEntries)}
+      onLongPressBlankSlot={(slot) => {
+        if (isReadOnly) return;
+        setWasedaCellMenu({
+          side: slot.side,
+          battingOrder: slot.battingOrder,
+          inning: slot.inning,
+          entryIndex: slot.entryIndex,
+          slot,
+        });
+      }}
     />
-    <ScorebookDisplayEditor field={scorebookEditor?.field ?? null} entryLabel={scorebookEditor?.entryLabel ?? ""} team={scorebookEditor?.team ?? null} currentPlayerId={scorebookEditor?.currentPlayerId} currentDefensivePosition={scorebookEditor?.currentDefensivePosition} onClose={() => setScorebookEditor(null)} onSave={saveScorebookDisplayOverride} />
-    <FormalBlankSlotLiveWorkflowModal visible={Boolean(formalWorkflowSlot)} game={game} away={away} home={home} slot={formalWorkflowSlot} replacementTarget={formalAtBatReplacement} onClose={() => { setFormalBlankSlot(null); onFormalAtBatReplacementHandled(); }} onSubmit={(slot, event, note) => { onApplyFormalBlankSlotCorrection(slot, event, note); setFormalBlankSlot(null); }} onReplace={(target, event, note) => { if (!formalWorkflowSlot) return; onApplyFormalAtBatReplacement(formalWorkflowSlot, target, event, note); setFormalBlankSlot(null); onFormalAtBatReplacementHandled(); }} />
+    <ScorebookDisplayEditor
+      field={scorebookEditor?.field ?? null}
+      entryLabel={scorebookEditor?.entryLabel ?? ""}
+      team={scorebookEditor?.team ?? null}
+      side={scorebookEditor?.side}
+      battingOrder={scorebookEditor?.battingOrder}
+      entry={scorebookEditor?.entry}
+      allOrderEntries={scorebookEditor?.allOrderEntries}
+      currentOnFieldPositions={scorebookEditor?.side === "away" ? game.awayLineup?.defensivePositions : game.homeLineup?.defensivePositions}
+      currentPlayerId={scorebookEditor?.currentPlayerId}
+      currentDefensivePosition={scorebookEditor?.currentDefensivePosition}
+      initialCategory={scorebookEditor?.initialCategory}
+      onClose={() => setScorebookEditor(null)}
+      onSave={saveScorebookDisplayOverride}
+    />
+    <WasedaCellActionMenuModal
+      visible={Boolean(wasedaCellMenu)}
+      title="早稻田紀錄格長按調度與修改"
+      subtitle={wasedaCellMenu ? `第 ${wasedaCellMenu.battingOrder} 棒 · 第 ${wasedaCellMenu.inning} 局${wasedaCellMenu.side === "away" ? "上" : "下"}` : ""}
+      onClose={() => setWasedaCellMenu(null)}
+      onSelectOption={handleWasedaCellAction}
+    />
+    <FormalBlankSlotLiveWorkflowModal
+      visible={Boolean(formalWorkflowSlot)}
+      game={game}
+      away={away}
+      home={home}
+      slot={formalWorkflowSlot}
+      replacementTarget={effectiveReplacementTarget}
+      onClose={() => {
+        setFormalBlankSlot(null);
+        setActiveReplacementTarget(null);
+        onFormalAtBatReplacementHandled();
+      }}
+      onSubmit={(slot, event, note) => {
+        onApplyFormalBlankSlotCorrection(slot, event, note);
+        setFormalBlankSlot(null);
+        setActiveReplacementTarget(null);
+      }}
+      onReplace={(target, event, note) => {
+        if (!formalWorkflowSlot) return;
+        onApplyFormalAtBatReplacement(formalWorkflowSlot, target, event, note);
+        setFormalBlankSlot(null);
+        setActiveReplacementTarget(null);
+        onFormalAtBatReplacementHandled();
+      }}
+    />
   </>;
 
   return <View style={styles.statsSection}>
@@ -7526,7 +7663,7 @@ function FormalBlankSlotCorrectionModal({ visible, game, away, home, slot, onClo
 }
 
 function FormalBlankSlotLiveWorkflowModal({ visible, game, away, home, slot, replacementTarget, onClose, onSubmit, onReplace }: { visible: boolean; game: Game; away: Team; home: Team; slot: ScorebookBlankSlot | null; replacementTarget?: AtBatEvent | null; onClose: () => void; onSubmit: (slot: ScorebookBlankSlot, event: AtBatEvent, note?: string) => void; onReplace?: (target: AtBatEvent, event: AtBatEvent, note?: string) => void }) {
-  type LiveCorrectionStep = "players" | "pitches" | "trajectory" | "direction" | "result" | "fielding" | "preview";
+  type LiveCorrectionStep = "players" | "pitches" | "trajectory" | "direction" | "result" | "fielding" | "runners" | "preview";
   const [step, setStep] = useState<LiveCorrectionStep>("players");
   const [batterId, setBatterId] = useState("");
   const [pitcherId, setPitcherId] = useState("");
@@ -7536,6 +7673,7 @@ function FormalBlankSlotLiveWorkflowModal({ visible, game, away, home, slot, rep
   const [result, setResult] = useState<AtBatResult>("1B");
   const [droppedThirdStrike, setDroppedThirdStrike] = useState(false);
   const [fieldingSequence, setFieldingSequence] = useState("");
+  const [rbi, setRbi] = useState<number>(0);
   const [note, setNote] = useState("");
   const [isGuideExpanded, setIsGuideExpanded] = useState(false);
   const [stepFade] = useState(() => new Animated.Value(1));
@@ -7563,13 +7701,13 @@ function FormalBlankSlotLiveWorkflowModal({ visible, game, away, home, slot, rep
     pitches: { balls: pitchPreview?.balls ?? 0, strikes: pitchPreview?.strikes ?? 0, total: pitchDraft.length },
     outsBefore: replacementTarget?.outsBefore ?? 0,
     runsScored: 0,
-    recordColumn: { trajectory: trajectory || undefined, battedBallPosition: direction.trim() || undefined, fieldingSequence: fieldingSequence.trim() || undefined, modifiers: [], rbi: 0 },
+    recordColumn: { trajectory: trajectory || undefined, battedBallPosition: direction.trim() || undefined, fieldingSequence: fieldingSequence.trim() || undefined, modifiers: [], rbi },
     droppedThirdStrike: result === "K" && droppedThirdStrike && droppedThirdStrikeEligibility.allowed,
     source: "manual",
     timestamp: new Date().toISOString(),
   };
   const steps = [
-    ["pitches", "逐球"], ["trajectory", "球性"], ["direction", "方向"], ["result", "結果"], ["fielding", "傳球"], ["preview", "預覽"],
+    ["pitches", "逐球"], ["trajectory", "球性"], ["direction", "方向"], ["result", "結果"], ["fielding", "傳球"], ["runners", "跑壘打點"], ["preview", "預覽"],
   ] as const;
   const transitionTo = useCallback((nextStep: LiveCorrectionStep) => {
     stepFade.setValue(0.72);
@@ -7611,9 +7749,30 @@ function FormalBlankSlotLiveWorkflowModal({ visible, game, away, home, slot, rep
   useEffect(() => {
     if (!visible || !slot) return;
     setStep("players");
-    setBatterId(replacementTarget?.batterId ?? slot.playerId ?? battingTeam.players[0]?.id ?? "");
-    setPitcherId(pitchingTeam.players[0]?.id ?? "");
-    setPitchDraft([]); setTrajectory(""); setDirection(""); setResult("1B"); setDroppedThirdStrike(false); setFieldingSequence(""); setNote(""); setIsGuideExpanded(false); stepFade.setValue(1);
+    if (replacementTarget) {
+      setBatterId(replacementTarget.batterId);
+      setPitcherId(replacementTarget.pitcherId);
+      setResult(replacementTarget.result);
+      setTrajectory((replacementTarget.recordColumn?.trajectory as RecordTrajectory) || "");
+      setDirection(replacementTarget.recordColumn?.battedBallPosition || "");
+      setFieldingSequence(replacementTarget.recordColumn?.fieldingSequence || "");
+      setRbi(replacementTarget.recordColumn?.rbi || 0);
+      setDroppedThirdStrike(Boolean(replacementTarget.droppedThirdStrike));
+      setPitchDraft([]);
+    } else {
+      setBatterId(slot.playerId ?? battingTeam.players[0]?.id ?? "");
+      setPitcherId(pitchingTeam.players[0]?.id ?? "");
+      setResult("1B");
+      setTrajectory("");
+      setDirection("");
+      setFieldingSequence("");
+      setRbi(0);
+      setDroppedThirdStrike(false);
+      setPitchDraft([]);
+    }
+    setNote("");
+    setIsGuideExpanded(false);
+    stepFade.setValue(1);
   }, [battingTeam, pitchingTeam, replacementTarget, slot, visible]);
   if (!slot) return null;
   const goToResult = () => {
@@ -7627,32 +7786,33 @@ function FormalBlankSlotLiveWorkflowModal({ visible, game, away, home, slot, rep
     }
     if (result === "HBP") {
       if (pitchDraft.length) Alert.alert("觸身球不需逐球符號", "請清空逐球欄後再確認觸身球；觸身球不以球／好球序列結束打席。 ");
-      else transitionTo("preview");
+      else transitionTo("runners");
       return;
     }
     if (!pitchPreview || pitchPreview.error) {
       Alert.alert("逐球欄尚未符合打席結束", pitchPreview?.error ?? "請先逐球輸入，並以與結果相符的最後一球結束。 ");
       return;
     }
-    transitionTo(isBattedBall ? "fielding" : "preview");
+    transitionTo(isBattedBall ? "fielding" : "runners");
   };
   const back = () => {
     const previous: Record<LiveCorrectionStep, LiveCorrectionStep> = {
-      players: "players", pitches: "players", trajectory: "pitches", direction: "trajectory", result: trajectory ? "direction" : "trajectory", fielding: "result", preview: isBattedBall ? "fielding" : "result",
+      players: "players", pitches: "players", trajectory: "pitches", direction: "trajectory", result: trajectory ? "direction" : "trajectory", fielding: "result", runners: isBattedBall ? "fielding" : "result", preview: "runners",
     };
     transitionTo(previous[step]);
   };
   return <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalSheet}><View style={styles.modalHandle} /><View style={styles.modalHeader}><View><Text style={styles.modalTitle}>{isReplacement ? "正式重建｜現場紀錄流程" : "正式補登｜現場紀錄流程"}</Text><Text style={styles.modalSubtitle}>第 {slot.inning} 局{slot.side === "away" ? "上" : "下"}・第 {slot.battingOrder} 棒・第 {slot.slotIndex + 1} 格；{isReplacement ? "只會重建原打席，保留打者、局數與更正歷程。" : "確認後才會重播正式資料、比分、出局、跑壘及統計。"}</Text></View><Pressable onPress={onClose}><Text style={styles.modalClose}>取消</Text></Pressable></View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent} keyboardShouldPersistTaps="handled">
     <View style={styles.wizardStepRow}>{steps.map(([key, label], index) => <View key={key} style={[styles.wizardStepChip, step === key && styles.wizardStepChipActive]}><Text style={[styles.wizardStepIndex, step === key && styles.wizardStepIndexActive]}>{index + 1}</Text><Text style={[styles.wizardStepText, step === key && styles.wizardStepTextActive]}>{label}</Text></View>)}</View>
-    <Pressable onPress={() => setIsGuideExpanded((current) => !current)} style={styles.recordCorrectionSafetyNote} accessibilityRole="button" accessibilityState={{ expanded: isGuideExpanded }}><Text style={styles.recordCorrectionSafetyTitle}>{isGuideExpanded ? "收起流程說明" : "展開流程說明"}</Text><Text style={styles.recordCorrectionSafetyText}>逐球完成後會自動前進；可隨時按「上一步」調整。</Text>{isGuideExpanded ? <Text style={styles.recordCorrectionSafetyText}>擊出球與成功觸擊：逐球 → 球性 → 方向 → 結果 → 傳接 → 預覽；第三好球與第四壞球會自動帶入 K／BB，再依序確認「非擊出事件」與結果。雙殺／三殺在傳接步驟選擇 DP／TP。</Text> : null}</Pressable>
+    <Pressable onPress={() => setIsGuideExpanded((current) => !current)} style={styles.recordCorrectionSafetyNote} accessibilityRole="button" accessibilityState={{ expanded: isGuideExpanded }}><Text style={styles.recordCorrectionSafetyTitle}>{isGuideExpanded ? "收起流程說明" : "展開流程說明"}</Text><Text style={styles.recordCorrectionSafetyText}>逐球完成後會自動前進；可隨時按「上一步」調整。</Text>{isGuideExpanded ? <Text style={styles.recordCorrectionSafetyText}>擊出球與成功觸擊：逐球 → 球性 → 方向 → 結果 → 傳接 → 跑壘打點 → 預覽；第三好球與第四壞球會自動帶入 K／BB，再依序確認「非擊出事件」與結果。雙殺／三殺在傳接步驟選擇 DP／TP。</Text> : null}</Pressable>
     <Animated.View style={{ opacity: stepFade, transform: [{ translateY: stepFade.interpolate({ inputRange: [0.72, 1], outputRange: [8, 0] }) }] }}>
     {step === "players" ? <><Text style={styles.inputLabel}>打者｜{battingTeam.name}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>{battingTeam.players.map((player) => <Pressable key={player.id} disabled={isReplacement} onPress={() => setBatterId(player.id)} style={[styles.modalPlayerChip, batterId === player.id && styles.modalChoiceActive, isReplacement && player.id !== batterId && { opacity: 0.45 }]}><Text style={[styles.modalPlayerChipNumber, batterId === player.id && styles.modalChoiceTextActive]}>#{player.number}</Text><Text style={[styles.modalPlayerChipName, batterId === player.id && styles.modalChoiceTextActive]}>{player.name}</Text></Pressable>)}</ScrollView>{isReplacement ? <Text style={styles.substitutionContext}>正式重建已鎖定原打者；可重新輸入逐球、結果、外圈與右下傳接內容。</Text> : null}<Text style={styles.inputLabel}>投手｜{pitchingTeam.name}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modalChipRow}>{pitchingTeam.players.map((player) => <Pressable key={player.id} onPress={() => setPitcherId(player.id)} style={[styles.modalPlayerChip, pitcherId === player.id && styles.modalChoiceActive]}><Text style={[styles.modalPlayerChipNumber, pitcherId === player.id && styles.modalChoiceTextActive]}>#{player.number}</Text><Text style={[styles.modalPlayerChipName, pitcherId === player.id && styles.modalChoiceTextActive]}>{player.name}</Text></Pressable>)}</ScrollView><Text style={styles.substitutionContext}>先指定本格的打者與投手；之後的逐球、外圈、內圈與右下傳接會依現場紀錄的順序建立。</Text></> : null}
     {step === "pitches" ? <><Text style={styles.recordCorrectionStepHint}>逐球輸入：依每一球實際結果排序。擊出球會自動繼續進入球性、方向、結果與傳接球事件；第四壞球與第三好球會自動帶入 BB／K 結果。</Text><View style={styles.recordCorrectionSafetyNote}><Text style={styles.recordCorrectionSafetyTitle}>本次逐球草稿</Text><Text style={styles.recordCorrectionSafetyText}>{pitchPreview?.value || "尚未加入逐球符號"}</Text>{pitchPreview ? <Text style={styles.recordCorrectionSafetyText}>球數：{pitchPreview.balls} 壞／{pitchPreview.strikes} 好{pitchPreview.error ? `；${pitchPreview.error}` : ""}</Text> : null}</View><Text style={styles.recordCorrectionStepHint}>特殊情境示範只會填入此視窗草稿，須經預覽確認才會建立正式資料。</Text><View style={styles.recordCorrectionFooter}><Button label="觸擊示範" onPress={() => loadSpecialDemo("bunt")} variant="secondary" fluid /><Button label="雙殺示範" onPress={() => loadSpecialDemo("double-play")} variant="secondary" fluid /><Button label="三殺示範" onPress={() => loadSpecialDemo("triple-play")} variant="secondary" fluid /></View><View style={styles.recordCorrectionChoiceGrid}>{PITCH_CORRECTION_OPTIONS.map((option) => <Pressable key={option.outcome} onPress={() => recordPitchOutcome(option.outcome)} style={styles.recordCorrectionChoice}><Text style={styles.recordCorrectionSymbolMark}>{option.mark}</Text><Text style={styles.recordCorrectionChoiceTitle}>{option.title}</Text></Pressable>)}</View><View style={styles.recordCorrectionFooter}><Button label="刪除最後一顆" onPress={() => setPitchDraft((current) => current.slice(0, -1))} variant="secondary" fluid /><Button label="清空逐球" onPress={() => setPitchDraft([])} variant="secondary" fluid /></View><Button label="觸身球：直接選結果" onPress={() => { setPitchDraft([]); setTrajectory(""); setDirection(""); setResult("HBP"); transitionTo("result"); }} variant="secondary" fluid /></> : null}
     {step === "trajectory" ? <><Text style={styles.recordCorrectionStepHint}>擊出球球性：此步與現場紀錄相同。若本打席是 BB、K 或 HBP，請選擇「非擊出事件」。</Text><View style={styles.recordCorrectionChoiceGrid}>{RECORD_TRAJECTORIES.map((item) => <Pressable key={item.id} onPress={() => { setTrajectory(item.id); transitionTo("direction"); }} style={[styles.recordCorrectionChoice, trajectory === item.id && styles.modalChoiceActive]}><Text style={styles.recordCorrectionSymbolMark}>{item.mark}</Text><Text style={styles.recordCorrectionChoiceTitle}>{item.label}</Text></Pressable>)}<Pressable onPress={() => { setTrajectory(""); setDirection(""); setFieldingSequence(""); transitionTo("result"); }} style={[styles.recordCorrectionChoice, !trajectory && styles.modalChoiceActive]}><Text style={styles.recordCorrectionSymbolMark}>—</Text><Text style={styles.recordCorrectionChoiceTitle}>非擊出事件</Text></Pressable></View></> : null}
     {step === "direction" ? <><Text style={styles.recordCorrectionStepHint}>擊球方向／位置：先點選守備代號，再確認結果。</Text><View style={styles.fieldingSymbolNumberRow}>{FIELD_POSITIONS.map((position) => <Pressable key={position.number} onPress={() => { setDirection(`${position.number} ${position.label}`); transitionTo("result"); }} style={[styles.fieldingSymbolButton, direction.startsWith(position.number) && styles.modalChoiceActive]}><Text style={styles.fieldingSymbolCode}>{position.number}</Text><Text style={styles.fieldingSymbolLabel}>{position.label}</Text></Pressable>)}</View><TextInput value={direction} onChangeText={setDirection} placeholder="例如：7 左外野、6 游擊方向" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Button label="下一步：選結果" onPress={() => direction.trim() ? transitionTo("result") : Alert.alert("請選擇方向", "請先點選或填寫方向／位置。 ")} fluid /></> : null}
-    {step === "result" ? <><Text style={styles.recordCorrectionStepHint}>選擇打席結果：結果會與逐球最後一球核對；擊出球完成後再進入右下傳接球事件。</Text><View style={styles.modalChoiceRow}>{resultCards.map((card) => <Pressable key={card.value} onPress={() => { setResult(card.value); setDroppedThirdStrike(false); }} style={[styles.modalChoice, result === card.value && !droppedThirdStrike && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, result === card.value && !droppedThirdStrike && styles.modalChoiceTextActive]}>{card.label}</Text></Pressable>)}<Pressable disabled={!droppedThirdStrikeEligibility.allowed} onPress={() => { setResult("K"); setDroppedThirdStrike(true); }} style={[styles.modalChoice, result === "K" && droppedThirdStrike && styles.modalChoiceActive, !droppedThirdStrikeEligibility.allowed && { opacity: 0.45 }]}><Text style={[styles.modalChoiceText, result === "K" && droppedThirdStrike && styles.modalChoiceTextActive]}>K+</Text></Pressable></View>{!droppedThirdStrikeEligibility.allowed ? <Text style={styles.recordCorrectionSafetyText}>K+ 不可用：{droppedThirdStrikeEligibility.reason ?? "一壘有人且未滿兩出局時，第三好球漏接仍為一般三振出局。"}</Text> : <Text style={styles.recordCorrectionSafetyText}>K+ 僅用於第三好球未接捕且可合法上一壘；會保留 K 統計與打者上一壘資料。</Text>}<Button label={isBattedBall ? "下一步：傳接球事件" : "預覽正式補登"} onPress={goToResult} fluid /></> : null}
-    {step === "fielding" ? <><Text style={styles.recordCorrectionStepHint}>傳接球事件固定記在打席格右下角，不與球性、方向、結果或內圈混用。可輸入一般傳接、DP、TP、FC 或失誤序列。</Text><View style={styles.fieldingSymbolNumberRow}>{FIELD_POSITIONS.map((position) => <Pressable key={position.number} onPress={() => setFieldingSequence((current) => `${current}${position.number}`)} style={styles.fieldingSymbolButton}><Text style={styles.fieldingSymbolCode}>{position.number}</Text><Text style={styles.fieldingSymbolLabel}>{position.label}</Text></Pressable>)}</View><View style={styles.fieldingSymbolActionRow}>{[["ー", "傳球"], ["A", "自踩一壘"], ["E", "失誤"], [" DP", "雙殺"], [" TP", "三殺"], [" FC", "野選"]].map(([mark, label]) => <Pressable key={label} onPress={() => setFieldingSequence((current) => `${current}${mark}`)} style={styles.fieldingSymbolAction}><Text style={styles.fieldingSymbolActionCode}>{mark}</Text><Text style={styles.fieldingSymbolActionLabel}>{label}</Text></Pressable>)}</View><TextInput value={fieldingSequence} onChangeText={setFieldingSequence} placeholder="例如：6ー3、4ー6ー3 DP、3A、5E3" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.substitutionContext}>即時預覽：{[trajectory, direction, resultCode, fieldingSequence].filter(Boolean).join(" · ")}</Text><Button label="預覽正式補登" onPress={() => transitionTo("preview")} fluid /></> : null}
-    {step === "preview" ? <><View style={styles.confirmationSummary}><Text style={styles.confirmationSummaryTitle}>{isReplacement ? "正式重建預覽" : "正式補登預覽"}</Text><Text style={styles.confirmationSummaryText}>逐球：{pitchPreview?.value || (result === "HBP" ? "觸身球（無逐球符號）" : "—")}</Text><Text style={styles.confirmationSummaryText}>外圈／右下：{[trajectory, direction, displayResultCode, fieldingSequence].filter(Boolean).join(" · ") || displayResultCode}</Text><Text style={styles.confirmationSummaryText}>{isReplacement ? "確認後只會重建此單一打席；其他打席不變，並保留原始與重建內容的更正歷程。" : "確認後會建立正式打席、更正歷程，並重播比分、出局、跑壘與投打統計；返回調整不會寫入資料。"}</Text></View><Text style={styles.inputLabel}>更正備註（選填）</Text><TextInput value={note} onChangeText={setNote} style={[styles.formInput, { minHeight: 64, textAlignVertical: "top" }]} multiline placeholder="例如：依紙本紀錄核對" placeholderTextColor={BRAND.muted} /></> : null}
+    {step === "result" ? <><Text style={styles.recordCorrectionStepHint}>選擇打席結果：結果會與逐球最後一球核對；擊出球完成後再進入右下傳接球事件。</Text><View style={styles.modalChoiceRow}>{resultCards.map((card) => <Pressable key={card.value} onPress={() => { setResult(card.value); setDroppedThirdStrike(false); }} style={[styles.modalChoice, result === card.value && !droppedThirdStrike && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, result === card.value && !droppedThirdStrike && styles.modalChoiceTextActive]}>{card.label}</Text></Pressable>)}<Pressable disabled={!droppedThirdStrikeEligibility.allowed} onPress={() => { setResult("K"); setDroppedThirdStrike(true); }} style={[styles.modalChoice, result === "K" && droppedThirdStrike && styles.modalChoiceActive, !droppedThirdStrikeEligibility.allowed && { opacity: 0.45 }]}><Text style={[styles.modalChoiceText, result === "K" && droppedThirdStrike && styles.modalChoiceTextActive]}>K+</Text></Pressable></View>{!droppedThirdStrikeEligibility.allowed ? <Text style={styles.recordCorrectionSafetyText}>K+ 不可用：{droppedThirdStrikeEligibility.reason ?? "一壘有人且未滿兩出局時，第三好球漏接仍為一般三振出局。"}</Text> : <Text style={styles.recordCorrectionSafetyText}>K+ 僅用於第三好球未接捕且可合法上一壘；會保留 K 統計與打者上一壘資料。</Text>}<Button label={isBattedBall ? "下一步：傳接球事件" : "下一步：跑壘與打點"} onPress={goToResult} fluid /></> : null}
+    {step === "fielding" ? <><Text style={styles.recordCorrectionStepHint}>傳接球事件固定記在打席格右下角，不與球性、方向、結果或內圈混用。可輸入一般傳接、DP、TP、FC 或失誤序列。</Text><View style={styles.fieldingSymbolNumberRow}>{FIELD_POSITIONS.map((position) => <Pressable key={position.number} onPress={() => setFieldingSequence((current) => `${current}${position.number}`)} style={styles.fieldingSymbolButton}><Text style={styles.fieldingSymbolCode}>{position.number}</Text><Text style={styles.fieldingSymbolLabel}>{position.label}</Text></Pressable>)}</View><View style={styles.fieldingSymbolActionRow}>{[["ー", "傳球"], ["A", "自踩一壘"], ["E", "失誤"], [" DP", "雙殺"], [" TP", "三殺"], [" FC", "野選"]].map(([mark, label]) => <Pressable key={label} onPress={() => setFieldingSequence((current) => `${current}${mark}`)} style={styles.fieldingSymbolAction}><Text style={styles.fieldingSymbolActionCode}>{mark}</Text><Text style={styles.fieldingSymbolActionLabel}>{label}</Text></Pressable>)}</View><TextInput value={fieldingSequence} onChangeText={setFieldingSequence} placeholder="例如：6ー3、4ー6ー3 DP、3A、5E3" placeholderTextColor={BRAND.muted} style={styles.formInput} /><Text style={styles.substitutionContext}>即時預覽：{[trajectory, direction, resultCode, fieldingSequence].filter(Boolean).join(" · ")}</Text><Button label="下一步：跑壘與打點" onPress={() => transitionTo("runners")} fluid /></> : null}
+    {step === "runners" ? <><Text style={styles.recordCorrectionStepHint}>打點與跑壘進壘設定：可指派本打席獲得的打點（RBI），紀錄會自動更新投打統計。</Text><Text style={styles.inputLabel}>打點（RBI）</Text><View style={styles.modalChoiceRow}>{[0, 1, 2, 3, 4].map((val) => <Pressable key={val} onPress={() => setRbi(val)} style={[styles.modalChoice, rbi === val && styles.modalChoiceActive]}><Text style={[styles.modalChoiceText, rbi === val && styles.modalChoiceTextActive]}>{val} 打點</Text></Pressable>)}</View><Button label="預覽正式補登" onPress={() => transitionTo("preview")} fluid /></> : null}
+    {step === "preview" ? <><View style={styles.confirmationSummary}><Text style={styles.confirmationSummaryTitle}>{isReplacement ? "正式重建預覽" : "正式補登預覽"}</Text><Text style={styles.confirmationSummaryText}>逐球：{pitchPreview?.value || (result === "HBP" ? "觸身球（無逐球符號）" : "—")}</Text><Text style={styles.confirmationSummaryText}>外圈／右下：{[trajectory, direction, displayResultCode, fieldingSequence].filter(Boolean).join(" · ") || displayResultCode}</Text><Text style={styles.confirmationSummaryText}>打點：{rbi} RBI</Text><Text style={styles.confirmationSummaryText}>{isReplacement ? "確認後只會重建此單一打席；其他打席不變，並保留原始與重建內容的更正歷程。" : "確認後會建立正式打席、更正歷程，並重播比分、出局、跑壘與投打統計；返回調整不會寫入資料。"}</Text></View><Text style={styles.inputLabel}>更正備註（選填）</Text><TextInput value={note} onChangeText={setNote} style={[styles.formInput, { minHeight: 64, textAlignVertical: "top" }]} multiline placeholder="例如：依紙本紀錄核對" placeholderTextColor={BRAND.muted} /></> : null}
     </Animated.View>
     <View style={styles.confirmationActionRow}><View style={styles.confirmationActionFlex}>{step === "players" ? <Button label="取消" onPress={onClose} variant="secondary" touch fluid /> : <Button label="上一步" onPress={back} variant="secondary" touch fluid />}</View><View style={styles.confirmationActionFlex}>{step === "players" ? <Button label="開始逐球輸入" onPress={() => { if (!batterId || !pitcherId) Alert.alert("請選擇打者與投手", "正式補登需指定本打席的打者與投手。 "); else transitionTo("pitches"); }} touch fluid /> : step === "preview" ? <Button label={isReplacement ? "確認正式重建" : "確認正式補登"} onPress={() => { if (isReplacement && replacementTarget && onReplace) onReplace(replacementTarget, previewEvent, note); else onSubmit(slot, previewEvent, note); }} touch fluid /> : null}</View></View>
   </ScrollView></View></View></Modal>;

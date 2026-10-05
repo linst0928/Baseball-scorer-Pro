@@ -12,7 +12,7 @@ type WasedaScorebookTeamSheetProps = {
   side: TeamSide;
   onSelectAtBatEvent: (eventId: string) => void;
   onLongPressAtBatEvent?: (eventId: string) => void;
-  onLongPressEntry?: (entry: WasedaScorebookEntry, battingOrder: number, field: "player" | "defense") => void;
+  onLongPressEntry?: (entry: WasedaScorebookEntry, battingOrder: number, field: "player" | "defense", allEntries?: WasedaScorebookEntry[]) => void;
   onLongPressBlankSlot?: (slot: ScorebookBlankSlot) => void;
 };
 
@@ -199,7 +199,12 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                     const entryMarker = getScorebookSubstitutionMarker(entry.substitution?.type);
                     const isEmptyReserve = entry.kind === "reserve" && !entry.playerId;
 
-                    const entryRole = entry.kind === "starter"
+                    const overrideKey = getScorebookDisplayOverrideKey(side, order.battingOrder, entry.entryIndex);
+                    const displayOverride = game.scorebookDisplayOverrides?.[overrideKey];
+
+                    const entryRole = displayOverride?.role
+                      ? displayOverride.role
+                      : entry.kind === "starter"
                       ? "先發"
                       : entry.substitution?.type === "代打" || entryMarker?.code === "PH"
                       ? "PH"
@@ -225,7 +230,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                       >
                         {/* 第 1 欄：守備位置 */}
                         <Pressable
-                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "defense")}
+                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "defense", displayedEntries)}
                           delayLongPress={420}
                           accessibilityRole="button"
                           accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格守備位置`}
@@ -238,7 +243,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
 
                         {/* 第 2 欄：上場身分 */}
                         <Pressable
-                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "player")}
+                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "player", displayedEntries)}
                           delayLongPress={420}
                           accessibilityRole="button"
                           accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格身分`}
@@ -258,7 +263,7 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
 
                         {/* 第 3 欄：球員名稱 */}
                         <Pressable
-                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "player")}
+                          onLongPress={() => onLongPressEntry?.(entry, order.battingOrder, "player", displayedEntries)}
                           delayLongPress={420}
                           accessibilityRole="button"
                           accessibilityLabel={`長按修改第${order.battingOrder}棒第${entryIndex + 1}格球員`}
@@ -287,14 +292,55 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
               {visibleInnings.map((inning) => {
                 const appearances = inning.appearances.filter((candidate) => candidate.battingOrder === order.battingOrder);
                 const activeEntry = [...displayedEntries].reverse().find((entry) => Boolean(entry.playerId) && (!entry.enteredInning || entry.enteredInning <= inning.inning));
-                const blankReplacementMarker = activeEntry?.enteredInning === inning.inning
-                  ? getScorebookSubstitutionMarker(activeEntry.substitution?.type)
+
+                const activeEntryOverrideKey = activeEntry ? getScorebookDisplayOverrideKey(side, order.battingOrder, activeEntry.entryIndex) : "";
+                const activeOverride = activeEntryOverrideKey ? game.scorebookDisplayOverrides?.[activeEntryOverrideKey] : undefined;
+                const activePlayerId = activeOverride?.playerId ?? activeEntry?.playerId;
+                const activePlayer = activePlayerId ? playerById.get(activePlayerId) : undefined;
+                const activeRole = activeOverride?.role
+                  ?? (activeEntry?.substitution?.type === "代打" ? "PH"
+                      : activeEntry?.substitution?.type === "代跑" ? "PR"
+                      : getScorebookSubstitutionMarker(activeEntry?.substitution?.type)?.code);
+
+                const blankReplacementMarker = activeRole
+                  ? { code: activeRole === "PH" ? "PH" : activeRole === "PR" ? "PR" : "PD", label: activeRole === "PH" ? "代打" : activeRole === "PR" ? "代跑" : "代守" }
+                  : (activeEntry?.enteredInning === inning.inning ? getScorebookSubstitutionMarker(activeEntry.substitution?.type) : undefined);
+
+                const blankReplacementBadge = blankReplacementMarker && (activeRole === "PH" || activeRole === "PR" || activeRole === "PD" || activeEntry?.enteredInning === inning.inning)
+                  ? {
+                      code: (blankReplacementMarker.code === "PF" ? "PD" : blankReplacementMarker.code) as "PH" | "PR" | "PD" | "PF",
+                      label: blankReplacementMarker.label as "代打" | "代跑" | "代守",
+                      inning: activeEntry?.enteredInning ?? inning.inning,
+                      playerName: activePlayer?.name,
+                      handoffPitchNumber: activeEntry?.substitution?.handoffPitchNumber,
+                    }
                   : undefined;
-                const blankReplacementBadge = blankReplacementMarker && activeEntry?.enteredInning
-                  ? { ...blankReplacementMarker, inning: activeEntry.enteredInning, handoffPitchNumber: activeEntry.substitution?.handoffPitchNumber }
-                  : undefined;
+
                 return <View key={`${order.battingOrder}-${inning.inning}`} style={[styles.inningColumn, { width: INNING_WIDTH, height: sharedRowHeight }]}>
                   {appearances.map((appearance, localAppearanceIndex) => {
+                    const appearanceOverrideKey = getScorebookDisplayOverrideKey(side, order.battingOrder, appearance.entryIndex);
+                    const appearanceOverride = game.scorebookDisplayOverrides?.[appearanceOverrideKey];
+                    const appearancePlayerId = appearanceOverride?.playerId ?? appearance.event.batterId;
+                    const appearancePlayer = appearancePlayerId ? playerById.get(appearancePlayerId) : undefined;
+                    const appearanceRole = appearanceOverride?.role;
+
+                    const finalReplacementBadge = appearance.replacementBadge
+                      ? {
+                          ...appearance.replacementBadge,
+                          ...(appearancePlayer?.name ? { playerName: appearancePlayer.name } : {}),
+                          ...(appearanceRole === "PH" || appearanceRole === "PR" ? { code: appearanceRole as "PH" | "PR", label: appearanceRole === "PH" ? "代打" : "代跑" } : {}),
+                        }
+                      : (appearanceRole === "PH" || appearanceRole === "PR" ? {
+                          code: appearanceRole as "PH" | "PR",
+                          label: appearanceRole === "PH" ? "代打" : "代跑",
+                          inning: inning.inning,
+                          playerName: appearancePlayer?.name,
+                        } : undefined);
+
+                    if (finalReplacementBadge) {
+                      appearance = { ...appearance, replacementBadge: finalReplacementBadge };
+                    }
+
                     const handleLongPress = () => {
                       // a-1、該局結束前，不得修改該局內容，但可以任意修改其他完成的局數內容。
                       // a-2、該場比賽結束後，可以任意更改內容，不受任何系統防呆限制。

@@ -230,6 +230,7 @@ export type RecordColumnCorrection = {
 export type ScorebookDisplayOverride = {
   playerId?: string;
   defensivePosition?: string;
+  role?: "starter" | "PH" | "PR" | "PD" | string;
   revisedAt: string;
 };
 
