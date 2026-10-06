@@ -38,6 +38,7 @@ import { DatePicker, TimePicker, getSystemLocalDateString } from "@/components/u
 import { WasedaPersonalRecordCell } from "@/components/baseball/waseda-personal-record-cell";
 import { PitcherCatcherBottomPanel, WasedaMatrixStatsRow, WasedaScorebookTeamSheet } from "@/components/baseball/waseda-scorebook-team-sheet";
 import { ScorebookDisplayEditor, ScorebookGameSelector, WasedaCellActionMenuModal } from "@/components/baseball/scorebook-workbench-controls";
+import { WasedaCorrectionWizardModal } from "@/components/baseball/waseda-correction-wizard-modal";
 import { DiamondFieldPositionPicker, LiveInfieldDiamondBackground } from "@/components/baseball/diamond-field-position-picker";
 import { formatPreferredPositionsShort } from "@/lib/baseball/diamond-field-positions";
 import { HOME_DEFENSE_FIELD_IMAGE } from "@/constants/baseball-assets";
@@ -5582,7 +5583,7 @@ function SingleGameRecord({ game, games, away, home, isReadOnly = false, onSelec
       onClose={() => setWasedaCellMenu(null)}
       onSelectOption={handleWasedaCellAction}
     />
-    <FormalBlankSlotLiveWorkflowModal
+    <WasedaCorrectionWizardModal
       visible={Boolean(formalWorkflowSlot)}
       game={game}
       away={away}

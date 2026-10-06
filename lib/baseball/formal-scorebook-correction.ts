@@ -199,6 +199,7 @@ export function applyFormalScorebookAtBatReplacement(game: Game, input: FormalSc
     recordColumn: input.replacementEvent.recordColumn,
     droppedThirdStrike: input.replacementEvent.droppedThirdStrike,
     runnerAdvances: input.replacementEvent.runnerAdvances?.map((advance) => ({ ...advance })),
+    recordCorrection: input.replacementEvent.recordCorrection,
     source: "manual",
     timestamp: previousEvent.timestamp,
   };
