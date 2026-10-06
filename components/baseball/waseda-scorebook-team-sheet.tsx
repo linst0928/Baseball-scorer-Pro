@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { WasedaPersonalRecordCell } from "./waseda-personal-record-cell";
-import { calculateWasedaMatrixStats, createWasedaScorebookProjection, getDetailedCatcherStats, getDetailedPitcherStats, getScorebookDisplayOverrideKey, getScorebookSubstitutionMarker, type WasedaMatrixStats, type WasedaScorebookEntry } from "@/lib/baseball/waseda-scorebook-projection";
+import { calculateWasedaMatrixStats, createWasedaScorebookProjection, getDetailedCatcherStats, getDetailedPitcherStats, getScorebookDisplayOverrideKey, getScorebookSubstitutionMarker, type WasedaMatrixStats, type WasedaScorebookEntry, type ScorebookSubstitutionBadge } from "@/lib/baseball/waseda-scorebook-projection";
 import { formatAvg, getBattingStats, getPitchingStats, getTeamPerformanceSummary, type Game, type ScorebookBlankSlot, type ScorebookDisplayOverride, type Team, type TeamSide } from "@/lib/baseball/types";
 
 type WasedaScorebookTeamSheetProps = {
@@ -324,18 +324,24 @@ export function WasedaScorebookTeamSheet({ game, team, opponentTeam, side, onSel
                     const appearancePlayer = appearancePlayerId ? playerById.get(appearancePlayerId) : undefined;
                     const appearanceRole = appearanceOverride?.role;
 
-                    const finalReplacementBadge = appearance.replacementBadge
-                      ? {
-                          ...appearance.replacementBadge,
-                          ...(appearancePlayer?.name ? { playerName: appearancePlayer.name } : {}),
-                          ...(appearanceRole === "PH" || appearanceRole === "PR" ? { code: appearanceRole as "PH" | "PR", label: appearanceRole === "PH" ? "代打" : "代跑" } : {}),
-                        }
-                      : (appearanceRole === "PH" || appearanceRole === "PR" ? {
-                          code: appearanceRole as "PH" | "PR",
-                          label: appearanceRole === "PH" ? "代打" : "代跑",
-                          inning: inning.inning,
-                          playerName: appearancePlayer?.name,
-                        } : undefined);
+                    let finalReplacementBadge: ScorebookSubstitutionBadge | undefined = undefined;
+                    if (appearance.replacementBadge) {
+                      finalReplacementBadge = {
+                        ...appearance.replacementBadge,
+                        ...(appearancePlayer?.name ? { playerName: appearancePlayer.name } : {}),
+                      };
+                      if (appearanceRole === "PH" || appearanceRole === "PR") {
+                        finalReplacementBadge.code = appearanceRole as "PH" | "PR";
+                        finalReplacementBadge.label = appearanceRole === "PH" ? "代打" : "代跑";
+                      }
+                    } else if (appearanceRole === "PH" || appearanceRole === "PR") {
+                      finalReplacementBadge = {
+                        code: appearanceRole as "PH" | "PR",
+                        label: appearanceRole === "PH" ? "代打" : "代跑",
+                        inning: inning.inning,
+                        playerName: appearancePlayer?.name,
+                      };
+                    }
 
                     if (finalReplacementBadge) {
                       appearance = { ...appearance, replacementBadge: finalReplacementBadge };
