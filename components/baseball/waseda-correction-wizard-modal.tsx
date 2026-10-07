@@ -201,7 +201,8 @@ export function WasedaCorrectionWizardModal({
         suggestedPitcher = sameInningEvent.pitcherId;
       } else {
         const oppLineup = slot.side === "away" ? game.homeLineup : game.awayLineup;
-        suggestedPitcher = oppLineup?.currentPitcherId || pitchingTeam.players[0]?.id || "";
+        const pitcherFromLineup = oppLineup?.currentPitcherId || (oppLineup ? Object.keys(oppLineup.defensivePositions).find((pid) => oppLineup.defensivePositions[pid] === "1") : undefined);
+        suggestedPitcher = pitcherFromLineup || pitchingTeam.players[0]?.id || "";
       }
     }
     setPitcherId(suggestedPitcher);
@@ -311,8 +312,8 @@ export function WasedaCorrectionWizardModal({
     recordCorrection: {
       innerMark: computedInnerMark,
       otherMark: runnerEventType ? `${runnerEventType}` : undefined,
+      revisedAt: new Date().toISOString(),
     },
-    runnerAdvance: runnerAdvanceData,
     droppedThirdStrike: result === "K" && droppedThirdStrike,
     source: "manual",
     timestamp: new Date().toISOString(),

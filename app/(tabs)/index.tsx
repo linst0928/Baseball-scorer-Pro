@@ -355,6 +355,7 @@ const RESULT_SHORTCUT_LABELS: Record<AtBatResult, string> = {
   F: "飛球出局",
   G: "滾地出局",
   E: "失誤",
+  FC: "野手選擇",
   IBB: "敬遠",
   DIB: "敬遠",
 };
